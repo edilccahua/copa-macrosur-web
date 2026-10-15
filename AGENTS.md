@@ -7,8 +7,13 @@ Plataforma web Mobile-First para la gestión, cronometraje en vivo (con soporte 
 - **Frontend Core:** Astro 5 (SSG para contenido informativo, SSR selectivo).
 - **Islas Interactivas:** Svelte 5 usando ESTRICTAMENTE **Runes** (`$state`, `$derived`, `$effect`, `$props`). PROHIBIDO usar sintaxis legacy de Svelte 4 (`export let`, `$:`, stores clásicos).
 - **Lenguaje Frontend:** TypeScript estricto (`strict: true`).
-- **Estilos y Diseño:** CSS Moderno Nativo (`<style>` scoped en componentes Astro/Svelte) consumiendo variables globales desde `src/styles/tokens.css` (basado en extracción `open-design` de getartcraft.com). **PROHIBIDO instalar o usar Tailwind CSS o Bootstrap.**
-- **Animaciones:** GSAP permitido ÚNICAMENTE en páginas de escaparate (Home, Presentación de Fechas). **PROHIBIDO cargar librerías de animación en `/en-vivo` y `/admin/juez`.**
+- **Estilos, Diseño y Animaciones (Fuente Obligatoria de Referencia):**
+  - **Repositorio Fuente de Diseño:** Existe un clon fiel de referencia en `/home/edilsonc/Documents/copiaartcraft`.
+  - **OBLIGACIÓN DE LOS AGENTES:** Cualquier agente que vaya a construir componentes, vistas, páginas o necesite estilos, títulos, animaciones de scroll, tokens, reset o estructura visual, TIENE LA OBLIGACIÓN ESTRICTA de consultar, copiar y adaptar los estilos, colores, layout y animaciones directamente desde `/home/edilsonc/Documents/copiaartcraft/src/styles/` y `/home/edilsonc/Documents/copiaartcraft/src/components/`, adaptándolos a nuestras tecnologías y requerimientos de ciclismo.
+  - **CSS Moderno Nativo:** `<style>` scoped en componentes Astro/Svelte consumiendo variables globales de tokens. **PROHIBIDO instalar o usar Tailwind CSS o Bootstrap.**
+  - **Animaciones:** Animaciones editoriales y scroll sincronizado adaptados del clon de referencia (`copiaartcraft/src/scripts/showcase-motion.ts`). Permitido ÚNICAMENTE en páginas de escaparate (Home, Presentación de Fechas). **PROHIBIDO cargar librerías de animación pesadas en `/en-vivo` y `/admin/juez`.**
+- **Generación de Imágenes y Recursos Visuales:**
+  - Si el agente activo es Gemini, tiene la instrucción y obligación de generar las imágenes de la aplicación (pósters de las 4 fechas, banners promocionales hero, badges de premios, placeholders de alta calidad) usando la herramienta `generate_image` (**nanobanana** / Imagen 3).
 - **Tiempo Real:** Server-Sent Events (SSE) vía `StreamingResponse` en FastAPI y `EventSource` nativo en el cliente. **PROHIBIDO usar WebSockets.**
 - **Backend:** Python 3.12+ con FastAPI, SQLModel (SQLAlchemy 2.0 + Pydantic v2) y Alembic para migraciones.
 - **Procesamiento de Archivos:** `openpyxl` para ingesta/exportación de Excels; `gpxpy` para parseo de rutas `.gpx`.
@@ -18,6 +23,7 @@ Plataforma web Mobile-First para la gestión, cronometraje en vivo (con soporte 
 Tienes PROHIBIDO generar o modificar código de aplicación sin seguir esta secuencia:
 1. **Lectura de Contrato:** Antes de tocar código, lee el archivo correspondiente dentro de `specs/`.
 2. **Carga de Skill:** Si existe una skill relevante en `.agents/skills/`, léela antes de proponer soluciones.
-3. **Gate de Planificación:** Presenta primero la lista exacta de archivos a crear/modificar y un resumen de 5 líneas de la lógica. Espera confirmación humana.
-4. **Verificación (Test Gate):** Todo cálculo de tiempos, puntos acumulados, deltas de posición o parseo de Excel debe incluir su test unitario en `pytest` y pasar en verde antes de dar la tarea por terminada.
-5. **Sincronización:** Si durante la implementación se acuerda un cambio de estructura, actualiza el archivo `specs/XX-*.md` afectado antes de cerrar la tarea.
+3. **Consulta de Diseño de Referencia:** Revisa `/home/edilsonc/Documents/copiaartcraft` para extraer y adaptar tokens, estilos, componentes y animaciones.
+4. **Gate de Planificación:** Presenta primero la lista exacta de archivos a crear/modificar y un resumen de 5 líneas de la lógica. Espera confirmación humana.
+5. **Verificación (Test Gate):** Todo cálculo de tiempos, puntos acumulados, deltas de posición o parseo de Excel debe incluir su test unitario en `pytest` y pasar en verde antes de dar la tarea por terminada.
+6. **Sincronización:** Si durante la implementación se acuerda un cambio de estructura, actualiza el archivo `specs/XX-*.md` afectado antes de cerrar la tarea.
