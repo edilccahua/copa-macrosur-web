@@ -1,0 +1,47 @@
+---
+/**
+ * StatValue.astro — cifra + etiqueta, en monoespaciada tabular.
+ * Es la primitiva que después usarán tiempos, dorsales, desniveles y puntos.
+ */
+interface Props {
+  value: string;
+  label: string;
+  hint?: string;
+}
+
+const { value, label, hint } = Astro.props;
+---
+<div class="stat">
+  <span class="stat__value tabular">{value}</span>
+  <span class="stat__label">{label}</span>
+  {hint && <span class="stat__hint">{hint}</span>}
+</div>
+
+<style>
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .stat__value {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  .stat__label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+
+  .stat__hint {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--faint);
+  }
+</style>

@@ -1,0 +1,520 @@
+---
+import Showcase from '../layouts/Showcase.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import HeroWordmark from '../components/HeroWordmark.astro';
+import DisplayTitle from '../components/DisplayTitle.astro';
+import BentoCard from '../components/bento/BentoCard.astro';
+import SectionLabel from '../components/bento/SectionLabel.astro';
+import StatValue from '../components/bento/StatValue.astro';
+
+// Datos de las 4 etapas
+const stages = [
+  {
+    num: 1,
+    name: 'La Joya Extreme',
+    date: '15 Mar 2026',
+    dist: '48.5 km',
+    elev: '+920 m',
+    status: 'Finalizada',
+    poster: '/images/la_joya_extreme.jpg',
+    slug: 'la-joya-extreme',
+    badge: 'Resultados Disponibles'
+  },
+  {
+    num: 2,
+    name: 'Vuelta a los Poblados',
+    date: '25 Oct 2026',
+    dist: '64.2 km',
+    elev: '+1780 m',
+    status: 'Inscripciones Abiertas',
+    poster: '/images/vuelta_a_los_poblados.jpg',
+    slug: 'vuelta-a-los-poblados',
+    badge: 'Próxima Carrera ⚡'
+  },
+  {
+    num: 3,
+    name: 'Rally Chachani',
+    date: '22 Nov 2026',
+    dist: '52.0 km',
+    elev: '+1350 m',
+    status: 'Próximamente',
+    poster: '/images/la_joya_extreme.jpg',
+    slug: 'rally-chachani',
+    badge: 'Fecha 3'
+  },
+  {
+    num: 4,
+    name: 'Desafío del Misti',
+    date: '13 Dic 2026',
+    dist: '72.0 km',
+    elev: '+2100 m',
+    status: 'Próximamente',
+    poster: '/images/vuelta_a_los_poblados.jpg',
+    slug: 'desafio-del-misti',
+    badge: 'Gran Final'
+  }
+];
+
+const topTeams = [
+  { name: 'TEAM COLCA BIKE', points: 58, golds: 3 },
+  { name: 'CLUB ORIGINAL BIKES AREQUIPA', points: 42, golds: 2 },
+  { name: "BIKER'S TEAM", points: 38, golds: 1 }
+];
+---
+<Showcase title="Kúspide MTB — Campeonato Oficial 2026" ghostWord="CAMPEONATO">
+  <SiteHeader />
+
+  <main class="home-main container">
+    <!-- Hero Section Editorial -->
+    <section class="hero-section" data-draw>
+      <div class="hero-eyebrow font-mono" data-draw-eyebrow>TEMPORADA OFICIAL MTB XC 2026</div>
+      <HeroWordmark text="KÚSPIDE" />
+      <div class="hero-copy" data-hero-copy>
+        <p class="hero-desc">
+          Cuatro batallas épicas en las cumbres y cañones del sur peruano. Cronometraje de precisión, ranking acumulado individual y Copa de Clubes.
+        </p>
+      </div>
+
+      <!-- Banner Próxima Fecha: Vuelta a los Poblados -->
+      <div class="next-race-banner" data-reveal>
+        <div class="banner-badge font-mono">PRÓXIMA FECHA: 25 DE OCTUBRE DE 2026</div>
+        <div class="banner-body">
+          <div class="banner-info">
+            <h2 class="banner-title">VUELTA A LOS POBLADOS</h2>
+            <p class="banner-sub">64.2 KM | +1,780M DESNIVEL POSITIVO | RUTA DE ALTA MONTAÑA</p>
+          </div>
+          <div class="banner-actions">
+            <a href="/inscripciones" class="btn-cta-primary">Pre-Inscripción Oficial</a>
+            <a href="/fechas/vuelta-a-los-poblados" class="btn-cta-secondary">Ver Ficha y Altimetría</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bento Grid del Campeonato -->
+    <section class="bento-overview">
+      <SectionLabel label="ETAPAS DEL CAMPEONATO" />
+
+      <div class="bento-stages-grid">
+        {
+          stages.map((stage) => (
+            <article class="bento-stage-card" data-reveal>
+              <div class="stage-poster-wrap">
+                <img src={stage.poster} alt={stage.name} class="stage-poster-img" loading="lazy" />
+                <div class="stage-badge font-mono">{stage.badge}</div>
+              </div>
+              <div class="stage-content">
+                <div class="stage-num font-mono">FECHA 0{stage.num}</div>
+                <h3 class="stage-name">{stage.name}</h3>
+                <div class="stage-specs font-mono">
+                  <span>📅 {stage.date}</span>
+                  <span>📏 {stage.dist}</span>
+                  <span>⛰️ {stage.elev}</span>
+                </div>
+                <div class="stage-link-wrap">
+                  <a href={`/fechas/${stage.slug}`} class="stage-cta">
+                    {stage.status === 'Finalizada' ? 'Ver Resultados Oficiales →' : 'Ver Detalles de Ruta →'}
+                  </a>
+                </div>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </section>
+
+    <!-- Bento Showcase: Copa de Equipos y Premios Especiales -->
+    <section class="bento-features-grid">
+      <!-- Copa de Equipos Líder -->
+      <div class="bento-box team-leader-box" data-reveal>
+        <div class="box-tag font-mono">COPA DE EQUIPOS — LÍDER ACTUAL</div>
+        <h3 class="box-title">{topTeams[0].name}</h3>
+        <p class="box-desc">Encabezando la clasificación general con 3 victorias de categoría en La Joya Extreme.</p>
+        
+        <div class="podium-preview">
+          {topTeams.map((t, idx) => (
+            <div class="podium-row font-mono">
+              <span class="p-rank">{idx + 1}°</span>
+              <span class="p-name">{t.name}</span>
+              <span class="p-pts">{t.points} pts</span>
+            </div>
+          ))}
+        </div>
+
+        <a href="/ranking-general" class="box-link font-mono">VER COPA DE EQUIPOS COMPLETA →</a>
+      </div>
+
+      <!-- Premios Especiales -->
+      <div class="bento-box awards-box" data-reveal>
+        <div class="box-tag font-mono">PREMIOS ESPECIALES OFICIALES</div>
+        
+        <div class="awards-preview-grid">
+          <div class="award-card">
+            <img src="/images/premio_coca.jpg" alt="Premio Especial Coca" class="award-thumb" />
+            <div>
+              <div class="award-name">Premio Especial Coca</div>
+              <div class="award-desc">S/ 300 + Trofeo Tradición Andina a la máxima persistencia.</div>
+            </div>
+          </div>
+
+          <div class="award-card">
+            <img src="/images/rey_montana.jpg" alt="Rey de la Montaña" class="award-thumb" />
+            <div>
+              <div class="award-name">Rey de la Montaña (KOM)</div>
+              <div class="award-desc">S/ 500 + Maillot de Lunares al mejor tiempo en subida cumbre.</div>
+            </div>
+          </div>
+        </div>
+
+        <a href="/fechas/la-joya-extreme" class="box-link font-mono">VER PREMIOS Y GANADORES →</a>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</Showcase>
+
+<style>
+  .home-main {
+    padding-top: 2rem;
+  }
+
+  .hero-section {
+    padding-block: 3rem 4rem;
+    border-bottom: var(--hairline) solid var(--line);
+    margin-bottom: 4rem;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent, #ff5500);
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-copy {
+    margin-top: 1.5rem;
+    max-width: 680px;
+  }
+
+  .hero-desc {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  /* Banner Próxima Fecha */
+  .next-race-banner {
+    margin-top: 3rem;
+    background: var(--invert-bg, #101014);
+    color: var(--invert-fg, #ffffff);
+    padding: 2rem;
+    border: var(--hairline) solid var(--line);
+  }
+
+  .banner-badge {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    background: #ff5500;
+    color: #ffffff;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    margin-bottom: 1rem;
+  }
+
+  .banner-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .banner-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .banner-sub {
+    font-size: 0.8125rem;
+    color: #a0a0b0;
+    margin: 0;
+    letter-spacing: 0.05em;
+  }
+
+  .banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .btn-cta-primary {
+    padding: 0.875rem 1.5rem;
+    background: #ffffff;
+    color: #101014;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    text-decoration: none;
+    transition: background 0.15s ease;
+  }
+
+  .btn-cta-primary:hover {
+    background: #ff5500;
+    color: #ffffff;
+  }
+
+  .btn-cta-secondary {
+    padding: 0.875rem 1.5rem;
+    background: transparent;
+    color: #ffffff;
+    border: var(--hairline) solid rgba(255, 255, 255, 0.3);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    text-decoration: none;
+  }
+
+  .btn-cta-secondary:hover {
+    border-color: #ffffff;
+  }
+
+  /* Bento Etapas */
+  .bento-stages-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 4rem;
+  }
+
+  .bento-stage-card {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stage-poster-wrap {
+    position: relative;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    background: #14171c;
+  }
+
+  .stage-poster-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .bento-stage-card:hover .stage-poster-img {
+    transform: scale(1.03);
+  }
+
+  .stage-badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(16, 16, 20, 0.85);
+    color: #ffffff;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    backdrop-filter: blur(4px);
+  }
+
+  .stage-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .stage-num {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+    margin-bottom: 0.25rem;
+  }
+
+  .stage-name {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .stage-specs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .stage-link-wrap {
+    margin-top: auto;
+  }
+
+  .stage-cta {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .stage-cta:hover {
+    color: var(--accent, #ff5500);
+  }
+
+  /* Bento Features */
+  .bento-features-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+  }
+
+  .bento-box {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .box-tag {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--accent, #ff5500);
+    margin-bottom: 0.75rem;
+  }
+
+  .box-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .box-desc {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.5;
+  }
+
+  .podium-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .podium-row {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem 0.875rem;
+    background: var(--bg);
+    border: var(--hairline) solid var(--line);
+    font-size: 0.75rem;
+  }
+
+  .p-rank {
+    width: 32px;
+    font-weight: 800;
+  }
+
+  .p-name {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .p-pts {
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+  }
+
+  .awards-preview-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .award-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--bg);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .award-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .award-name {
+    font-weight: 800;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .award-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .box-link {
+    margin-top: auto;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .box-link:hover {
+    color: var(--accent, #ff5500);
+  }
+
+  @media (min-width: 768px) {
+    .banner-body {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bento-stages-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .bento-features-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .bento-stages-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>

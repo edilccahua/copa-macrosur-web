@@ -1,0 +1,44 @@
+---
+/**
+ * HeroWordmark.astro — el rótulo del hero, letra por letra.
+ *
+ * Medido del original (`tools/probe-wordmark.mjs`):
+ *   font-family Archivo · 95.4px · peso 750 · font-stretch 125%
+ *   color #000 · letras en `inline-block`, cada una con su ancho
+ *   rect 672×95 centrado en un viewport de 1440
+ *
+ * La animación la aplica `src/scripts/showcase-motion.ts` con los tiempos del
+ * `introTuner` del original:
+ *   wordAt 0.35 · wordDur 0.85 · copyAt 1.05 · instrAt 0.70
+ */
+interface Props {
+  text?: string;
+}
+
+const { text = 'ARTCRAFT' } = Astro.props;
+const letters = [...text];
+---
+<div class="wordmark" data-hero-wordmark aria-hidden="true">
+  {letters.map((letter, index) => <span class="wordmark__letter" data-letter={index}>{letter}</span>)}
+</div>
+
+<style>
+  .wordmark {
+    display: flex;
+    justify-content: center;
+    font-family: var(--font-display);
+    /* El máximo es el valor medido; por debajo se adapta. */
+    font-size: clamp(2.5rem, 12vw, 95.4px);
+    font-weight: 750;
+    font-stretch: 125%;
+    letter-spacing: normal;
+    line-height: 1;
+    color: var(--ink-strong);
+    user-select: none;
+  }
+
+  .wordmark__letter {
+    display: inline-block;
+    will-change: transform;
+  }
+</style>

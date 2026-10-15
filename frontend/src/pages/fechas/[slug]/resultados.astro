@@ -1,0 +1,239 @@
+---
+import Base from '../../../layouts/Base.astro';
+import SiteHeader from '../../../components/SiteHeader.astro';
+import SiteFooter from '../../../components/SiteFooter.astro';
+
+export async function getStaticPaths() {
+  return [
+    { params: { slug: 'la-joya-extreme' } },
+    { params: { slug: 'vuelta-a-los-poblados' } },
+    { params: { slug: 'rally-chachani' } },
+    { params: { slug: 'desafio-del-misti' } }
+  ];
+}
+
+const { slug } = Astro.params;
+
+let stageData: any = null;
+try {
+  const res = await fetch(`http://localhost:8000/api/v1/stages/${slug}/results`);
+  if (res.ok) stageData = await res.json();
+} catch (e) {}
+
+const stageName = stageData?.stage?.name || 'Resultados de Etapa';
+const categories = stageData?.categories || {};
+---
+<Base title={`Resultados Oficiales: ${stageName} — Kúspide MTB`}>
+  <SiteHeader />
+
+  <main class="container page-content">
+    <div class="header-box">
+      <div class="breadcrumb font-mono">
+        <a href={`/fechas/${slug}`}>← VOLVER A LA FICHA DE LA FECHA</a>
+      </div>
+      <h1 class="page-title">RESULTADOS OFICIALES: {stageName}</h1>
+      <p class="page-desc">
+        Clasificación completa de meta por categorías con tiempos netos y puntos asignados según la escala reglamentaria.
+      </p>
+
+      <div class="actions-bar">
+        <a href={`http://localhost:8000/api/v1/stages/1/export-excel`} class="btn-excel font-mono">
+          📊 DESCARGAR LIBRO EXCEL OFICIAL (.XLSX)
+        </a>
+      </div>
+    </div>
+
+    <!-- Tablas por categoría -->
+    <div class="categories-list">
+      {
+        Object.entries(categories).map(([catName, riders]: [string, any]) => (
+          <div class="cat-block">
+            <div class="cat-header">
+              <h2 class="cat-title">{catName}</h2>
+              <span class="cat-count font-mono">{riders.length} ciclistas</span>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th class="col-rank">Puesto</th>
+                    <th class="col-bib">Dorsal</th>
+                    <th>Ciclista</th>
+                    <th>Equipo / Club</th>
+                    <th class="col-time">Tiempo Oficial</th>
+                    <th class="col-pts">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {riders.map((r: any) => (
+                    <tr>
+                      <td class="col-rank font-mono">{r.rank ? `${r.rank}°` : '-'}</td>
+                      <td class="col-bib font-mono bib-tag">#{r.bib_number}</td>
+                      <td>
+                        <a href={`/corredor/${r.rider_slug}`} class="rider-link">
+                          {r.rider_name}
+                        </a>
+                      </td>
+                      <td>{r.team_name}</td>
+                      <td class="col-time font-mono">{r.formatted_time}</td>
+                      <td class="col-pts font-mono pts-tag">+{r.points_earned} pts</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .header-box {
+    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .breadcrumb a {
+    color: var(--accent, #ff5500);
+    text-decoration: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  .page-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin: 1rem 0;
+  }
+
+  .page-desc {
+    max-width: 720px;
+    font-size: 0.9375rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-excel {
+    display: inline-block;
+    padding: 0.75rem 1.25rem;
+    background: #10b981;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+  }
+
+  .btn-excel:hover {
+    background: #059669;
+  }
+
+  .categories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    margin-bottom: 4rem;
+  }
+
+  .cat-block {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+  }
+
+  .cat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--bg);
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .cat-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.125rem;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .cat-count {
+    font-size: 0.6875rem;
+    color: var(--muted);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.8125rem;
+  }
+
+  .data-table th {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: var(--hairline) solid var(--line);
+    background: var(--bg);
+  }
+
+  .data-table td {
+    padding: 0.75rem 1.25rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .col-rank {
+    width: 60px;
+    font-weight: 800;
+  }
+
+  .col-bib {
+    width: 70px;
+  }
+
+  .bib-tag {
+    font-weight: 800;
+  }
+
+  .rider-link {
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .rider-link:hover {
+    color: var(--accent, #ff5500);
+  }
+
+  .col-time {
+    width: 120px;
+  }
+
+  .col-pts {
+    width: 90px;
+    text-align: right;
+  }
+
+  .pts-tag {
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+  }
+</style>

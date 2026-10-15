@@ -1,0 +1,39 @@
+---
+/**
+ * Showcase.astro — layout de escaparate editorial.
+ * Scroll suave con Lenis, GSAP ScrollTrigger y cinta métrica PageRuler.
+ * Se utiliza EXCLUSIVAMENTE en la portada '/' y cabeceras de fechas.
+ */
+import Base from './Base.astro';
+import PageRuler from '../components/PageRuler.astro';
+import PageIndex from '../components/PageIndex.astro';
+import GhostWord from '../components/GhostWord.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  sections?: { label: string; id: string }[];
+  ghostWord?: string;
+}
+
+const { title, description, sections, ghostWord } = Astro.props;
+---
+<Base title={title} description={description} ruler>
+  <div class="showcase">
+    <slot />
+    <slot name="motion" />
+    {ghostWord && <GhostWord text={ghostWord} />}
+  </div>
+  <PageRuler />
+  {sections && sections.length > 0 && <PageIndex sections={sections} />}
+</Base>
+
+<style>
+  .showcase {
+    position: relative;
+  }
+</style>
+
+<script>
+  import '../scripts/showcase-motion';
+</script>

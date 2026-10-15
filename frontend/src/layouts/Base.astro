@@ -1,0 +1,71 @@
+---
+/**
+ * Base.astro — shell global de Kúspide MTB.
+ * Carga las 4 tipografías autoalojadas y los tokens medidos de GetArtCraft.
+ * Cero Tailwind (AGENTS.md).
+ */
+import '@fontsource-variable/archivo';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/geist-mono';
+import '@fontsource/instrument-serif';
+import '../styles/tokens.css';
+import '../styles/reset.css';
+import '../styles/display.css';
+import '../styles/motion.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  theme?: 'light' | 'dark';
+  ruler?: boolean;
+}
+
+const {
+  title = 'Kúspide MTB — Campeonato Oficial 2026',
+  description = 'Plataforma oficial de cronometraje en vivo, clasificaciones y ranking acumulado del campeonato MTB.',
+  theme,
+  ruler = false,
+} = Astro.props;
+---
+<!doctype html>
+<html lang="es" data-theme={theme} class={ruler ? 'no-scrollbar' : undefined}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#101014" />
+
+    <script is:inline>
+      (function () {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var root = document.documentElement;
+        root.classList.add('motion-ready');
+        window.setTimeout(function () {
+          if (!window.__motionReady) root.classList.remove('motion-ready');
+        }, 3000);
+      })();
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style>
+  :global(.container) {
+    width: 100%;
+    max-width: var(--container-page, 1280px);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    :global(.container) {
+      padding-inline: 1.5rem;
+      padding-right: 4.5rem;
+    }
+  }
+</style>

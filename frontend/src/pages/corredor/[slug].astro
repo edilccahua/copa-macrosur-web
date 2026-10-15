@@ -1,0 +1,286 @@
+---
+import Base from '../../layouts/Base.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+
+export async function getStaticPaths() {
+  return [
+    { params: { slug: 'patricio-rath-diaz-4231' } },
+    { params: { slug: 'oriana-gonzales-7819' } },
+    { params: { slug: 'milder-chapi-huaraya-5120' } },
+    { params: { slug: 'gustavo-oviedo-9941' } }
+  ];
+}
+
+const { slug } = Astro.params;
+
+// Datos de demostración / fallback si la BD está offline
+const riderMock = {
+  full_name: 'PATRICIO RATH DIAZ',
+  masked_dni: '***4231',
+  team_name: 'LIBRE / INDEPENDIENTE',
+  team_slug: null,
+  gender: 'M',
+  standings: [
+    {
+      category_name: 'E-BIKE OPEN',
+      total_points: 10,
+      current_rank: 1,
+      rank_delta: 0,
+      first_places_count: 1,
+      formatted_total_time: '01:16:22'
+    }
+  ],
+  history: [
+    {
+      stage_number: 1,
+      stage_name: 'Fecha 1: La Joya Extreme',
+      stage_slug: 'la-joya-extreme',
+      category_name: 'E-BIKE OPEN',
+      bib_number: 1,
+      rank: 1,
+      formatted_time: '01:16:22',
+      points_earned: 10
+    },
+    {
+      stage_number: 2,
+      stage_name: 'Fecha 2: Vuelta a los Poblados',
+      stage_slug: 'vuelta-a-los-poblados',
+      category_name: 'E-BIKE OPEN',
+      bib_number: 11,
+      rank: null,
+      formatted_time: 'Inscrito (25 Oct)',
+      points_earned: 0
+    }
+  ]
+};
+---
+<Base title={`${riderMock.full_name} — Perfil de Ciclista | Kúspide MTB`}>
+  <SiteHeader />
+
+  <main class="container page-content">
+    <div class="rider-header-box">
+      <div class="breadcrumb font-mono">
+        <a href="/ranking-general">← VOLVER AL RANKING GENERAL</a>
+      </div>
+
+      <div class="rider-main-info">
+        <div class="rider-avatar font-mono">
+          {riderMock.full_name.charAt(0)}
+        </div>
+        <div>
+          <span class="rider-badge font-mono">CICLISTA FEDERADO / CAMPEONATO 2026</span>
+          <h1 class="rider-name">{riderMock.full_name}</h1>
+          <div class="rider-meta font-mono">
+            <span>DNI: {riderMock.masked_dni}</span>
+            <span>CLUB: {riderMock.team_name}</span>
+            <span>GÉNERO: {riderMock.gender === 'M' ? 'VARONES' : 'DAMAS'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen de Ranking Acumulado -->
+    <section class="section-block">
+      <div class="block-title font-mono">CLASIFICACIÓN EN EL CAMPEONATO ACUMULADO</div>
+      <div class="standings-cards">
+        {riderMock.standings.map((st) => (
+          <div class="st-card font-mono">
+            <div class="st-rank">{st.current_rank}° LUGAR GENERAL</div>
+            <div class="st-cat">{st.category_name}</div>
+            <div class="st-stats">
+              <span>PUNTOS: <strong>{st.total_points} pts</strong></span>
+              <span>VICTORIAS: <strong>{st.first_places_count}</strong></span>
+              <span>TIEMPO: <strong>{st.formatted_total_time}</strong></span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Historial en las 4 fechas -->
+    <section class="section-block">
+      <div class="block-title font-mono">HISTORIAL POR ETAPAS (4 FECHAS)</div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th class="col-bib">Dorsal</th>
+              <th>Categoría</th>
+              <th class="col-rank">Puesto</th>
+              <th class="col-time">Tiempo Neto</th>
+              <th class="col-pts">Puntos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {riderMock.history.map((h) => (
+              <tr>
+                <td>
+                  <a href={`/fechas/${h.stage_slug}`} class="stage-link">
+                    {h.stage_name}
+                  </a>
+                </td>
+                <td class="col-bib font-mono">#{h.bib_number}</td>
+                <td>{h.category_name}</td>
+                <td class="col-rank font-mono">{h.rank ? `${h.rank}°` : '-'}</td>
+                <td class="col-time font-mono">{h.formatted_time}</td>
+                <td class="col-pts font-mono pts-tag">{h.points_earned ? `+${h.points_earned} pts` : '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .rider-header-box {
+    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 2.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .breadcrumb a {
+    color: var(--accent, #ff5500);
+    text-decoration: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  .rider-main-info {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 1.5rem;
+  }
+
+  .rider-avatar {
+    width: 80px;
+    height: 80px;
+    background: var(--invert-bg, #101014);
+    color: var(--invert-fg, #ffffff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 800;
+  }
+
+  .rider-badge {
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    color: var(--accent, #ff5500);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  .rider-name {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .rider-meta {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .section-block {
+    margin-bottom: 3.5rem;
+  }
+
+  .block-title {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .standings-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .st-card {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 1.5rem;
+  }
+
+  .st-rank {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+    margin-bottom: 0.25rem;
+  }
+
+  .st-cat {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .st-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.8125rem;
+  }
+
+  .data-table th {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: var(--hairline) solid var(--line);
+    background: var(--bg);
+  }
+
+  .data-table td {
+    padding: 0.875rem 1.25rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .stage-link {
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .stage-link:hover {
+    color: var(--accent, #ff5500);
+  }
+
+  .pts-tag {
+    color: var(--accent, #ff5500);
+    font-weight: 800;
+  }
+</style>

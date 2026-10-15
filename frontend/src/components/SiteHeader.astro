@@ -1,0 +1,261 @@
+---
+/**
+ * SiteHeader.astro — cabecera oficial de Kúspide MTB.
+ * Replicación fiel de la estructura full-bleed y hairlines de GetArtCraft.
+ */
+const path = Astro.url.pathname;
+const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+
+const navItems = [
+  { label: 'Campeonato', href: '/' },
+  { label: 'Ranking General', href: '/ranking-general' },
+  { label: 'Vuelta a los Poblados', href: '/fechas/vuelta-a-los-poblados' },
+  { label: 'En Vivo', href: '/en-vivo' },
+  { label: 'Inscripciones', href: '/inscripciones' },
+  { label: 'Reclamos', href: '/reclamos' },
+];
+
+const cta = { label: 'EN VIVO 🔴', href: '/en-vivo' };
+---
+<header class="hdr" id="site-header">
+  <div class="hdr__bar">
+    <a class="hdr__brand" href="/" aria-label="Kúspide MTB">
+      <span class="brand-text">KÚSPIDE</span>
+    </a>
+
+    <nav class="hdr__nav" aria-label="Navegación principal">
+      {
+        navItems.map((item) => (
+          <a class:list={['hdr__link', { 'is-active': isActive(item.href) }]} href={item.href}>
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="hdr__spacer"></div>
+
+    <div class="hdr__cell">
+      <a href="/admin/juez" aria-label="Panel del Juez" title="Panel Móvil del Juez">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </a>
+    </div>
+
+    <div class="hdr__cell">
+      <button id="theme-toggle" type="button" aria-label="Conmutar tema">
+        <svg class="i-moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+        </svg>
+        <svg class="i-sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.5"></path>
+        </svg>
+      </button>
+    </div>
+
+    <button class="hdr__cell hdr__burger" id="nav-toggle" type="button" aria-expanded="false" aria-label="Menú">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.5"></path>
+      </svg>
+    </button>
+
+    <a class="hdr__cta" href={cta.href}>{cta.label}</a>
+  </div>
+
+  <div class="hdr__panel" id="nav-panel">
+    {
+      navItems.map((item) => (
+        <a class:list={['hdr__panel-link', { 'is-active': isActive(item.href) }]} href={item.href}>
+          {item.label}
+        </a>
+      ))
+    }
+    <a class="hdr__panel-link highlight" href="/admin/juez">⏱ Panel Juez Oficial</a>
+  </div>
+</header>
+
+<script>
+  const root = document.documentElement;
+  const themeButton = document.getElementById('theme-toggle');
+
+  themeButton?.addEventListener('click', () => {
+    const current =
+      root.dataset.theme ??
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    root.dataset.theme = current === 'dark' ? 'light' : 'dark';
+  });
+
+  const header = document.getElementById('site-header');
+  const navButton = document.getElementById('nav-toggle');
+  navButton?.addEventListener('click', () => {
+    const open = header?.classList.toggle('is-open') ?? false;
+    navButton.setAttribute('aria-expanded', String(open));
+  });
+</script>
+
+<style>
+  .hdr {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .hdr__bar {
+    display: flex;
+    align-items: stretch;
+    height: var(--nav-height-mobile, 48px);
+  }
+
+  .brand-text {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 0.9375rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: var(--ink);
+  }
+
+  .hdr__brand,
+  .hdr__cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 1rem;
+    flex: 0 0 auto;
+    border-left: var(--hairline) solid var(--line);
+    color: var(--muted);
+    transition: color var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .hdr__brand {
+    padding-inline: 1.25rem;
+    border-left: 0;
+    border-right: var(--hairline) solid var(--line);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .hdr__cell:hover {
+    color: var(--ink);
+  }
+
+  .hdr__nav {
+    display: none;
+    align-items: stretch;
+    border-left: var(--hairline) solid var(--line);
+  }
+
+  .hdr__link {
+    display: flex;
+    align-items: center;
+    padding-inline: 1.15rem;
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-medium, 500);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    border-right: var(--hairline) solid var(--line);
+    text-decoration: none;
+    transition: color var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .hdr__link:hover {
+    color: var(--ink);
+  }
+
+  .hdr__link.is-active {
+    background: var(--invert-bg);
+    color: var(--invert-fg);
+  }
+
+  .hdr__spacer {
+    flex: 1 1 auto;
+  }
+
+  .hdr__cta {
+    display: none;
+    align-items: center;
+    padding-inline: 1.5rem;
+    background: #ff3b30;
+    color: #ffffff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-decoration: none;
+  }
+
+  .hdr__cta:hover {
+    background: #e0281e;
+  }
+
+  .i-sun {
+    display: none;
+  }
+
+  :global(:root[data-theme='dark']) .i-moon {
+    display: none;
+  }
+
+  :global(:root[data-theme='dark']) .i-sun {
+    display: block;
+  }
+
+  .hdr__panel {
+    display: none;
+    flex-direction: column;
+    border-top: var(--hairline) solid var(--line);
+    background: var(--bg);
+  }
+
+  .hdr.is-open .hdr__panel {
+    display: flex;
+  }
+
+  .hdr__panel-link {
+    padding: 0.875rem 1rem;
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-medium, 500);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    border-bottom: var(--hairline) solid var(--line);
+    text-decoration: none;
+  }
+
+  .hdr__panel-link.is-active {
+    background: var(--invert-bg);
+    color: var(--invert-fg);
+  }
+
+  .hdr__panel-link.highlight {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  @media (min-width: 768px) {
+    .hdr__bar {
+      height: var(--nav-height, 49px);
+    }
+
+    .hdr__nav {
+      display: flex;
+    }
+
+    .hdr__burger {
+      display: none;
+    }
+
+    .hdr__panel {
+      display: none !important;
+    }
+
+    .hdr__cta {
+      display: flex;
+    }
+  }
+</style>

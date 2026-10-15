@@ -1,0 +1,65 @@
+/* ============================================================================
+   motion.css — estado inicial del movimiento.
+
+   POR QUÉ EXISTE ESTE ARCHIVO
+   Antes, el estado inicial del revelado lo aplicaba GSAP en tiempo de
+   ejecución, o sea DESPUÉS del primer pintado. Medido con
+   `tools/test-motion.mjs`: la página se pintaba completa durante 3-4
+   fotogramas y de golpe todas las tarjetas desaparecían y saltaban 28px.
+   Eso era el "carga completo al milisegundo y se apila raro".
+
+   La solución es que el estado inicial viva en CSS, aplicado en el PRIMER
+   pintado. La clase `motion-ready` la pone un script en línea en el <head>
+   (ver Base.astro), antes de que se pinte el <body>.
+
+   Dos seguros:
+     1. La regla está dentro de `prefers-reduced-motion: no-preference`, así
+        que quien pidió no moverse nunca ve contenido oculto, aunque el JS
+        falle.
+     2. El script en línea quita la clase a los 3s si el módulo de movimiento
+        no llegó a arrancar (ver `window.__motionReady`).
+   ========================================================================= */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Debe coincidir EXACTAMENTE con el estado inicial medido del original:
+     { autoAlpha: 0, y: 28, filter: "blur(8px)" } */
+  html.motion-ready [data-reveal] {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(28px);
+    filter: blur(8px);
+  }
+
+  /* La barra de sección tiene su propia secuencia de entrada: el trazo (una
+     hairline que se dibuja) y los rótulos. También arrancan ocultos desde el
+     PRIMER pintado, no desde JS. */
+  html.motion-ready [data-draw] [data-draw-tick] {
+    transform: scaleX(0);
+  }
+
+  html.motion-ready [data-draw] [data-draw-eyebrow] {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(28px);
+    filter: blur(8px);
+  }
+
+  html.motion-ready [data-draw] [data-draw-cell] {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  /* El rótulo del hero y el bloque de texto también arrancan ocultos desde el
+     PRIMER pintado: su secuencia empieza a los 0,35 s y 1,05 s. */
+  html.motion-ready [data-hero-wordmark] [data-letter] {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  html.motion-ready [data-hero-copy] {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(28px);
+    filter: blur(8px);
+  }
+}

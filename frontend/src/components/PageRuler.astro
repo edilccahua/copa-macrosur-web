@@ -1,0 +1,235 @@
+---
+/**
+ * PageRuler.astro — el regulador del borde derecho.
+ *
+ * Sondeado del original (`tools/probe-ruler*.mjs`), cuatro piezas:
+ *
+ *   1. Banda de cristal: `backdrop-filter: blur(9px)` con
+ *      `background-color: color-mix(in srgb, var(--bg) 55%, transparent)` y una
+ *      `mask-image` que la desvanece hacia la izquierda. Está así EN REPOSO.
+ *   2. CINTA: escala de la altura del documento, desplazada con el scroll.
+ *      En reposo: 58,2px por unidad (5812px de documento).
+ *   3. PISTA: escala comprimida de 0 a 100, 8,3px por unidad, que encaja en la
+ *      ventana. En el original aparece AL PULSAR; acá aparece al pasar el puntero
+ *      y al pulsar, y con un fundido cruzado para que no sea brusco.
+ *   4. PULGAR: 128px de alto, tinta al 10%, oculto en reposo, baja con el scroll.
+ *
+ * Además la lectura es un contador de rodillo de tres columnas.
+ */
+const ticks = Array.from({ length: 101 }, (_, i) => i);
+---
+<div
+  class="ruler"
+  data-ruler
+  role="scrollbar"
+  aria-controls="contenido"
+  aria-orientation="vertical"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  aria-valuenow="0"
+  aria-label="Posición en la página"
+  tabindex="0"
+>
+  <div class="ruler__backdrop"></div>
+
+  <!--
+    Cinta. LA MISMA escala se comprime al interactuar: no hay dos escalas, así
+    que no puede verse duplicado. El alto y el desplazamiento los fija el JS y
+    los anima una transición que sólo se activa durante el cambio de estado.
+  -->
+  <div class="ruler__scale" data-ruler-scale>
+    {
+      ticks.map((tick) => (
+        <span
+          class:list={['ruler__tick', { 'ruler__tick--major': tick % 5 === 0 }]}
+          style={`top: ${tick}%`}
+        >
+          {tick % 5 === 0 ? <em class="ruler__label tabular">{tick}</em> : null}
+        </span>
+      ))
+    }
+  </div>
+
+  <div class="ruler__readout" data-ruler-readout>
+    <span class="ruler__readout-line"></span>
+    <em class="ruler__readout-value tabular" data-ruler-value aria-hidden="true">
+      {
+        [0, 1, 2].map((column) => (
+          <span class="ruler-digit-col" data-ruler-digit={column}>
+            <span class="ruler-digit-strip">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
+                <i class="ruler-digit">{digit}</i>
+              ))}
+            </span>
+          </span>
+        ))
+      }
+      <span class="ruler__readout-suffix">%</span>
+    </em>
+  </div>
+
+  <div class="ruler__thumb" data-ruler-thumb aria-hidden="true"></div>
+</div>
+
+<style>
+  .ruler {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .ruler {
+      display: block;
+      position: fixed;
+      inset-block: 0;
+      right: 0;
+      width: 3.75rem;
+      z-index: 40;
+      overflow: hidden;
+      cursor: crosshair;
+      background: transparent;
+      /* El fundido cruzado entre cinta y pista: nada de saltos. */
+      --ruler-fade: 240ms;
+    }
+
+    .ruler__backdrop {
+      position: absolute;
+      inset: 0;
+      /* SIN desenfoque ni máscara: el usuario lo pidió fuera y la banda queda
+         transparente, sólo con marcas y números. */
+      background: transparent;
+    }
+
+    .ruler__scale {
+      position: absolute;
+      inset-inline: 0;
+      top: 0;
+      height: 100%;
+      will-change: height, transform;
+    }
+
+    /* COMPRESIÓN GUIADA POR CSS, no por estado de JS: así no puede quedar
+       intermitente si un `pointerenter`/`pointerleave` se pierde. Se sale de la
+       compresión al sacar el puntero o al terminar el arrastre. */
+    .ruler:hover .ruler__scale,
+    .ruler:focus-visible .ruler__scale,
+    .ruler.is-scrubbing .ruler__scale {
+      height: calc(100vh - 3.75rem) !important;
+      transform: translateY(3.75rem) !important;
+      transition:
+        height 300ms var(--ease-in-out),
+        transform 300ms var(--ease-in-out);
+    }
+
+    /* Al salir, el JS pone `is-settling` un instante para que la vuelta también
+       sea suave. Fuera de eso no hay transición: el desplazamiento atado al
+       scroll iría con retraso. */
+    .ruler.is-settling .ruler__scale {
+      transition:
+        height 300ms var(--ease-in-out),
+        transform 300ms var(--ease-in-out);
+    }
+
+    .ruler__tick {
+      position: absolute;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      width: 0.5rem;
+      height: 1px;
+      background: var(--line-strong);
+    }
+
+    .ruler__tick--major {
+      width: 1.5rem;
+    }
+
+    .ruler__label {
+      position: absolute;
+      right: calc(100% + 0.375rem);
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      font-style: normal;
+      line-height: 1;
+      color: var(--muted);
+    }
+
+    .ruler__readout {
+      position: absolute;
+      inset-inline: 0;
+      top: 0;
+      height: 0;
+      will-change: transform;
+    }
+
+    .ruler__readout-line {
+      position: absolute;
+      inset-inline: 0;
+      top: 0;
+      display: block;
+      height: 1px;
+      background: var(--accent);
+      box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent) 45%, transparent);
+    }
+
+    .ruler__readout-value {
+      position: absolute;
+      left: 0.25rem;
+      top: 0.25rem;
+      display: flex;
+      align-items: flex-start;
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      font-style: normal;
+      line-height: 1;
+      color: var(--accent-ink);
+    }
+
+    /* Contador de rodillo: cada columna muestra un dígito de 0 a 9. */
+    .ruler-digit-col {
+      display: block;
+      height: 0.625rem;
+      overflow: hidden;
+    }
+
+    .ruler-digit-strip {
+      display: flex;
+      flex-direction: column;
+      will-change: transform;
+    }
+
+    .ruler-digit {
+      display: block;
+      height: 0.625rem;
+      font-style: normal;
+      line-height: 0.625rem;
+    }
+
+    .ruler__readout-suffix {
+      line-height: 0.625rem;
+    }
+
+    .ruler__thumb {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 100%;
+      height: 128px;
+      background: color-mix(in srgb, var(--ink) 10%, transparent);
+      opacity: 0;
+      will-change: transform;
+      transition: opacity var(--ruler-fade) var(--default-transition-timing-function);
+    }
+
+    /* Aparece al pasar el puntero, no sólo al pulsar. */
+    .ruler:hover .ruler__thumb,
+    .ruler:focus-visible .ruler__thumb,
+    .ruler.is-active .ruler__thumb {
+      opacity: 1;
+    }
+
+    .ruler.is-scrubbing {
+      cursor: grabbing;
+    }
+  }
+</style>

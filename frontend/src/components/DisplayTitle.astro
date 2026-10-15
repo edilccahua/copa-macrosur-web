@@ -1,0 +1,27 @@
+---
+/**
+ * DisplayTitle.astro — titular con acento serif.
+ *
+ * Se pasa el texto partido en tres: lo de antes, la palabra acentuada y lo de
+ * después. Explícito a propósito: nada de adivinar dónde va el acento.
+ *
+ *   <DisplayTitle size="page" before="Create without " accent="limits." />
+ *
+ * Las escalas `hero` y `page` están MEDIDAS del original. Si se omite `size`,
+ * el tamaño lo decide la página (útil para variantes todavía sin medir).
+ */
+interface Props {
+  /** Etiqueta del titular. */
+  as?: 'h1' | 'h2' | 'h3';
+  /** Escala medida: `hero` o `page`. Sin valor, hereda de la página. */
+  size?: 'hero' | 'page';
+  before: string;
+  accent: string;
+  after?: string;
+}
+
+const { as: Tag = 'h1', size, before, accent, after = '' } = Astro.props;
+---
+<Tag class:list={['display-title', size && `display-title--${size}`]}>
+  {before}<em class="display-accent">{accent}</em>{after}
+</Tag>

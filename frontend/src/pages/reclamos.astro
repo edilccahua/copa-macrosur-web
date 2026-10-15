@@ -1,0 +1,207 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+---
+<Base title="Buzón de Reclamos y Sugerencias — Kúspide MTB">
+  <SiteHeader />
+
+  <main class="container page-content">
+    <div class="ticket-wrapper">
+      <div class="ticket-header">
+        <span class="ticket-tag font-mono">ATENCIÓN AL CORREDOR</span>
+        <h1 class="ticket-title">BUZÓN DE RECLAMOS Y SUGERENCIAS</h1>
+        <p class="ticket-desc">
+          Canal oficial para observaciones de tiempos de meta, reclamos de desclasificación o sugerencias técnicas para mejorar la organización del campeonato.
+        </p>
+      </div>
+
+      <form id="feedback-form" class="feedback-form">
+        <div class="form-field">
+          <label for="claimType" class="field-label font-mono">TIPO DE SOLICITUD *</label>
+          <select id="claimType" name="type" class="form-input">
+            <option value="TIMING_CLAIM">Reclamo u Observación de Tiempo Oficial</option>
+            <option value="RACE_SUGGESTION">Sugerencia de Organización o Ruta</option>
+            <option value="WEB_BUG">Reporte de Error en la Web</option>
+            <option value="OTHER">Otro Asunto</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="name" class="field-label font-mono">NOMBRE COMPLETO DEL SOLICITANTE *</label>
+          <input type="text" id="name" name="name" required placeholder="Tu nombre" class="form-input" />
+        </div>
+
+        <div class="form-field">
+          <label for="contact" class="field-label font-mono">WHATSAPP O CORREO ELECTRÓNICO *</label>
+          <input type="text" id="contact" name="contact" required placeholder="+51 987 654 321 o tu@correo.com" class="form-input" />
+        </div>
+
+        <div class="form-field">
+          <label for="bib" class="field-label font-mono">NÚMERO DE DORSAL ASOCIADO (OPCIONAL)</label>
+          <input type="number" id="bib" name="bib" placeholder="Ej. 45" class="form-input font-mono" />
+        </div>
+
+        <div class="form-field">
+          <label for="msg" class="field-label font-mono">DESCRIPCIÓN DETALLADA *</label>
+          <textarea id="msg" name="message" required rows="5" placeholder="Explica detalladamente la observación..." class="form-input"></textarea>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-submit font-mono">
+          ENVIAR SOLICITUD AL COMISARIO
+        </button>
+
+        <div id="response-msg" class="response-msg"></div>
+      </form>
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<script>
+  const form = document.getElementById('feedback-form') as HTMLFormElement;
+  const msgBox = document.getElementById('response-msg') as HTMLElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'ENVIANDO...';
+
+    const formData = new FormData(form);
+    const payload = {
+      type: formData.get('type'),
+      submitted_by_name: formData.get('name'),
+      contact_whatsapp_or_email: formData.get('contact'),
+      bib_number_ref: formData.get('bib') ? Number(formData.get('bib')) : null,
+      message: formData.get('message')
+    };
+
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/public/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msgBox.innerHTML = `<div class="msg-success">✅ ¡Ticket #${data.ticket_id} registrado con éxito! El comisario deportivo revisará tu mensaje.</div>`;
+        form.reset();
+      } else {
+        msgBox.innerHTML = `<div class="msg-error">❌ No se pudo registrar el reclamo.</div>`;
+      }
+    } catch (err) {
+      msgBox.innerHTML = `<div class="msg-error">❌ Error de conexión con el servidor.</div>`;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'ENVIAR SOLICITUD AL COMISARIO';
+    }
+  });
+</script>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .ticket-wrapper {
+    max-width: 600px;
+    margin: 0 auto;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 2.5rem;
+    margin-bottom: 4rem;
+  }
+
+  .ticket-tag {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+    letter-spacing: 0.12em;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .ticket-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+  }
+
+  .ticket-desc {
+    font-size: 0.875rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+  }
+
+  .feedback-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 0.875rem;
+    border-radius: 0;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .form-input:focus {
+    border-color: var(--accent, #ff5500);
+  }
+
+  .btn-submit {
+    width: 100%;
+    padding: 1.125rem;
+    background: var(--invert-bg, #101014);
+    color: var(--invert-fg, #ffffff);
+    border: none;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    margin-top: 1rem;
+  }
+
+  .btn-submit:hover {
+    background: var(--accent, #ff5500);
+  }
+
+  .response-msg {
+    margin-top: 1.5rem;
+  }
+
+  :global(.msg-success) {
+    padding: 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid #10b981;
+    color: #10b981;
+    font-size: 0.875rem;
+  }
+
+  :global(.msg-error) {
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    font-size: 0.875rem;
+  }
+</style>

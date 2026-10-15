@@ -1,0 +1,111 @@
+---
+/**
+ * PageIndex.astro — índice de secciones fijo al borde derecho.
+ *
+ * Sondeado del original: un contenedor `fixed inset-0`, `pointer-events-none`,
+ * con los rótulos de sección alineados a la derecha, por encima del regulador.
+ * Se activa según la sección visible.
+ */
+interface Props {
+  sections: { label: string; id: string }[];
+}
+
+const { sections } = Astro.props;
+---
+<nav class="pageindex" aria-label="Secciones">
+  <ul>
+    {
+      sections.map((section) => (
+        <li>
+          <a class="pageindex__link" href={`#${section.id}`} data-section={section.id}>
+            {section.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<script>
+  // Sección activa por observación de intersección. Sin librerías de animación:
+  // esto tiene que funcionar también en páginas sin GSAP.
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('.pageindex__link')];
+
+  const setActive = (id: string) => {
+    for (const link of links) {
+      link.classList.toggle('is-active', link.dataset.section === id);
+    }
+  };
+
+  const targets = links
+    .map((link) => document.getElementById(link.dataset.section ?? ''))
+    .filter((el): el is HTMLElement => el !== null);
+
+  if (targets.length > 0) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // La sección visible más cercana a la parte alta gana.
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActive(visible[0].target.id);
+      },
+      { rootMargin: '-30% 0px -60% 0px', threshold: 0 }
+    );
+
+    for (const target of targets) observer.observe(target);
+  }
+</script>
+
+<style>
+  .pageindex {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .pageindex {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 41;
+      pointer-events: none;
+      /* A la izquierda del regulador. */
+      padding-right: 5.5rem;
+    }
+
+    .pageindex ul {
+      position: absolute;
+      /* Fuera de la banda del regulador. OJO: un `padding-right` en el
+         contenedor NO desplaza a un hijo absoluto, porque el bloque contenedor
+         es la caja de relleno e INCLUYE ese padding. Por eso las etiquetas
+         caían dentro de la banda y el `backdrop-filter` las difuminaba. */
+      right: 5.5rem;
+      bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.125rem;
+    }
+
+    .pageindex__link {
+      display: block;
+      pointer-events: auto;
+      padding: 0.125rem 0.25rem;
+      font-size: 0.6875rem;
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--faint);
+      transition: color var(--default-transition-duration)
+        var(--default-transition-timing-function);
+    }
+
+    .pageindex__link:hover {
+      color: var(--muted);
+    }
+
+    .pageindex__link.is-active {
+      color: var(--ink);
+    }
+  }
+</style>

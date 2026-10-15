@@ -1,0 +1,124 @@
+---
+/**
+ * SiteFooter.astro — pie de página oficial de Kúspide MTB.
+ */
+---
+<footer class="ftr">
+  <div class="ftr__grid container">
+    <div class="ftr__brand">
+      <div class="ftr__logo">KÚSPIDE MTB</div>
+      <p class="ftr__desc">
+        Campeonato Oficial de Ciclismo de Montaña 2026. Cronometraje de precisión, ranking acumulado UCI y Copa de Equipos.
+      </p>
+    </div>
+
+    <div class="ftr__col">
+      <div class="ftr__label">Calendario</div>
+      <ul class="ftr__list">
+        <li><a href="/fechas/la-joya-extreme">Fecha 1: La Joya Extreme (Finalizada)</a></li>
+        <li><a href="/fechas/vuelta-a-los-poblados">Fecha 2: Vuelta a los Poblados (25 Oct)</a></li>
+        <li><a href="/fechas/rally-chachani">Fecha 3: Rally Chachani (Próxima)</a></li>
+        <li><a href="/fechas/desafio-del-misti">Fecha 4: Desafío del Misti (Final)</a></li>
+      </ul>
+    </div>
+
+    <div class="ftr__col">
+      <div class="ftr__label">Enlaces Rápidos</div>
+      <ul class="ftr__list">
+        <li><a href="/ranking-general">Ranking Acumulado</a></li>
+        <li><a href="/en-vivo">Cronómetro en Vivo</a></li>
+        <li><a href="/inscripciones">Inscripciones Oficiales</a></li>
+        <li><a href="/reclamos">Buzón de Reclamos</a></li>
+        <li><a href="/admin/juez">Acceso para Jueces</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ftr__bottom container">
+    <div class="ftr__copy">© 2026 Kúspide MTB. Todos los derechos reservados.</div>
+    <div class="ftr__legal">Reglamento Oficial UCI | Estilo GetArtCraft Scoped CSS</div>
+  </div>
+</footer>
+
+<style>
+  .ftr {
+    border-top: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding-block: 4rem 2rem;
+    margin-top: 6rem;
+  }
+
+  .ftr__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .ftr__logo {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.125rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: var(--ink);
+    margin-bottom: 0.75rem;
+  }
+
+  .ftr__desc {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 340px;
+  }
+
+  .ftr__label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    margin-bottom: 1rem;
+  }
+
+  .ftr__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .ftr__list a {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .ftr__list a:hover {
+    color: var(--ink);
+  }
+
+  .ftr__bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 2.5rem;
+    margin-top: 2.5rem;
+    border-top: var(--hairline) solid var(--line);
+    font-size: 0.6875rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  @media (min-width: 768px) {
+    .ftr__grid {
+      grid-template-columns: 1.5fr 1fr 1fr;
+    }
+
+    .ftr__bottom {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+</style>
