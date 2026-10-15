@@ -1,0 +1,96 @@
+---
+/**
+ * SectionLabel.astro — el rótulo de sección del origen.
+ *
+ * Dato sondeado: NO es un elemento estático. Es una **barra pegajosa**
+ * (`sticky`, `top: 48px`, `z-30`) con hairline arriba y abajo, que se queda
+ * fija bajo la cabecera mientras recorrés la sección. El rótulo y el kicker
+ * van en la MISMA fila, con el kicker alineado a la derecha.
+ *
+ * Formato del número: `01 / Etiqueta`, con barra.
+ */
+interface Props {
+  number: string;
+  label: string;
+  /** Texto de la derecha en la misma fila (en el original, el kicker). */
+  kicker?: string;
+}
+
+const { number, label, kicker } = Astro.props;
+---
+<div class="section-label" data-draw>
+  <!-- Trazo: la hairline se dibuja de izquierda a derecha (scaleX 0 -> 1). -->
+  <span class="section-label__tick" data-draw-tick aria-hidden="true"></span>
+
+  <div class="section-label__left" data-draw-eyebrow>
+    <span class="section-label__number tabular">{number}</span>
+    <span class="section-label__slash" aria-hidden="true">/</span>
+    <span class="section-label__text">{label}</span>
+  </div>
+  {kicker && <span class="section-label__kicker" data-draw-eyebrow>{kicker}</span>}
+</div>
+
+<style>
+  .section-label {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 2.6875rem;
+    padding-block: 0.75rem;
+    border-block: var(--hairline) solid var(--line);
+    /* Tapa el contenido que pasa por debajo al quedar pegada. */
+    background: var(--bg);
+  }
+
+  /* La hairline superior se dibuja: nace a ancho 0. */
+  .section-label__tick {
+    position: absolute;
+    inset-inline: 0;
+    top: -1px;
+    height: var(--hairline);
+    background: var(--line-strong);
+    transform-origin: left center;
+  }
+
+  .section-label__left {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .section-label__number,
+  .section-label__slash {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--faint);
+  }
+
+  .section-label__text,
+  .section-label__kicker {
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+
+  .section-label__kicker {
+    display: none;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 768px) {
+    .section-label {
+      top: var(--nav-height);
+    }
+
+    .section-label__kicker {
+      display: block;
+    }
+  }
+</style>

@@ -1,0 +1,56 @@
+/* ============================================================================
+   display.css — primitiva tipográfica de titular.
+
+   Patrón medido, presente en las tres páginas del original:
+   una palabra del titular en Instrument Serif itálica, mezclada con la sans.
+
+     Home      Capable tools *for artists.*
+     /apps     Thirteen apps. One *craft*.
+     /pricing  Create without *limits.*
+
+   Medido en /pricing con `tools/probe-detail.mjs`:
+     - sans y acento comparten tamaño, interlineado y `font-stretch: 118%`;
+     - el acento sólo cambia familia, `font-style: italic` y peso 400;
+     - el titular va en `#000` (--ink-strong), NO en --ink.
+   ========================================================================= */
+
+.display-title {
+  font-family: var(--font-display);
+  /* 620 no es un token de peso: es la instancia de la variable que usa. */
+  font-weight: 620;
+  font-stretch: 118%;
+  letter-spacing: -0.03em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+}
+
+/* El acento hereda tamaño, interlineado y ancho: sólo cambia de familia. */
+.display-accent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ── Escalas medidas ─────────────────────────────────────────────────────── */
+
+/* Titular de página (/apps, /pricing): 36px móvil, 60px escritorio. */
+.display-title--page {
+  font-size: clamp(2.25rem, 6vw, 3.75rem);
+  line-height: 1.02;
+  max-width: 22ch;
+}
+
+/* Titular del hero de la home: 30px móvil, 36px escritorio.
+   El hero de la home está centrado, de ahí el margen automático. */
+.display-title--hero {
+  font-size: 1.875rem;
+  line-height: 1.05;
+  max-width: 24ch;
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .display-title--hero {
+    font-size: 2.25rem;
+  }
+}

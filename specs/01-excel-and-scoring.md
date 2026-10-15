@@ -39,6 +39,13 @@ Genera en memoria (`io.BytesIO`) un libro `.xlsx` con 3 hojas:
 2. `Ranking_Acumulado_Individual`: Tabla general de todas las categorías con puntos acumulados de las 4 fechas y columna `DELTA` (`▲ +2`, `▼ -1`, `=`).
 3. `Ranking_Equipos`: Clasificación acumulada de la Copa de Equipos con puntos, victorias (oros/platas/bronces) y total de ciclistas participantes.
 
+### 1.5 Adapter Legacy para Formatos Históricos (`races/LA JOYA EXTREME...`)
+Para procesar archivos históricos sin columnas DNI o género:
+1. **Detección Automática o Parámetro `is_legacy=true`:** Detecta bloques agrupados por categoría donde la cabecera indica la categoría activa en la columna 4.
+2. **Identidad Determinística:** Se calcula `dni = SHA-256(nombre_normalizado)[:8]` numérico determinístico y se infiere `gender = F` si la categoría contiene `DAMAS`, o `M` en el resto.
+3. **Normalización de Equipos:** Mapea valores como `"LIBRE"`, `"INDEPENDIENTE"`, `"TEAM"` o vacíos a `team_id = NULL`.
+4. **Cruce de Tiempos Oficiales:** Si los tiempos oficiales provienen de un PDF complementario (`pdf_service.py`), se cruzan mediante `bib_number` asignando `finish_elapsed_ms` y recalculando los puestos automáticamente.
+
 ---
 
 ## 2. Procesamiento Automático de Ruta GPX: `POST /api/v1/stages/{stage_id}/upload-gpx`

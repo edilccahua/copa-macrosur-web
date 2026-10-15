@@ -1,0 +1,450 @@
+---
+import Showcase from '../../layouts/Showcase.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import RouteMapGpx from '../../components/svelte/RouteMapGpx.svelte';
+import SectionLabel from '../../components/bento/SectionLabel.astro';
+
+export async function getStaticPaths() {
+  return [
+    { params: { slug: 'la-joya-extreme' } },
+    { params: { slug: 'vuelta-a-los-poblados' } },
+    { params: { slug: 'rally-chachani' } },
+    { params: { slug: 'desafio-del-misti' } }
+  ];
+}
+
+const { slug } = Astro.params;
+
+// Datos de la etapa
+const stagesDb: Record<string, any> = {
+  'la-joya-extreme': {
+    num: 1,
+    name: 'La Joya Extreme',
+    date: '15 de Marzo de 2026',
+    status: 'Finalizada',
+    poster: '/images/la_joya_extreme.jpg',
+    dist: 48.5,
+    elev: 920,
+    scratch: {
+      name: 'PATRICIO RATH DIAZ',
+      category: 'E-BIKE OPEN',
+      time: '01:16:22',
+      bib: 1
+    },
+    farolito: {
+      name: 'IRENE ALFARO',
+      category: 'DAMAS MASTER',
+      time: '02:38:08',
+      bib: 283
+    },
+    strava: [
+      { name: 'Muro Volcánico La Joya (Sector KOM)', dist: '3.4 km', grade: '8.4%', kom: 'ALEXIS ARNOLD QUISPE (10m 42s)' },
+      { name: 'Sprint Cañón del Río', dist: '1.8 km', grade: '1.2%', kom: 'PATRICIO RATH DIAZ (2m 15s)' }
+    ]
+  },
+  'vuelta-a-los-poblados': {
+    num: 2,
+    name: 'Vuelta a los Poblados',
+    date: '25 de Octubre de 2026',
+    status: 'Inscripciones Abiertas',
+    poster: '/images/vuelta_a_los_poblados.jpg',
+    dist: 64.2,
+    elev: 1780,
+    scratch: null,
+    farolito: null,
+    strava: [
+      { name: 'Ascenso Cumbre Los Poblados (KOM)', dist: '5.8 km', grade: '9.6%', kom: 'Segmento Oficial Strava #394819' },
+      { name: 'Paso Técnico Quebrada Seca', dist: '2.4 km', grade: '4.2%', kom: 'Segmento Oficial Strava #394820' }
+    ]
+  },
+  'rally-chachani': {
+    num: 3,
+    name: 'Rally Chachani',
+    date: '22 de Noviembre de 2026',
+    status: 'Próximamente',
+    poster: '/images/la_joya_extreme.jpg',
+    dist: 52.0,
+    elev: 1350,
+    scratch: null,
+    farolito: null,
+    strava: []
+  },
+  'desafio-del-misti': {
+    num: 4,
+    name: 'Desafío del Misti',
+    date: '13 de Diciembre de 2026',
+    status: 'Próximamente',
+    poster: '/images/vuelta_a_los_poblados.jpg',
+    dist: 72.0,
+    elev: 2100,
+    scratch: null,
+    farolito: null,
+    strava: []
+  }
+};
+
+const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
+---
+<Showcase title={`${stage.name} — Kúspide MTB`} ghostWord={`FECHA ${stage.num}`}>
+  <SiteHeader />
+
+  <main class="container stage-page">
+    <!-- Cabecera de Fecha con Póster y Datos -->
+    <section class="stage-hero" data-draw>
+      <div class="hero-grid">
+        <div class="hero-poster-box" data-reveal>
+          <img src={stage.poster} alt={stage.name} class="hero-poster" />
+        </div>
+        <div class="hero-details">
+          <div class="stage-tag font-mono" data-draw-eyebrow>FECHA 0{stage.num} / CAMPEONATO OFICIAL</div>
+          <h1 class="stage-title">{stage.name}</h1>
+          <div class="stage-meta font-mono">
+            <span>📅 {stage.date}</span>
+            <span>📏 {stage.dist} KM</span>
+            <span>⛰️ +{stage.elev} M</span>
+            <span class="status-tag">{stage.status}</span>
+          </div>
+
+          <p class="stage-synopsis">
+            Recorrido técnico y exigente diseñado para medir la resistencia, técnica en terreno suelto y potencia en ascensos de alto gradiente.
+          </p>
+
+          <div class="hero-buttons">
+            {stage.status === 'Finalizada' ? (
+              <a href={`/fechas/${slug}/resultados`} class="btn-primary">Ver Resultados Completos →</a>
+            ) : (
+              <a href="/inscripciones" class="btn-primary">Inscribirse en esta Carrera →</a>
+            )}
+            <a href="/ranking-general" class="btn-secondary">Ver Ranking Acumulado</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bento de Estadísticas Extremas (si la fecha finalizó) -->
+    {stage.scratch && (
+      <section class="extremes-section">
+        <SectionLabel label="ESTADÍSTICAS EXTREMAS DE LA JORNADA" />
+        <div class="extremes-grid">
+          <div class="extreme-card scratch-card" data-reveal>
+            <div class="card-tag font-mono">⚡ EL MÁS RÁPIDO (SCRATCH)</div>
+            <div class="extreme-name">{stage.scratch.name}</div>
+            <div class="extreme-sub font-mono">Dorsal #{stage.scratch.bib} | {stage.scratch.category}</div>
+            <div class="extreme-time font-mono">{stage.scratch.time}</div>
+          </div>
+
+          <div class="extreme-card farolito-card" data-reveal>
+            <div class="card-tag font-mono">🕯️ EL MÁS PERSISTENTE (FAROLITO EN META)</div>
+            <div class="extreme-name">{stage.farolito.name}</div>
+            <div class="extreme-sub font-mono">Dorsal #{stage.farolito.bib} | {stage.farolito.category}</div>
+            <div class="extreme-time font-mono">{stage.farolito.time}</div>
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- Bento de Ruta Interactiva y Altimetría -->
+    <section class="route-section">
+      <SectionLabel label="PERFIL TÉCNICO Y RUTA DE CARRERA" />
+      <RouteMapGpx
+        client:visible
+        stageName={stage.name}
+        distanceKm={stage.dist}
+        elevationGainM={stage.elev}
+        gpxUrl={`/gpx/${slug}.gpx`}
+      />
+    </section>
+
+    <!-- Bento Segmentos Strava (Filosofía Strava) -->
+    {stage.strava.length > 0 && (
+      <section class="strava-section">
+        <SectionLabel label="SEGMENTOS OFICIALES STRAVA (KOM / QOM)" />
+        <div class="strava-grid">
+          {stage.strava.map((seg: any) => (
+            <div class="strava-card font-mono" data-reveal>
+              <div class="strava-header">
+                <span class="strava-logo">STRAVA SEGMENT</span>
+                <span class="strava-grade">{seg.grade} pend. media</span>
+              </div>
+              <div class="strava-name">{seg.name}</div>
+              <div class="strava-dist">Distancia: {seg.dist}</div>
+              <div class="strava-kom">👑 {seg.kom}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <!-- Bento Premios Especiales -->
+    <section class="awards-section">
+      <SectionLabel label="PREMIOS DE LA JORNADA" />
+      <div class="awards-grid">
+        <div class="award-box" data-reveal>
+          <img src="/images/premio_coca.jpg" alt="Premio Coca" class="award-img" />
+          <div class="award-content">
+            <h3 class="award-heading">Premio Especial Coca</h3>
+            <p class="award-text">Reconocimiento oficial a la persistencia deportiva y resiliencia en carrera.</p>
+          </div>
+        </div>
+        <div class="award-box" data-reveal>
+          <img src="/images/rey_montana.jpg" alt="Rey Montaña" class="award-img" />
+          <div class="award-content">
+            <h3 class="award-heading">Rey de la Montaña (KOM)</h3>
+            <p class="award-text">S/ 500 al mejor tiempo en el sector de ascenso de montaña.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</Showcase>
+
+<style>
+  .stage-page {
+    padding-top: 2rem;
+  }
+
+  .stage-hero {
+    padding-bottom: 3rem;
+    border-bottom: var(--hairline) solid var(--line);
+    margin-bottom: 3rem;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .hero-poster-box {
+    aspect-ratio: 3/4;
+    max-width: 380px;
+    background: #14171c;
+    overflow: hidden;
+    border: var(--hairline) solid var(--line);
+  }
+
+  .hero-poster {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .stage-tag {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.75rem;
+  }
+
+  .stage-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+  }
+
+  .stage-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .status-tag {
+    color: var(--accent, #ff5500);
+    font-weight: 700;
+  }
+
+  .stage-synopsis {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 540px;
+    margin-bottom: 2rem;
+  }
+
+  .hero-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .btn-primary {
+    padding: 0.875rem 1.5rem;
+    background: var(--invert-bg, #101014);
+    color: var(--invert-fg, #ffffff);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+  }
+
+  .btn-primary:hover {
+    background: var(--accent, #ff5500);
+  }
+
+  .btn-secondary {
+    padding: 0.875rem 1.5rem;
+    border: var(--hairline) solid var(--line);
+    color: var(--ink);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+  }
+
+  /* Estadísticas Extremas */
+  .extremes-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 3.5rem;
+  }
+
+  .extreme-card {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 2rem;
+  }
+
+  .card-tag {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--accent, #ff5500);
+    margin-bottom: 0.75rem;
+  }
+
+  .extreme-name {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+  }
+
+  .extreme-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .extreme-time {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--ink);
+  }
+
+  /* Strava */
+  .strava-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 3.5rem;
+  }
+
+  .strava-card {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 1.25rem 1.5rem;
+  }
+
+  .strava-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6875rem;
+    color: #fc4c02; /* Strava Orange */
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+  }
+
+  .strava-name {
+    font-size: 1.125rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+  }
+
+  .strava-dist {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .strava-kom {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* Premios */
+  .awards-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 4rem;
+  }
+
+  .award-box {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 1.5rem;
+  }
+
+  .award-img {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .award-heading {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.125rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .award-text {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  @media (min-width: 768px) {
+    .hero-grid {
+      grid-template-columns: 340px 1fr;
+    }
+
+    .extremes-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .strava-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .awards-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>

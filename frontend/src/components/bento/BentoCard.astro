@@ -1,0 +1,196 @@
+---
+/**
+ * BentoCard.astro — la unidad modular del sistema.
+ *
+ * Reproduce lo medido en el origen:
+ *   - esquinas rectas (--radius: 0), sin sombras
+ *   - borde hairline de --line
+ *   - superficie --bg-raised
+ *   - índice en monoespaciada + etiqueta en versalitas
+ *   - acento por tarjeta (paleta --app-*)
+ */
+interface Props {
+  index?: string;
+  label?: string;
+  title: string;
+  body?: string;
+  /**
+   * Slug del acento, ej. "photocraft". Agrega la clase `app-<slug>`, que define
+   * --app y --app-ink. Mismo mecanismo que el origen.
+   */
+  app?: string;
+  /** Slug de nivel de plan, ej. "basic". Agrega la clase `plan-<slug>`. */
+  plan?: string;
+  /** Si se pasa, la tarjeta entera es un enlace. */
+  href?: string;
+  /** Ancho relativo dentro de la grilla de 12 columnas. */
+  span?: number;
+  /** Etiquetas de estado: "Early alpha", "In development", plataformas… */
+  tags?: string[];
+  /** Marca la tarjeta para el revelado al entrar en pantalla. */
+  reveal?: boolean;
+}
+
+const {
+  index,
+  label,
+  title,
+  body,
+  app,
+  plan,
+  href,
+  span = 4,
+  tags = [],
+  reveal = false,
+} = Astro.props;
+
+const Tag = href ? 'a' : 'article';
+---
+<Tag
+  class:list={[
+    'bento',
+    `bento--span-${span}`,
+    app && `app-${app}`,
+    plan && `plan-${plan}`,
+  ]}
+  href={href}
+  data-reveal={reveal ? '' : undefined}
+>
+  <header class="bento__head">
+    {label && <span class="bento__label">{label}</span>}
+    {index && <span class="bento__index tabular">{index}</span>}
+  </header>
+
+  <div class="bento__media">
+    <slot name="media" />
+  </div>
+
+  <h3 class="bento__title">{title}</h3>
+  {body && <p class="bento__body">{body}</p>}
+
+  {
+    tags.length > 0 && (
+      <ul class="bento__tags">
+        {tags.map((tag) => (
+          <li class="bento__tag">{tag}</li>
+        ))}
+      </ul>
+    )
+  }
+
+  <slot />
+</Tag>
+
+<style>
+  .bento {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    /* Mobile-first: la grilla tiene 2 columnas hasta 768px. */
+    grid-column: span 2;
+    padding: 1.25rem;    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--radius);
+    transition:
+      border-color var(--default-transition-duration)
+        var(--default-transition-timing-function),
+      background var(--default-transition-duration)
+        var(--default-transition-timing-function);
+  }
+
+  a.bento:hover {
+    border-color: var(--app, var(--plan, var(--line-strong)));
+    background: var(--bg);
+  }
+
+  /* Marca de acento arriba de la tarjeta, usando el color de la app. */
+  .bento::before {
+    content: '';
+    display: block;
+    height: 2px;
+    background: var(--app, var(--plan, var(--line)));
+  }
+
+  .bento__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 1.25rem;
+  }
+
+  .bento__label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+
+  .bento__index {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--app-ink, var(--plan-ink, var(--faint)));
+  }
+
+  .bento__media {
+    aspect-ratio: 16 / 10;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .bento__title {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    color: var(--ink);
+  }
+
+  .bento__body {
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .bento__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+  }
+
+  .bento__tag {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.5rem;
+    color: var(--muted);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  /* Desktop: grilla de 12 columnas.
+     El ancho va en CLASE y no en un estilo en línea: `clearProps: "all"` de GSAP
+     borra el atributo `style` entero, y antes se llevaba `--card-span` con él.
+     Sin esa variable, `grid-column: span var(--card-span)` quedaba inválido, la
+     tarjeta caía a `auto` y la grilla de 12 columnas se derrumbaba a anchos de
+     contenido. Medido: 14 de 14 tarjetas perdían el span. */
+  @media (min-width: 768px) {
+    .bento--span-3 {
+      grid-column: span 3;
+    }
+
+    .bento--span-4 {
+      grid-column: span 4;
+    }
+
+    .bento--span-6 {
+      grid-column: span 6;
+    }
+
+    .bento--span-12 {
+      grid-column: span 12;
+    }
+  }
+</style>

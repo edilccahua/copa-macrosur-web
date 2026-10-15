@@ -1,0 +1,110 @@
+/* ============================================================================
+   reset.css — normalización mínima.
+   Replica la capa base del origen (que usa Tailwind 4) sin usar Tailwind.
+   ========================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border: 0 solid;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-tab-size: 4;
+  tab-size: 4;
+  line-height: 1.5;
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  /* SIN `scroll-behavior: smooth`: el desplazamiento suave lo maneja Lenis, y
+     esta propiedad hacía que el navegador compitiera con él. Lenis trae su
+     propia hoja (importada en src/scripts/showcase-motion.ts). */
+}
+
+/* Las páginas de escaparate REEMPLAZAN la barra nativa por el regulador
+   lateral, así que la del navegador se oculta. Es una CLASE en <html>, no un
+   `data-ruler`: ese atributo lo lleva el regulador y `querySelector` habría
+   devuelto el <html> en lugar de la banda. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+  /* `clip` y no `hidden`: `overflow-x: hidden` en body crea un contenedor de
+     scroll que rompe `position: sticky` en la cabecera. */
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+/* Utilidad de números tabulares. Obligatoria en tiempos y dorsales. */
+.tabular {
+  font-variant-numeric: var(--numeric-tabular);
+  font-feature-settings: "tnum" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

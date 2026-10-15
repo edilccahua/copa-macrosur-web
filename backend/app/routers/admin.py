@@ -1,0 +1,169 @@
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
+
+from backend.app.core.db import get_session
+from backend.app.core.security import verify_admin_key
+from backend.app.models.entities import (
+    Stage, StageEntry, PaymentStatusEnum, FeedbackTicket, TicketStatusEnum,
+    StravaSegment, StravaEffort, Rider
+)
+from backend.app.models.schemas import StravaSyncPayload
+from backend.app.services.gpx_service import parse_gpx_in_memory
+from backend.app.services.storage import upload_file_to_r2
+
+router = APIRouter(prefix="", tags=["Admin"])
+
+
+@router.post("/stages/{stage_id}/upload-gpx")
+async def upload_gpx_file(
+    stage_id: int,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+    admin_key: str = Depends(verify_admin_key)
+):
+    stmt = select(Stage).where(Stage.id == stage_id)
+    stage = (await session.exec(stmt)).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    content = await file.read()
+    # 1. Parsear en memoria
+    parsed = parse_gpx_in_memory(content, max_points=500)
+
+    # 2. Subir a R2
+    file_key = f"stages/{stage_id}/route.gpx"
+    r2_url = await upload_file_to_r2(content, file_key, content_type="application/gpx+xml")
+
+    # 3. Guardar en etapa
+    stage.distance_km = parsed["distance_km"]
+    stage.elevation_gain_m = parsed["elevation_gain_m"]
+    stage.route_geojson = parsed["route_geojson"]
+    stage.gpx_file_url = r2_url
+
+    session.add(stage)
+    await session.commit()
+
+    return {
+        "status": "success",
+        "distance_km": stage.distance_km,
+        "elevation_gain_m": stage.elevation_gain_m,
+        "gpx_file_url": r2_url
+    }
+
+
+@router.post("/stages/{stage_id}/sync-strava-efforts")
+async def sync_strava_efforts(
+    stage_id: int,
+    payload: StravaSyncPayload,
+    session: AsyncSession = Depends(get_session),
+    admin_key: str = Depends(verify_admin_key)
+):
+    """
+    Recibe la extracción de segmentos de Strava (KOM/QOM, tiempos y atletas)
+    realizada por el script local mediante CDP / browser-use.
+    """
+    stmt = select(Stage).where(Stage.id == stage_id)
+    if not (await session.exec(stmt)).first():
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    # Buscar o crear segmento
+    stmt_seg = select(StravaSegment).where(
+        StravaSegment.stage_id == stage_id,
+        StravaSegment.strava_segment_id == payload.strava_segment_id
+    )
+    segment = (await session.exec(stmt_seg)).first()
+    if not segment:
+        segment = StravaSegment(
+            stage_id=stage_id,
+            strava_segment_id=payload.strava_segment_id,
+            name=payload.segment_name,
+            distance_m=payload.distance_m,
+            average_grade=payload.average_grade
+        )
+        session.add(segment)
+        await session.flush()
+    else:
+        segment.name = payload.segment_name
+        segment.distance_m = payload.distance_m
+        segment.average_grade = payload.average_grade
+        session.add(segment)
+
+    # Limpiar esfuerzos previos del segmento para sobreescribir con los actualizados
+    stmt_del = select(StravaEffort).where(StravaEffort.segment_id == segment.id)
+    existing_efforts = (await session.exec(stmt_del)).all()
+    for eff in existing_efforts:
+        await session.delete(eff)
+
+    # Insertar nuevos esfuerzos
+    for item in payload.efforts:
+        # Intentar cruzar con ciclista por nombre aproximado
+        stmt_rider = select(Rider).where(Rider.full_name.ilike(f"%{item.athlete_name_raw}%"))
+        rider = (await session.exec(stmt_rider)).first()
+
+        effort = StravaEffort(
+            segment_id=segment.id,
+            rider_id=rider.id if rider else None,
+            athlete_name_raw=item.athlete_name_raw,
+            elapsed_time_sec=item.elapsed_time_sec,
+            is_kom_qom=item.is_kom_qom
+        )
+        session.add(effort)
+
+    await session.commit()
+    return {"status": "success", "efforts_synced": len(payload.efforts)}
+
+
+@router.get("/admin/pending-payments")
+async def get_pending_payments(
+    session: AsyncSession = Depends(get_session),
+    admin_key: str = Depends(verify_admin_key)
+):
+    stmt = (
+        select(StageEntry)
+        .where(StageEntry.payment_status == PaymentStatusEnum.PENDING)
+        .order_by(StageEntry.id.desc())
+    )
+    entries = (await session.exec(stmt)).all()
+    results = []
+    for e in entries:
+        await session.refresh(e, ["rider", "category", "stage", "team"])
+        results.append({
+            "entry_id": e.id,
+            "bib_number": e.bib_number,
+            "stage_name": e.stage.name if e.stage else "",
+            "rider_name": e.rider.full_name if e.rider else "",
+            "rider_dni": e.rider.dni if e.rider else "",
+            "category_name": e.category.name if e.category else "",
+            "team_name": e.team.name if e.team else "LIBRE",
+            "voucher_url": e.payment_voucher_url
+        })
+    return results
+
+
+@router.post("/admin/entries/{entry_id}/approve-payment")
+async def approve_payment(
+    entry_id: int,
+    session: AsyncSession = Depends(get_session),
+    admin_key: str = Depends(verify_admin_key)
+):
+    stmt = select(StageEntry).where(StageEntry.id == entry_id)
+    entry = (await session.exec(stmt)).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Inscripción no encontrada.")
+
+    entry.payment_status = PaymentStatusEnum.PAID
+    session.add(entry)
+    await session.commit()
+    return {"status": "success", "entry_id": entry.id, "payment_status": "PAID"}
+
+
+@router.get("/admin/feedback-tickets")
+async def list_feedback_tickets(
+    session: AsyncSession = Depends(get_session),
+    admin_key: str = Depends(verify_admin_key)
+):
+    stmt = select(FeedbackTicket).order_by(FeedbackTicket.created_at.desc())
+    tickets = (await session.exec(stmt)).all()
+    return tickets

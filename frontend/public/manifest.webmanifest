@@ -1,0 +1,16 @@
+{
+  "name": "Kúspide MTB Juez",
+  "short_name": "MTB Juez",
+  "description": "Panel Offline-First para Jueces de Cronometraje MTB",
+  "start_url": "/admin/juez",
+  "display": "standalone",
+  "background_color": "#101014",
+  "theme_color": "#101014",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

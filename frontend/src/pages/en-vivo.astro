@@ -1,0 +1,62 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import LiveLeaderboard from '../components/svelte/LiveLeaderboard.svelte';
+---
+<Base title="Cronometraje En Vivo — Kúspide MTB">
+  <SiteHeader />
+
+  <main class="container page-content">
+    <div class="page-header">
+      <div class="live-pill font-mono">SEÑAL EN TIEMPO REAL 🔴</div>
+      <h1 class="page-title">TIEMPOS Y LLEGADAS EN VIVO</h1>
+      <p class="page-desc">
+        Transmisión directa de las marcaciones de los jueces de meta mediante Server-Sent Events (SSE). Los tiempos y deltas se actualizan instantáneamente sin recargar la página.
+      </p>
+    </div>
+
+    <!-- Isla Svelte 5 LiveLeaderboard -->
+    <LiveLeaderboard client:load stageId={1} stageName="Fecha 1: La Joya Extreme" />
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .page-header {
+    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .live-pill {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    background: #ff3b30;
+    color: #ffffff;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    margin-bottom: 1rem;
+  }
+
+  .page-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+  }
+
+  .page-desc {
+    max-width: 680px;
+    font-size: 0.9375rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+</style>

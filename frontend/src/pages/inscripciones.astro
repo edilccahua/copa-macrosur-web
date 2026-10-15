@@ -1,0 +1,245 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+---
+<Base title="Pre-Inscripciones Oficiales — Kúspide MTB">
+  <SiteHeader />
+
+  <main class="container page-content">
+    <div class="form-wrapper">
+      <div class="form-header">
+        <span class="form-tag font-mono">FECHA 02: VUELTA A LOS POBLADOS (25 OCT 2026)</span>
+        <h1 class="form-title">FORMULARIO DE PRE-INSCRIPCIÓN</h1>
+        <p class="form-desc">
+          Completa tus datos oficiales de deportista y adjunta la captura del abono Yape o Plin. Una vez verificado por la organización, se te asignará tu número de placa dorsal oficial.
+        </p>
+      </div>
+
+      <form id="reg-form" class="reg-form">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="dni" class="field-label font-mono">DNI / DOCUMENTO DE IDENTIDAD (8 DÍGITOS) *</label>
+            <input type="text" id="dni" name="dni" required maxlength="8" pattern="[0-9]{8}" placeholder="Ej. 72345678" class="form-input font-mono" />
+          </div>
+
+          <div class="form-field">
+            <label for="fullName" class="field-label font-mono">NOMBRES Y APELLIDOS COMPLETOS *</label>
+            <input type="text" id="fullName" name="fullName" required placeholder="Ej. Juan Carlos Pérez Gómez" class="form-input" />
+          </div>
+
+          <div class="form-field">
+            <label for="gender" class="field-label font-mono">GÉNERO *</label>
+            <select id="gender" name="gender" class="form-input">
+              <option value="M">Masculino (Varones)</option>
+              <option value="F">Femenino (Damas)</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="category" class="field-label font-mono">CATEGORÍA OFICIAL *</label>
+            <select id="category" name="category_id" class="form-input">
+              <option value="2">ELITE (18-29 Años)</option>
+              <option value="3">MASTER A (30-39 Años)</option>
+              <option value="4">MASTER B (40-49 Años)</option>
+              <option value="5">MASTER C (50-59 Años)</option>
+              <option value="6">MASTER D (60 a más)</option>
+              <option value="7">TURISMO OPEN VARONES</option>
+              <option value="8">TURISMO MASTER VARONES</option>
+              <option value="9">OPEN DAMAS</option>
+              <option value="10">DAMAS MASTER</option>
+              <option value="11">JUVENILES 15-17</option>
+              <option value="1">E-BIKE OPEN</option>
+            </select>
+          </div>
+
+          <div class="form-field full-width">
+            <label for="team" class="field-label font-mono">CLUB / TEAM O ESCRIBE "LIBRE" SI NO TIENES EQUIPO *</label>
+            <input type="text" id="team" name="team" required placeholder="Ej. TEAM COLCA BIKE o LIBRE" class="form-input" />
+          </div>
+
+          <div class="form-field full-width">
+            <label for="voucherUrl" class="field-label font-mono">URL O COMPROBANTE DE PAGO YAPE / PLIN (S/ 50.00)</label>
+            <input type="text" id="voucherUrl" name="voucherUrl" placeholder="https://..." class="form-input" />
+            <span class="field-hint">Abonos al número oficial de la organización: 958 123 456 (Yape / Plin a nombre de Kúspide MTB).</span>
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-submit font-mono">
+          ENVIAR PRE-INSCRIPCIÓN
+        </button>
+
+        <div id="response-msg" class="response-msg"></div>
+      </form>
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<script>
+  const form = document.getElementById('reg-form') as HTMLFormElement;
+  const msgBox = document.getElementById('response-msg') as HTMLElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'PROCESANDO...';
+
+    const formData = new FormData(form);
+    const payload = {
+      stage_id: 2, // Vuelta a los Poblados
+      dni: formData.get('dni'),
+      full_name: formData.get('fullName'),
+      gender: formData.get('gender'),
+      category_id: Number(formData.get('category_id')),
+      team_name_or_libre: formData.get('team'),
+      voucher_url: formData.get('voucherUrl') || null
+    };
+
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/public/pre-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msgBox.innerHTML = `<div class="msg-success">✅ ¡Pre-inscripción exitosa! Tu número de dorsal provisional asignado es: <strong>#${data.bib_number}</strong>.</div>`;
+        form.reset();
+      } else {
+        msgBox.innerHTML = `<div class="msg-error">❌ Error: ${data.detail || 'No se pudo procesar la inscripción.'}</div>`;
+      }
+    } catch (err) {
+      msgBox.innerHTML = `<div class="msg-error">❌ Error de conexión con el servidor.</div>`;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'ENVIAR PRE-INSCRIPCIÓN';
+    }
+  });
+</script>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .form-wrapper {
+    max-width: 680px;
+    margin: 0 auto;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 2.5rem;
+    margin-bottom: 4rem;
+  }
+
+  .form-tag {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+    letter-spacing: 0.12em;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .form-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+  }
+
+  .form-desc {
+    font-size: 0.875rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .full-width {
+    grid-column: 1 / -1;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 0.875rem;
+    border-radius: 0;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .form-input:focus {
+    border-color: var(--accent, #ff5500);
+  }
+
+  .field-hint {
+    display: block;
+    font-size: 0.6875rem;
+    color: var(--muted);
+    margin-top: 0.35rem;
+  }
+
+  .btn-submit {
+    width: 100%;
+    padding: 1.125rem;
+    background: var(--invert-bg, #101014);
+    color: var(--invert-fg, #ffffff);
+    border: none;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .btn-submit:hover {
+    background: var(--accent, #ff5500);
+  }
+
+  .response-msg {
+    margin-top: 1.5rem;
+  }
+
+  :global(.msg-success) {
+    padding: 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid #10b981;
+    color: #10b981;
+    font-size: 0.875rem;
+  }
+
+  :global(.msg-error) {
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    font-size: 0.875rem;
+  }
+
+  @media (min-width: 640px) {
+    .form-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>

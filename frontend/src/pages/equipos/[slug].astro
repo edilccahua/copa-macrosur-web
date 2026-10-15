@@ -1,0 +1,272 @@
+---
+import Base from '../../layouts/Base.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+
+export async function getStaticPaths() {
+  return [
+    { params: { slug: 'team-colca-bike' } },
+    { params: { slug: 'club-original-bikes-arequipa-peru' } },
+    { params: { slug: 'bikers-team' } },
+    { params: { slug: 'arequipa-cycling' } }
+  ];
+}
+
+const { slug } = Astro.params;
+
+const teamMock = {
+  name: 'TEAM COLCA BIKE',
+  slug: 'team-colca-bike',
+  description: 'Club representativo de la provincia de Caylloma y el Cañón del Colca. Especialistas en ascensos de alta montaña.',
+  standing: {
+    current_rank: 1,
+    rank_delta: 0,
+    total_points: 58,
+    golds: 3,
+    silvers: 1,
+    bronzes: 2,
+    riders_count: 14
+  },
+  roster: [
+    { name: 'SANTIAGO ANCONEYRA OLLACHICA', category: 'TURISMO MASTER VARONES', points: 10, role: '1° Lugar F1' },
+    { name: 'MILDER CHAPI HUARAYA', category: 'JUVENILES 15 - 17', points: 10, role: '1° Lugar F1' },
+    { name: 'SAMUEL HUAMANI SALCEDO', category: 'MASTER B', points: 9, role: '2° Lugar F1' },
+    { name: 'SILVIO ALEJANDRO ANCCO', category: 'MASTER B', points: 7, role: '4° Lugar F1' },
+    { name: 'VICTORIA YUPANQUI', category: 'OPEN DAMAS', points: 6, role: '5° Lugar F1' }
+  ]
+};
+---
+<Base title={`${teamMock.name} — Copa de Equipos | Kúspide MTB`}>
+  <SiteHeader />
+
+  <main class="container page-content">
+    <div class="team-header-box">
+      <div class="breadcrumb font-mono">
+        <a href="/ranking-general">← VOLVER A LA COPA DE EQUIPOS</a>
+      </div>
+
+      <div class="team-hero">
+        <div class="team-logo-box font-mono">
+          COLCA
+        </div>
+        <div>
+          <span class="team-badge font-mono">EQUIPO OFICIAL DEL CAMPEONATO</span>
+          <h1 class="team-name">{teamMock.name}</h1>
+          <p class="team-desc">{teamMock.description}</p>
+        </div>
+      </div>
+
+      <!-- Medallero y Estadísticas -->
+      <div class="team-stats-grid font-mono">
+        <div class="stat-box">
+          <div class="stat-label">PUESTO GENERAL</div>
+          <div class="stat-val highlight">{teamMock.standing.current_rank}°</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">PUNTOS COPA</div>
+          <div class="stat-val">{teamMock.standing.total_points} pts</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">OROS (1°) 🥇</div>
+          <div class="stat-val medal-gold">{teamMock.standing.golds}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">PLATAS (2°) 🥈</div>
+          <div class="stat-val medal-silver">{teamMock.standing.silvers}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">BRONCES (3°) 🥉</div>
+          <div class="stat-val medal-bronze">{teamMock.standing.bronzes}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">CICLISTAS ACTIVOS</div>
+          <div class="stat-val">{teamMock.standing.riders_count}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plantilla de Ciclistas -->
+    <section class="roster-section">
+      <div class="section-title font-mono">PLANTILLA DE CORREDORES EN EL CAMPEONATO</div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ciclista</th>
+              <th>Categoría Principal</th>
+              <th>Desempeño en Fecha 1</th>
+              <th class="col-pts">Puntos Aportados</th>
+            </tr>
+          </thead>
+          <tbody>
+            {teamMock.roster.map((r) => (
+              <tr>
+                <td class="rider-name-cell">{r.name}</td>
+                <td><span class="badge-cat">{r.category}</span></td>
+                <td>{r.role}</td>
+                <td class="col-pts font-mono pts-tag">+{r.points} pts</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .team-header-box {
+    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 2.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .breadcrumb a {
+    color: var(--accent, #ff5500);
+    text-decoration: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  .team-hero {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .team-logo-box {
+    width: 90px;
+    height: 90px;
+    background: var(--invert-bg, #101014);
+    color: var(--invert-fg, #ffffff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+  }
+
+  .team-badge {
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    color: var(--accent, #ff5500);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  .team-name {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .team-desc {
+    max-width: 600px;
+    font-size: 0.9375rem;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .team-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .stat-box {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 1rem;
+  }
+
+  .stat-label {
+    font-size: 0.625rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.35rem;
+  }
+
+  .stat-val {
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+
+  .stat-val.highlight {
+    color: var(--accent, #ff5500);
+  }
+
+  .medal-gold { color: #f59e0b; }
+  .medal-silver { color: #94a3b8; }
+  .medal-bronze { color: #b45309; }
+
+  .roster-section {
+    margin-bottom: 4rem;
+  }
+
+  .section-title {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.8125rem;
+  }
+
+  .data-table th {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: var(--hairline) solid var(--line);
+    background: var(--bg);
+  }
+
+  .data-table td {
+    padding: 0.875rem 1.25rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .badge-cat {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.6875rem;
+    background: var(--bg);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .pts-tag {
+    color: var(--accent, #ff5500);
+    font-weight: 800;
+  }
+
+  @media (min-width: 768px) {
+    .team-stats-grid {
+      grid-template-columns: repeat(6, 1fr);
+    }
+  }
+</style>

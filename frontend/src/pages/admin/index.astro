@@ -1,0 +1,355 @@
+---
+import Base from '../../layouts/Base.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+---
+<Base title="Consola del Organizador — Kúspide MTB">
+  <SiteHeader />
+
+  <main class="container page-content">
+    <div class="admin-header">
+      <span class="admin-badge font-mono">CONSOLA CENTRAL DE ADMINISTRACIÓN</span>
+      <h1 class="admin-title">GESTIÓN DE CARRERA Y VALIDACIONES</h1>
+      <p class="admin-desc">
+        Aprobación de vouchers de pago, ingesta masiva de Excel, actualización de rutas GPX y sincronización de esfuerzos.
+      </p>
+    </div>
+
+    <div class="admin-grid">
+      <!-- Módulo 1: Validación de Pagos Yape / Plin -->
+      <div class="admin-card">
+        <div class="card-head font-mono">PAGOS PENDIENTES DE VALIDACIÓN</div>
+        <div id="payments-list" class="payments-list">
+          <div class="loading-tag font-mono">Cargando vouchers pendientes...</div>
+        </div>
+      </div>
+
+      <!-- Módulo 2: Ingesta de Excel Masivo -->
+      <div class="admin-card">
+        <div class="card-head font-mono">IMPORTADOR DE EXCEL MASIVO (.XLSX)</div>
+        <form id="excel-form" class="admin-form">
+          <div class="form-group">
+            <label class="font-mono">Etapa de Destino:</label>
+            <select name="stage_id" class="admin-select font-mono">
+              <option value="2">Fecha 2: Vuelta a los Poblados</option>
+              <option value="1">Fecha 1: La Joya Extreme</option>
+              <option value="3">Fecha 3: Rally Chachani</option>
+              <option value="4">Fecha 4: Desafío del Misti</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="font-mono">Archivo Excel:</label>
+            <input type="file" name="file" accept=".xlsx" required class="admin-file" />
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label font-mono">
+              <input type="checkbox" name="is_legacy" value="true" />
+              Usar Adapter Legacy (formato por bloques de categoría)
+            </label>
+          </div>
+
+          <button type="submit" class="btn-action font-mono">PROCESAR INGESTA MASIVA</button>
+          <div id="excel-msg" class="action-msg font-mono"></div>
+        </form>
+      </div>
+
+      <!-- Módulo 3: Carga de Ruta GPX -->
+      <div class="admin-card">
+        <div class="card-head font-mono">SUBIDA DE RUTA OFICIAL (.GPX)</div>
+        <form id="gpx-form" class="admin-form">
+          <div class="form-group">
+            <label class="font-mono">Etapa:</label>
+            <select name="stage_id" class="admin-select font-mono">
+              <option value="2">Fecha 2: Vuelta a los Poblados</option>
+              <option value="1">Fecha 1: La Joya Extreme</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="font-mono">Archivo GPX:</label>
+            <input type="file" name="file" accept=".gpx" required class="admin-file" />
+          </div>
+
+          <button type="submit" class="btn-action font-mono">SUBIR Y CALCULAR ALTIMETRÍA</button>
+          <div id="gpx-msg" class="action-msg font-mono"></div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<script>
+  const ADMIN_KEY = '***REMOVED-ADMIN-API-KEY***';
+
+  // Cargar pagos pendientes
+  async function loadPendingPayments() {
+    const listEl = document.getElementById('payments-list');
+    if (!listEl) return;
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/admin/pending-payments', {
+        headers: { 'X-Admin-Key': ADMIN_KEY }
+      });
+      if (res.ok) {
+        const items = await res.json();
+        if (items.length === 0) {
+          listEl.innerHTML = '<div class="empty-tag font-mono">No hay pagos pendientes de revisión.</div>';
+          return;
+        }
+        listEl.innerHTML = items.map((p: any) => `
+          <div class="payment-item">
+            <div class="p-info">
+              <div class="p-name">${p.rider_name} (Dorsal #${p.bib_number})</div>
+              <div class="p-sub font-mono">${p.category_name} | ${p.stage_name} | DNI: ${p.rider_dni}</div>
+              ${p.voucher_url ? `<a href="${p.voucher_url}" target="_blank" class="voucher-link font-mono">Ver Comprobante Adjunto ↗</a>` : '<span class="no-voucher font-mono">Sin enlace de voucher</span>'}
+            </div>
+            <button class="btn-approve font-mono" onclick="window.approvePayment(${p.entry_id})">Aprobar 1-Clic</button>
+          </div>
+        `).join('');
+      }
+    } catch (e) {
+      listEl.innerHTML = '<div class="empty-tag font-mono">Servidor offline o sin respuesta.</div>';
+    }
+  }
+
+  (window as any).approvePayment = async (entryId: number) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/admin/entries/${entryId}/approve-payment`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': ADMIN_KEY }
+      });
+      if (res.ok) {
+        loadPendingPayments();
+      }
+    } catch (e) {
+      alert('Error aprobando pago.');
+    }
+  };
+
+  loadPendingPayments();
+
+  // Excel submit
+  const excelForm = document.getElementById('excel-form') as HTMLFormElement;
+  excelForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('excel-msg') as HTMLElement;
+    msg.innerText = 'Procesando archivo...';
+    const fd = new FormData(excelForm);
+    const stageId = fd.get('stage_id');
+    const isLegacy = fd.get('is_legacy') ? 'true' : 'false';
+
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/stages/${stageId}/import-excel?is_legacy=${isLegacy}`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': ADMIN_KEY },
+        body: fd
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msg.innerText = `✅ Ingesta exitosa: ${data.imported_riders} ciclistas procesados.`;
+      } else {
+        msg.innerText = `❌ Error: ${JSON.stringify(data.detail)}`;
+      }
+    } catch (err) {
+      msg.innerText = '❌ Error de red con el servidor.';
+    }
+  });
+
+  // GPX submit
+  const gpxForm = document.getElementById('gpx-form') as HTMLFormElement;
+  gpxForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('gpx-msg') as HTMLElement;
+    msg.innerText = 'Parseando ruta GPX...';
+    const fd = new FormData(gpxForm);
+    const stageId = fd.get('stage_id');
+
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/stages/${stageId}/upload-gpx`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': ADMIN_KEY },
+        body: fd
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msg.innerText = `✅ GPX cargado: ${data.distance_km} km / +${data.elevation_gain_m} m.`;
+      } else {
+        msg.innerText = '❌ Error al subir GPX.';
+      }
+    } catch (err) {
+      msg.innerText = '❌ Error de conexión.';
+    }
+  });
+</script>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .admin-header {
+    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .admin-badge {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+    letter-spacing: 0.12em;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .admin-desc {
+    font-size: 0.9375rem;
+    color: var(--muted);
+    max-width: 680px;
+    margin: 0;
+  }
+
+  .admin-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 4rem;
+  }
+
+  .admin-card {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    padding: 1.5rem;
+  }
+
+  .card-head {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--ink);
+    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .form-group label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .admin-select,
+  .admin-file {
+    padding: 0.625rem 0.875rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 0.8125rem;
+    border-radius: 0;
+  }
+
+  .checkbox-group {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .btn-action {
+    padding: 0.875rem;
+    background: var(--invert-bg, #101014);
+    color: var(--invert-fg, #ffffff);
+    border: none;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+  }
+
+  .btn-action:hover {
+    background: var(--accent, #ff5500);
+  }
+
+  .action-msg {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .payments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  :global(.payment-item) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.875rem 1rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg);
+  }
+
+  :global(.p-name) {
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  :global(.p-sub) {
+    font-size: 0.6875rem;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+  }
+
+  :global(.voucher-link) {
+    font-size: 0.6875rem;
+    color: var(--accent, #ff5500);
+    text-decoration: none;
+  }
+
+  :global(.btn-approve) {
+    padding: 0.5rem 1rem;
+    background: #10b981;
+    color: #ffffff;
+    border: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  @media (min-width: 900px) {
+    .admin-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>
