@@ -169,7 +169,34 @@ Regresión: `frontend/tools/check-shell.mjs` comprueba, a 1280 px y a 390 px,
 que la barra de sección se ancla por debajo de la cabecera (`top` ≥ alto real)
 y que su z-index es menor que el de la cabecera.
 
-### 0.0.3 Puerta del panel del juez
+### 0.0.4 Tema: conmutador, aviso de primera visita y transición
+
+- **Área clicable = la celda entera.** El padding va en el elemento
+  interactivo, no en la celda: así no hay que apuntarle al icono, basta con
+  tocar el recuadro. Los tres controles de la derecha (WhatsApp, tema y
+  burger) comparten el mismo tratamiento, lo que además enlarge el área
+  táctil en móvil.
+- **El tema del dispositivo se respeta**: si no hay preferencia guardada, se
+  usa `prefers-color-scheme`. `data-theme` se escribe SIEMPRE (aunque venga
+  del sistema), para que el icono del conmutador refleje el tema real.
+- **Aviso de primera visita**: un globo anclado al botón del tema
+  ("CAMBIA EL TEMA AQUÍ") que aparece **una sola vez** —queda marcado en
+  `localStorage` (`kuspide-theme-hint`)— y se retira solo a los 4,5 s. No se
+  cierra al hacer scroll: al cargar hay scrolls programáticos (Lenis,
+  ScrollTrigger) y el aviso se iba sin que nadie lo hubiera visto.
+  El globo va anclado al **borde derecho** del botón (el botón está en el
+  extremo de la barra: centrado se salía de la pantalla) y su flecha cae
+  sobre el icono.
+- **Transición suave**: al cambiar de tema se pone `html.theme-switching`,
+  que fuerza una interpolación de 420 ms de los colores de todo el
+  documento (fondo, bordes, texto, `fill`/`stroke`, sombras) en vez de un
+  salto. La clase se retira al terminar. Con `prefers-reduced-motion` el
+  cambio es instantáneo.
+- Regresión: `frontend/tools/check-theme.mjs` (área clicable, aviso de
+  primera visita, que no vuelva a salir, transición suave, respeto del tema
+  del dispositivo y cortes de la barra a 1280 y 390 px).
+
+### 0.0.5 Puerta del panel del juez
 
 - El PIN **no viaja en el código**: `/admin/juez` pide el PIN y lo valida
   contra `GET /api/v1/stages/{id}/judge-auth` (200/403; **nunca devuelve el
@@ -237,8 +264,9 @@ Diseño Bento Grid modular oscuro (estilo GetArtCraft consumiendo los estilos y 
 1. **Hero con datos reales:** póster oficial, nombre de la fecha sin el prefijo `Fecha N:`, fecha, punto de partida y hora, **distancia y desnivel por vuelta Y total** (`Stage.distance_km` y `Stage.elevation_gain_m` son **por vuelta**; el total es `× Stage.laps`), estado y sinopsis derivada de los datos. Botones a la tabla de resultados, al ranking acumulado y a la ruta de Strava.
 2. **Navegación de campeonato ARRIBA del hero:** fecha anterior y siguiente (`navigation` del resumen) en dos bloques con flecha grande y nombre de la fecha; el hover desplaza la flecha 2 px. La cuenta regresiva aparece en las fechas con inscripción abierta y el badge `[ EN VIVO ]` cuando `Stage.status == LIVE`. La hora de largada se interpreta con su meridiem (`"02:30 PM"` son las 14:30, no las 02:30) mediante `frontend/src/lib/datetime.ts`.
 3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha. Los "no finalizados" son solo los abandonos de una fecha **ya disputada**: en una fecha con inscripción abierta, `REGISTERED` significa "aún no compite" y se rotula así.
-4. **Leaderboard de podio por categoría** (`StageLeaderboard`): una fila por categoría con el **recuadro del código corto** (`EBK`, `ELI`, `MSA`…), el nombre de la categoría y los tres ganadores con su club. **Sin dorsal, sin tiempo y sin puntos**: el detalle completo está en `/fechas/{slug}/resultados`. El acento de cada categoría es el de su grupo (`PRO` / `NORMAL` / `E-MTB`); al pasar el ratón, el recuadro invierte sus colores. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
-5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales, índice + categoría, nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce). Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
+4. **Leaderboard de podio por categoría** (`StageLeaderboard`): una fila por categoría con **solo el título de la categoría** (sin recuadro de código corto) y los tres ganadores con su club. **Sin dorsal, sin tiempo y sin puntos**: el detalle completo está en el ranking, en modo FECHA (`/ranking-general?modo=fecha&tabla=PRO&fecha={n}`). El título **no va en blanco como el resto del texto**: usa la tipografía display en mayúsculas y el acento de su grupo (`PRO` / `NORMAL` / `E-MTB`, tokens `.scope-*` de `tokens.css`), de modo que se lee de un vistazo a qué categoría pertenece cada bloque; al pasar el ratón el título toma el color vivo del grupo. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
+   - **El puesto se dibuja con una MEDALLA, no con un número.** Es la insignia de leaderboard de Strava (`icon-at-pr-01/02/03`), reproducida con su geometría exacta: silueta de "bolsillo" con la cinta y el puesto **calado al vacío** dentro del disco (`fill-rule="evenodd"`). La pieza vive en `src/assets/medals/medal-N.svg` (canónica, `currentColor`) y en `public/icons/medals/medal-N.svg` (plana, para reutilizar fuera de Astro); la genera `frontend/tools/build-medals.mjs`. El "2" y el "3" son los trazados literales de Strava; el "1" está dibujado con la misma construcción. Los tonos (`--medal-1/2/3`) son el oro, la plata y el bronce exactos de Strava. El componente `MedalIcon.astro` la inserta **en línea** (no como `<img>`) para que herede el color del tema y para que el número calado deje ver el fondo real de la página.
+5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales, **medalla del lugar** (en lugar del índice numérico), nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce). Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
 6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo). Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro.
 7. **Perfil de etapa** (`StageProfile.astro` + `backend/scripts/build_stage_profile.py`):
    - El perfil **no se dibuja en el navegador**: lo genera un script de Python

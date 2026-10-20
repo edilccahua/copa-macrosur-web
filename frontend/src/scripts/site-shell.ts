@@ -105,6 +105,83 @@ export function applyTheme(theme: 'light' | 'dark', persist = true): void {
   }
 }
 
+/**
+ * Transición suave del tema.
+ *
+ * Sin esto, al cambiar `data-theme` los colores saltan de golpe. Se pone una
+ * clase en el `<html>` que fuerza una transición de 420 ms en las propiedades
+ * de color, se fuerza el reflow (para que el navegador tome el estado
+ * inicial con la transición ya puesta) y se quita la clase al terminar.
+ */
+function switchTheme(theme: 'light' | 'dark'): void {
+  const root = document.documentElement;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (reduce) {
+    applyTheme(theme);
+    return;
+  }
+
+  root.classList.add('theme-switching');
+  // Reflow: sin esto el navegador no sabe que hay una transición pendiente.
+  void root.offsetHeight;
+  applyTheme(theme);
+
+  window.clearTimeout(switchTimer);
+  switchTimer = window.setTimeout(() => {
+    root.classList.remove('theme-switching');
+  }, 460);
+}
+
+let switchTimer: number | undefined;
+
+/**
+ * Aviso de PRIMERA VISITA: un globo que señala el botón del tema.
+ *
+ * Sólo aparece una vez en la vida del navegador (queda marcado en
+ * `localStorage`) y se retira solo a los 4,5 s. También se retira si el
+ * usuario toca el conmutador o hace scroll.
+ */
+const HINT_KEY = 'kuspide-theme-hint';
+const HINT_MS = 4500;
+
+function showThemeHintOnce(): void {
+  const hint = document.querySelector<HTMLElement>('[data-theme-hint]');
+  if (!hint) return;
+
+  let seen = false;
+  try {
+    seen = localStorage.getItem(HINT_KEY) === '1';
+  } catch {
+    seen = false;
+  }
+  if (seen) return;
+
+  // Se marca ANTES de mostrarlo: si algo falla a medio camino, el aviso no
+  // vuelve a aparecer en la siguiente visita.
+  try {
+    localStorage.setItem(HINT_KEY, '1');
+  } catch {
+    /* sin almacenamiento: el aviso volverá, pero no rompe nada */
+  }
+
+  hint.hidden = false;
+  requestAnimationFrame(() => hint.classList.add('is-visible'));
+
+  const hide = () => {
+    hint.classList.remove('is-visible');
+    window.setTimeout(() => {
+      hint.hidden = true;
+    }, 320);
+  };
+
+  // Sólo el tiempo y el propio conmutador lo retiran. NO se cierra al
+  // hacer scroll: al cargar la página hay scrolls programáticos (Lenis,
+  // ScrollTrigger, el anclaje del navegador) y el aviso se iba solo al
+  // instante, sin que el usuario lo hubiera visto.
+  window.setTimeout(hide, HINT_MS);
+}
+
 /** Reaplica el tema tras un intercambio de página (el `<html>` se reemplaza). */
 function restoreTheme(): void {
   const stored = readStoredTheme();
@@ -185,11 +262,12 @@ function initDelegatedHandlers(): void {
     const target = event.target as Element | null;
     if (!target) return;
 
-    // Conmutador de tema.
+    // Conmutador de tema. El botón ocupa TODA la celda: no hay que
+    // apuntarle al icono.
     const themeButton = target.closest('#theme-toggle');
     if (themeButton) {
       event.preventDefault();
-      applyTheme(effectiveTheme() === 'dark' ? 'light' : 'dark');
+      switchTheme(effectiveTheme() === 'dark' ? 'light' : 'dark');
       return;
     }
 
@@ -447,6 +525,7 @@ initRouter();
 applyActiveNav(window.location.pathname);
 restoreTheme();
 armHeaderIntroOnce();
+showThemeHintOnce();
 
 // La primera carga de una página de escaparate pide su movimiento.
 if (pageWantsMotion()) {
