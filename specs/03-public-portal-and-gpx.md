@@ -151,15 +151,18 @@ sea pegajoso tiene que quedar **debajo** de ella:
 | :--- | :--- | :--- |
 | Barra de sección (`SectionLabel`) | `var(--header-offset)` / `var(--header-offset-mobile)` | **19** (uno menos que la cabecera) |
 | Cabecera de la tabla (`StandingsTable` `thead`) | `var(--header-offset)` | 10 |
-| Regulador lateral (`PageRuler`) | `inset-block: 0` (altura completa) | 40 |
+| Regulador lateral (`PageRuler`) | `inset-block: var(--header-offset) 0` | 40 |
 | Cajón móvil (`SiteHeader`) | `top: var(--header-offset-mobile)` | 2 (dentro de la cabecera) |
 
 El regulador lateral va **en todas las páginas** (la de clasificaciones
-incluida) y su banda es de **altura completa**, como en `copiaartcraft`:
-el regulador y el menú forman un solo instrumento y no queda un hueco entre
-la cabecera y la regleta. Para que la banda no se coma los clics del menú,
-el regulador entero es `pointer-events: none` y sólo `.ruler__grab` —que
-empieza bajo la cabecera— es agarrable.
+incluida) y su banda arranca **justo en el borde inferior del menú**: ni
+por encima (sus marcas se dibujarían sobre la cabecera) ni con hueco
+(parecería un elemento aparte). La escala de la regleta es **relativa a ese
+borde**: en reposo arranca pegada al menú y sube con el scroll.
+
+Para que la banda no se coma los clics del menú, el regulador entero es
+`pointer-events: none` y sólo `.ruler__grab` —que empieza bajo la
+cabecera— es agarrable.
 
 Por lo mismo la barra de scroll nativa se oculta **sólo a partir de 48em**
 (`.no-scrollbar` dentro de la media query): por debajo, la banda del
@@ -356,9 +359,12 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 
 - Las páginas con índice de secciones llevan la clase `has-pageindex` en
   `<html>` (la pone `Showcase.astro` cuando hay `sections`).
-- Con ella, entre 48em y 96em, el `.container` reserva `12.5rem` a la
-  derecha. Por encima de 96em los 80rem del contenedor ya quedan centrados
-  con margen de sobra y reservarlo sería tirar espacio.
+- Con ella, entre 48em y 96em, el `.container` reserva la banda con
+  `padding-right: max(4.5rem, calc(13rem - max(0rem, (100vw - 80rem) / 2)))`.
+  La reserva **no es fija**: el contenedor es de 80rem y va centrado, así que
+  cuanto más ancho es el viewport, más margen hay a los lados y menos banda
+  hay que reservar. Por encima de 96em el margen ya basta y queda el 4.5rem de
+  siempre. Medido: sin colisión a 1024 / 1280 / 1440 / 1600 / 1920 px.
 
 ### 1.2 Página de Fecha Individual (`/fechas/[slug]`)
 > Ruta **dinámica en SSR**: el `slug` se resuelve contra la API en cada request. Si la fecha no existe, la respuesta es `404`; si el backend no responde, `503`. **La página no contiene ningún dato literal**: todo viene de `GET /api/v1/stages/{slug}/summary` (ver §1.4).
