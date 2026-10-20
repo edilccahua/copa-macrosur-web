@@ -30,6 +30,13 @@
     type TeamStandingRow,
   } from '../../lib/api';
 
+  /**
+   * Modo de la clasificación (patrón Tour de Francia):
+   * - "acumulado": la suma de todo lo disputado hasta la fecha de corte.
+   * - "fecha": solo la carrera elegida (sin acumulado y sin DELTA).
+   */
+  type Mode = 'acumulado' | 'fecha';
+
   interface Props {
     stages: StageOption[];
     context: StandingsContext;
@@ -38,6 +45,13 @@
     initialStageId: number | null;
     initialScope: string;
     initialCategoryId: number | null;
+    /** Modo inicial; por defecto "acumulado". */
+    initialMode?: Mode;
+    /**
+     * La fecha la fija la página (página de la carrera): sin navegador de
+     * fechas, porque la carrera ES la página.
+     */
+    stageLocked?: boolean;
   }
 
   let {
@@ -48,11 +62,14 @@
     initialStageId,
     initialScope,
     initialCategoryId,
+    initialMode = 'acumulado',
+    stageLocked = false,
   }: Props = $props();
 
   type Kind = 'individual' | 'teams';
   type ScopeKey = 'PRO' | 'NORMAL' | 'E-MTB';
 
+  let mode = $state<Mode>(initialMode);
   let stageId = $state<number | null>(initialStageId);
   let scope = $state<ScopeKey>(initialScope as ScopeKey);
   let categoryId = $state<number | null>(initialCategoryId);
@@ -88,7 +105,7 @@
   // --- Datos -----------------------------------------------------------------
 
   $effect(() => {
-    const key = `${stageId ?? ''}|${scope}|${categoryId ?? ''}|${kind}`;
+    const key = `${mode}|${stageId ?? ''}|${scope}|${categoryId ?? ''}|${kind}`;
     if (key === lastKey) return;
     lastKey = key;
     void load(key);
@@ -98,8 +115,9 @@
     loading = true;
     error = null;
     try {
-      const [s, sc, cat, kd] = key.split('|');
+      const [md, s, sc, cat, kd] = key.split('|');
       const res = await getStandings({
+        mode: md as Mode,
         stage: s ? Number(s) : null,
         scope: sc as string,
         categoryId: cat ? Number(cat) : null,
@@ -138,14 +156,10 @@
     stages.map((s) => ({
       value: String(s.id),
       // Solo el nombre de la carrera: "FECHA 2 · 23 AGO. 2026 · KÚSPIDE Z
-      // XXTREME III" era una línea interminable en la cabecera. La fecha sigue
-      // visible en la cinta ("CORTE …") y en la lista desplegable.
+      // XXTREME III" era una línea interminable, y la fecha no aporta nada
+      // (el corte ya está en la cinta y el navegador de fechas).
       label: s.name.replace(/^Fecha\s+\d+\s*:\s*/i, '').toUpperCase(),
-      meta: new Date(s.date + 'T00:00:00').toLocaleDateString('es-PE', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      }).toUpperCase(),
+      meta: '',
     }))
   );
 
@@ -159,15 +173,72 @@
   ]);
 
   let activeStage = $derived(stages.find((s) => s.id === stageId));
+  let stageIndex = $derived(stages.findIndex((s) => s.id === stageId));
+  let prevStage = $derived(stageIndex > 0 ? stages[stageIndex - 1] : null);
+  let nextStage = $derived(
+    stageIndex >= 0 && stageIndex < stages.length - 1 ? stages[stageIndex + 1] : null
+  );
 
   // --- Acciones --------------------------------------------------------------
 
   function setScope(next: ScopeKey) {
     scope = next;
     categoryId = null;
+    urlTouched = true;
   }
 
+  function setMode(next: Mode) {
+    if (next === mode) return;
+    mode = next;
+    urlTouched = true;
+  }
+
+  /** Cambia de fecha (modo "fecha"): el navegador de fechas del Tour. */
+  function stepStage(delta: number) {
+    const target = delta < 0 ? prevStage : nextStage;
+    if (!target) return;
+    stageId = target.id;
+    urlTouched = true;
+  }
+
+  /**
+   * La vista se escribe en la URL para que sea compartible: al abrirla de
+   * nuevo (o al enlazarla) vuelve al mismo modo, pestaña, categoría y fecha.
+   * Solo se escribe después de una interacción del usuario.
+   */
+  let urlTouched = $state(false);
+
+  $effect(() => {
+    void mode;
+    void scope;
+    void categoryId;
+    void stageId;
+    void kind;
+    if (!urlTouched) return;
+    const params = new URLSearchParams();
+    params.set('modo', mode);
+    params.set('tabla', kind === 'teams' ? 'EQUIPO' : scope);
+    const cat = meta.categories.find((c) => c.id === categoryId);
+    if (cat) params.set('categoria', cat.short_code);
+    const st = stages.find((x) => x.id === stageId);
+    if (st) params.set('fecha', String(st.stage_number));
+    history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+  });
+
+  /**
+   * El rótulo de la página cambia con el modo ("Ranking general acumulado" vs
+   * "Clasificación de la fecha"). La página marca los dos huecos con
+   * `data-mode-title` y `data-mode-word`; si no están, no pasa nada.
+   */
+  $effect(() => {
+    const t = document.querySelector('[data-mode-title]');
+    if (t) t.textContent = mode === 'acumulado' ? 'Ranking general' : 'Clasificación';
+    const w = document.querySelector('[data-mode-word]');
+    if (w) w.textContent = mode === 'acumulado' ? 'acumulado' : 'de la fecha';
+  });
+
   function setCategory(code: string) {
+    urlTouched = true;
     if (code === 'TODOS') {
       categoryId = null;
       return;
@@ -217,7 +288,74 @@
   }
 </script>
 
-<div class="rank {kind === 'teams' ? 'scope-team' : SCOPE_CLASS[scope]}">
+<div class="standings {kind === 'teams' ? 'scope-team' : SCOPE_CLASS[scope]}">
+  <!--
+    Cabecera FUERA de la caja, patrón Tour de Francia: primero la etapa (con
+    flechas para recorrer las fechas) y debajo las pestañas de modo. En el modo
+    "fecha" es el único sitio donde se cambia de carrera; en el modo
+    "acumulado" ese papel lo cumple el selector "ACUMULADO HASTA" de dentro.
+  -->
+  {#if mode === 'fecha' && !stageLocked}
+    <div class="stagehead">
+      <button
+        type="button"
+        class="stagehead__nav"
+        onclick={() => stepStage(-1)}
+        disabled={!prevStage}
+        aria-label="FECHA ANTERIOR"
+      >
+        <svg width="11" height="11" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M6.5 1 L3 5 L6.5 9" fill="none" stroke="currentColor" stroke-width="1.4" />
+        </svg>
+      </button>
+      <div class="stagehead__id">
+        <span class="stagehead__num font-mono">FECHA {activeStage?.stage_number ?? ''}</span>
+        {#if activeStage}
+          <span class="stagehead__meta font-mono">{stageDate(activeStage.date)}</span>
+        {/if}
+        <span class="stagehead__name font-mono">
+          {activeStage?.name.replace(/^Fecha\s+\d+\s*:\s*/i, '').toUpperCase() ?? ''}
+        </span>
+      </div>
+      <button
+        type="button"
+        class="stagehead__nav"
+        onclick={() => stepStage(1)}
+        disabled={!nextStage}
+        aria-label="FECHA SIGUIENTE"
+      >
+        <svg width="11" height="11" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M3.5 1 L7 5 L3.5 9" fill="none" stroke="currentColor" stroke-width="1.4" />
+        </svg>
+      </button>
+    </div>
+  {/if}
+
+  <!-- Pestañas de modo: FECHA (una carrera) | ACUMULADO (hasta el corte) -->
+  <nav class="modes" role="tablist" aria-label="Modo de clasificación">
+    <button
+      type="button"
+      role="tab"
+      class="mode font-mono"
+      class:is-active={mode === 'fecha'}
+      aria-selected={mode === 'fecha'}
+      onclick={() => setMode('fecha')}
+    >
+      FECHA
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="mode font-mono"
+      class:is-active={mode === 'acumulado'}
+      aria-selected={mode === 'acumulado'}
+      onclick={() => setMode('acumulado')}
+    >
+      ACUMULADO
+    </button>
+  </nav>
+
+  <div class="rank">
   <!-- Cinta: qué muestra la tabla y hasta cuándo -->
   <div class="ribbon">
     <div class="ribbon__id">
@@ -225,9 +363,14 @@
       <span class="ribbon__name font-mono">{scopeLabel}</span>
     </div>
     <div class="ribbon__meta font-mono">
-      {meta.stages_counted} {meta.stages_counted === 1 ? 'FECHA' : 'FECHAS'}
-      DISPUTADAS · {meta.total_distance_km.toFixed(2)} KM
-      {#if activeStage}· CORTE {stageDate(activeStage.date)}{/if}
+      {#if mode === 'fecha'}
+        FECHA {activeStage?.stage_number ?? ''} · {meta.total_distance_km.toFixed(2)} KM
+        {#if activeStage}· {stageDate(activeStage.date)}{/if}
+      {:else}
+        {meta.stages_counted} {meta.stages_counted === 1 ? 'FECHA' : 'FECHAS'}
+        DISPUTADAS · {meta.total_distance_km.toFixed(2)} KM
+        {#if activeStage}· CORTE {stageDate(activeStage.date)}{/if}
+      {/if}
     </div>
   </div>
 
@@ -284,15 +427,19 @@
         </div>
       {/if}
 
-      <div class="ctl ctl--stage">
-        <ScopeControl
-          options={stageOptions}
-          value={String(stageId ?? '')}
-          label="ACUMULADO HASTA"
-          hideMeta
-          onchange={(v) => (stageId = Number(v))}
-        />
-      </div>
+      {#if mode === 'acumulado'}
+        <div class="ctl ctl--stage">
+          <ScopeControl
+            options={stageOptions}
+            value={String(stageId ?? '')}
+            label="ACUMULADO HASTA"
+            onchange={(v) => {
+              stageId = Number(v);
+              urlTouched = true;
+            }}
+          />
+        </div>
+      {/if}
 
       <div class="search">
         <input
@@ -321,12 +468,12 @@
         <thead>
           <tr>
             <th class="col-rank">Puesto</th>
-            <th class="col-delta">Δ</th>
+            {#if mode === 'acumulado'}<th class="col-delta">Δ</th>{/if}
             <th>Ciclista</th>
             <th class="col-cat">Categoría</th>
             <th class="col-catrank">En cat.</th>
             <th class="col-team">Equipo / Club</th>
-            <th class="col-time">Tiempo Acum.</th>
+            <th class="col-time">{mode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
             <th class="col-gap" title={GAP_HINT}>Diferencia</th>
             <th class="col-pts">Puntos</th>
           </tr>
@@ -334,7 +481,7 @@
         <tbody bind:this={tbodyEl}>
           {#if filteredRows.length === 0}
             <tr>
-              <td colspan="9" class="empty font-mono">
+              <td colspan={mode === 'acumulado' ? 9 : 8} class="empty font-mono">
                 No se encontraron corredores con los criterios seleccionados.
               </td>
             </tr>
@@ -352,19 +499,21 @@
                     {r.current_rank}º
                   </span>
                 </td>
-                <td class="col-delta">
-                  {#if r.is_debut}
-                    <span class="delta-new font-mono">NUEVO</span>
-                  {:else if r.rank_delta > 0}
-                    <span class="delta-up font-mono">▲ {r.rank_delta}</span>
-                  {:else if r.rank_delta < 0}
-                    <span class="delta-down font-mono">▼ {Math.abs(r.rank_delta)}</span>
-                  {:else if r.previous_rank == null}
-                    <span class="delta-eq font-mono">—</span>
-                  {:else}
-                    <span class="delta-eq font-mono">=</span>
-                  {/if}
-                </td>
+                {#if mode === 'acumulado'}
+                  <td class="col-delta">
+                    {#if r.is_debut}
+                      <span class="delta-new font-mono">NUEVO</span>
+                    {:else if r.rank_delta > 0}
+                      <span class="delta-up font-mono">▲ {r.rank_delta}</span>
+                    {:else if r.rank_delta < 0}
+                      <span class="delta-down font-mono">▼ {Math.abs(r.rank_delta)}</span>
+                    {:else if r.previous_rank == null}
+                      <span class="delta-eq font-mono">—</span>
+                    {:else}
+                      <span class="delta-eq font-mono">=</span>
+                    {/if}
+                  </td>
+                {/if}
                 <td class="col-name">
                   <span class="name-wrap">
                     <a href={`/corredor/${r.rider_slug}`} class="rider-link">{r.rider_name}</a>
@@ -421,7 +570,7 @@
             <th class="col-num">Platas</th>
             <th class="col-num">Bronces</th>
             <th class="col-num">Corredores</th>
-            <th class="col-time">Tiempo Acum.</th>
+            <th class="col-time">{mode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
             <th class="col-gap" title={GAP_HINT}>Diferencia</th>
           </tr>
         </thead>
@@ -480,17 +629,127 @@
     </div>
   {/if}
   </div>
+  </div>
 </div>
 
 <style>
-  .rank {
+  .standings {
     --edge: var(--scope);
     --accent-color: var(--scope-ink, var(--accent));
     box-sizing: border-box;
     min-width: 0;
+    margin-block: 1.5rem 4rem;
+  }
+
+  .rank {
+    box-sizing: border-box;
+    min-width: 0;
     border: var(--hairline) solid var(--line);
     background: var(--bg-raised);
-    margin-block: 1.5rem 4rem;
+  }
+
+  /* --- Cabecera de modo (patrón Tour de Francia) ---------------------------
+     Vive FUERA de la caja: primero la etapa (con flechas) y debajo las
+     pestañas FECHA / ACUMULADO, con el subrayado en el color del grupo. */
+  .modes {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.75rem;
+  }
+
+  .mode {
+    position: relative;
+    padding: 0.15rem 0 0.6rem;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .mode:hover {
+    color: var(--ink);
+  }
+
+  .mode.is-active {
+    color: var(--ink);
+  }
+
+  .mode.is-active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--scope-ink, var(--scope));
+  }
+
+  /* Navegador de fechas: "FECHA 2 · 23 AGO. 2026 · KÚSPIDE Z XXTREME III" */
+  .stagehead {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .stagehead__nav {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: 0 0 auto;
+    padding: 0;
+    background: transparent;
+    border: var(--hairline) solid var(--line-strong);
+    border-radius: 50%;
+    color: var(--ink);
+    cursor: pointer;
+    transition: border-color var(--default-transition-duration)
+        var(--default-transition-timing-function),
+      color var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .stagehead__nav:hover:not(:disabled) {
+    border-color: var(--scope-ink, var(--scope));
+    color: var(--scope-ink, var(--scope));
+  }
+
+  .stagehead__nav:disabled {
+    opacity: 0.28;
+    cursor: default;
+  }
+
+  .stagehead__id {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.6rem;
+    min-width: 0;
+  }
+
+  .stagehead__num {
+    font-size: 0.875rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--ink-strong);
+  }
+
+  .stagehead__meta {
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .stagehead__name {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--scope-ink, var(--muted));
   }
 
   .rank *,
