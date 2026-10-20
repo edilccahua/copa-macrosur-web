@@ -4,7 +4,12 @@
  *
  * El ganador llega resuelto desde el resumen de la fecha
  * (`kom`, `qom`, `kamikaze_male`, `kamikaze_female`). Si no hay intentos
- * del género, la tarjeta dice "POR ANUNCIAR": no se inventa un ganador.
+ * del género, la tarjeta dice "SIN GANADOR TODAVÍA": no se inventa un ganador.
+ *
+ * OJO con la etiqueta: estos títulos se entregan EN CADA FECHA, uno por
+ * título. No hay "un ganador por anunciar" (eso es el acumulado), hay un
+ * ganador por fecha. Por eso la cabecera lleva la cadencia "UNO POR FECHA" y
+ * el pie sólo dice si esta fecha ya tiene ganador.
  */
 import Icon from './Icon.astro';
 import type { MountainTitle as MountainTitleData } from '../lib/api';
@@ -23,6 +28,7 @@ const { definition, winner } = Astro.props;
     <span class="mountain-card__icon">
       <Icon name={definition.icon} size={18} />
     </span>
+    <span class="mountain-card__cadence font-mono">UNO POR FECHA</span>
     <span class="mountain-card__amount font-mono">USD {definition.amountUsd}</span>
   </header>
 
@@ -40,7 +46,7 @@ const { definition, winner } = Astro.props;
           </p>
         </>
       ) : (
-        <p class="mountain-card__pending font-mono">POR ANUNCIAR</p>
+        <p class="mountain-card__pending font-mono">SIN GANADOR TODAVÍA</p>
       )
     }
   </div>
@@ -70,6 +76,14 @@ const { definition, winner } = Astro.props;
     height: 2rem;
     color: var(--copa-gold);
     border: var(--hairline) solid var(--line);
+  }
+
+  /* La cadencia: estos premios se cobran en CADA fecha. */
+  .mountain-card__cadence {
+    font-size: 0.5625rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
   .mountain-card__amount {
@@ -130,6 +144,6 @@ const { definition, winner } = Astro.props;
     margin: 0;
     font-size: 0.625rem;
     letter-spacing: 0.14em;
-    color: var(--faint);
+    color: var(--muted);
   }
 </style>

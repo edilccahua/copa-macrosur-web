@@ -374,6 +374,16 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
     display: block;
   }
 
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .i-moon {
+      display: none;
+    }
+
+    :global(:root:not([data-theme='light'])) .i-sun {
+      display: block;
+    }
+  }
+
   .i-close {
     display: none;
   }
@@ -566,18 +576,17 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
   }
 
   /* ── Transición del tema ─────────────────────────────────────────────────
-     Al cambiar de tema, los colores de todo el documento se interpolan en
-     lugar de saltar. La clase se pone un instante, se fuerza el reflow y se
-     quita al terminar la transición. */
+     Al cambiar de tema, los colores de las superficies maestras se interpolan
+     suavemente (280ms) sin sobrecargar el compositor ni interferir con las
+     animaciones de scroll o SVG. */
   :global(html.theme-switching),
-  :global(html.theme-switching *) {
+  :global(html.theme-switching body),
+  :global(html.theme-switching .hdr),
+  :global(html.theme-switching .ftr) {
     transition:
-      background-color 420ms var(--ease-in-out),
-      border-color 420ms var(--ease-in-out),
-      color 420ms var(--ease-in-out),
-      fill 420ms var(--ease-in-out),
-      stroke 420ms var(--ease-in-out),
-      box-shadow 420ms var(--ease-in-out) !important;
+      background-color 280ms var(--ease-in-out),
+      border-color 280ms var(--ease-in-out),
+      color 280ms var(--ease-in-out) !important;
   }
 
   /**

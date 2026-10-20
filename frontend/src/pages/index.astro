@@ -18,12 +18,17 @@ import {
   type LiveStageBrief,
   type LiveStatus,
   type MountainTitle,
-  type RemontadaData,
 } from '../lib/api';
 import { getStages, formatStageDate } from '../lib/stages';
 import { SITE_NAME, BRAND_WORDMARK, BRAND_ACCENT, BRAND_EDITION } from '../data/site';
-import { ACCUMULATED_PRIZES, PER_DATE_PRIZES, PRIZE_CURRENCY } from '../data/prizes';
+import {
+  ACCUMULATED_PRIZES,
+  PER_DATE_PRIZES,
+  PER_DATE_PRIZE_ICON,
+  PRIZE_CURRENCY,
+} from '../data/prizes';
 import { MOUNTAIN_TITLES } from '../data/mountain-titles';
+import type { PrizeLeader } from '../components/PrizeScale.astro';
 
 /**
  * Las tres clasificaciones de la portada se leen de la API. SIN datos
@@ -34,7 +39,7 @@ import { MOUNTAIN_TITLES } from '../data/mountain-titles';
  * · NORMAL · TODOS → acumulado del grupo NORMAL (todas sus categorías)
  * · EQUIPO         → Copa de Equipos acumulada
  */
-type PodiumRow = { name: string; points: number };
+type PodiumRow = { name: string; points: number; slug?: string };
 
 async function fetchScopePodium(
   scope: 'PRO' | 'NORMAL'
@@ -47,7 +52,11 @@ async function fetchScopePodium(
     return {
       rows: rows
         .slice(0, 3)
-        .map((r: any) => ({ name: r.rider_name, points: r.total_points })),
+        .map((r: any) => ({
+          name: r.rider_name,
+          points: r.total_points,
+          slug: r.rider_slug,
+        })),
       error: false,
     };
   } catch (e) {
@@ -124,6 +133,26 @@ const nextStage =
   stages.find((s) => s.status === 'REGISTRATION_OPEN') ??
   stages.find((s) => s.status === 'UPCOMING') ??
   null;
+
+/**
+ * El premio acumulado se paga al LÍDER de la agrupación. Mientras el
+ * campeonato no se cierra, ese líder sólo es provisional: la tarjeta lo dice
+ * con su nombre en vez de un "por anunciar" vacío.
+ *
+ * El recuento de fechas sale del Premio CLARO (`remontada`), que ya se pide
+ * para esta portada: no cuesta una petición extra.
+ */
+function provisionalLeader(rows: PodiumRow[]): PrizeLeader | null {
+  const top = rows[0];
+  if (!top) return null;
+  return {
+    name: top.name,
+    slug: top.slug,
+    points: top.points,
+    stagesCounted: remontada?.stages_counted ?? 0,
+    totalStages: remontada?.total_stages ?? 0,
+  };
+}
 
 function toLiveBrief(s: typeof nextStage): LiveStageBrief | null {
   if (!s) return null;
@@ -332,6 +361,10 @@ const nextDistanceText =
               tiers={prize.tiers}
               currency={PRIZE_CURRENCY}
               accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
+              icon={prize.icon}
+              leader={provisionalLeader(
+                prize.scope === 'PRO' ? proPodium.rows : normalPodium.rows
+              )}
               tags={['CAMPEONATO']}
             />
           ))
@@ -344,6 +377,8 @@ const nextDistanceText =
           tiers={PER_DATE_PRIZES}
           currency={PRIZE_CURRENCY}
           accent="gold"
+          icon={PER_DATE_PRIZE_ICON}
+          status="CADA FECHA"
           tags={['11 CATEGORÍAS', '4 FECHAS']}
         />
       </div>
@@ -385,9 +420,9 @@ const nextDistanceText =
                 </div>
                 <p class="special__label font-mono">TÍTULO DE MONTAÑA</p>
                 <h4 class="special__title">{definition.title}</h4>
-                <p class="special__amount font-mono">USD {definition.amountUsd}</p>
+                <p class="special__amount font-mono">USD {definition.amountUsd} · UNO POR FECHA</p>
                 <p class="special__winner font-mono">
-                  {mountain[definition.key]?.athlete_name ?? 'POR ANUNCIAR'}
+                  {mountain[definition.key]?.athlete_name ?? 'SIN GANADOR TODAVÍA'}
                 </p>
               </article>
             ))

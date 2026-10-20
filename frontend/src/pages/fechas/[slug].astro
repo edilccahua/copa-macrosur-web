@@ -22,7 +22,7 @@ import Icon from '../../components/Icon.astro';
 import PrizeScale from '../../components/PrizeScale.astro';
 import { getStageSummary, type StageSummary } from '../../lib/api';
 import { toDisplayTime, toStartInstant } from '../../lib/datetime';
-import { PER_DATE_PRIZES, PRIZE_CATEGORIES, PRIZE_CURRENCY } from '../../data/prizes';
+import { PER_DATE_PRIZES, PER_DATE_PRIZE_ICON, PRIZE_CATEGORIES, PRIZE_CURRENCY } from '../../data/prizes';
 import { MOUNTAIN_TITLES } from '../../data/mountain-titles';
 
 const MOUNTAIN_PRIZE_USD = MOUNTAIN_TITLES[0]?.amountUsd ?? 15;
@@ -613,6 +613,8 @@ function sectionNumber(key: string): string | null {
                 tiers={PER_DATE_PRIZES}
                 currency={PRIZE_CURRENCY}
                 accent="gold"
+                icon={PER_DATE_PRIZE_ICON}
+                status="CADA FECHA"
                 tags={[`${PRIZE_CATEGORIES.length} CATEGORÍAS`, '4 FECHAS']}
               />
             </div>

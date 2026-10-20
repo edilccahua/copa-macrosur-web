@@ -21,37 +21,84 @@ import SectionLabel from '../components/bento/SectionLabel.astro';
 import PageHeader from '../components/PageHeader.astro';
 import PrizeScale from '../components/PrizeScale.astro';
 import MountainTitleCard from '../components/MountainTitleCard.astro';
-import { API_V1, getRemontada, type MountainTitle, type RemontadaData } from '../lib/api';
+import { API_V1, getRemontada, getStandings, type MountainTitle, type StandingsRow } from '../lib/api';
 import { MOUNTAIN_TITLES } from '../data/mountain-titles';
 import {
   ACCUMULATED_PRIZES,
   PER_DATE_PRIZES,
+  PER_DATE_PRIZE_ICON,
   PRIZE_CATEGORIES,
   PRIZE_CURRENCY,
 } from '../data/prizes';
+import type { PrizeLeader } from '../components/PrizeScale.astro';
 
-/** Los cuatro títulos de montaña de la Fecha 1 (KOM/QOM/Kamikaze). */
-const mountain: Record<string, MountainTitle | null> = {
-  kom: null,
-  qom: null,
-  kamikaze_male: null,
-  kamikaze_female: null,
-};
-try {
-  const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
-  if (res.ok) {
-    const data = await res.json();
-    mountain.kom = data.kom ?? null;
-    mountain.qom = data.qom ?? null;
-    mountain.kamikaze_male = data.kamikaze_male ?? null;
-    mountain.kamikaze_female = data.kamikaze_female ?? null;
+/**
+ * Los cuatro títulos de montaña de la Fecha 1 (KOM/QOM/Kamikaze).
+ */
+async function fetchMountainTitles(): Promise<Record<string, MountainTitle | null>> {
+  const titles: Record<string, MountainTitle | null> = {
+    kom: null,
+    qom: null,
+    kamikaze_male: null,
+    kamikaze_female: null,
+  };
+  try {
+    const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
+    if (res.ok) {
+      const data = await res.json();
+      titles.kom = data.kom ?? null;
+      titles.qom = data.qom ?? null;
+      titles.kamikaze_male = data.kamikaze_male ?? null;
+      titles.kamikaze_female = data.kamikaze_female ?? null;
+    }
+  } catch (e) {
+    /* Las tarjetas muestran "sin ganador todavía". */
   }
-} catch (e) {
-  /* Las tarjetas muestran "por anunciar". */
+  return titles;
 }
 
-/** El Premio CLARO se recalcula en el backend con las fechas disputadas. */
-const remontada: RemontadaData | null = await getRemontada();
+/** La clasificación de una agrupación: sus filas y las fechas ya disputadas. */
+interface ScopeData {
+  rows: StandingsRow[];
+  stagesCounted: number;
+}
+
+async function fetchScope(scope: 'PRO' | 'NORMAL'): Promise<ScopeData> {
+  try {
+    const data = await getStandings({ scope });
+    return {
+      rows: (data.rows ?? []) as StandingsRow[],
+      stagesCounted: data.context?.stages_counted ?? 0,
+    };
+  } catch (e) {
+    return { rows: [], stagesCounted: 0 };
+  }
+}
+
+// Las cuatro lecturas van en paralelo: la página no encadena latencias.
+const [mountain, remontada, proScope, normalScope] = await Promise.all([
+  fetchMountainTitles(),
+  getRemontada(),
+  fetchScope('PRO'),
+  fetchScope('NORMAL'),
+]);
+
+/**
+ * El premio acumulado se paga al LÍDER de la agrupación. Mientras el
+ * campeonato no se cierra, ese líder sólo es provisional: la tarjeta lo dice
+ * con su nombre en vez de un "por anunciar" vacío.
+ */
+function toLeader(scope: ScopeData): PrizeLeader | null {
+  const top = scope.rows[0];
+  if (!top) return null;
+  return {
+    name: top.rider_name,
+    slug: top.rider_slug,
+    points: top.total_points,
+    stagesCounted: scope.stagesCounted,
+    totalStages: remontada?.total_stages ?? 0,
+  };
+}
 ---
 
 <Showcase
@@ -86,6 +133,8 @@ const remontada: RemontadaData | null = await getRemontada();
               tiers={prize.tiers}
               currency={PRIZE_CURRENCY}
               accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
+              icon={prize.icon}
+              leader={toLeader(prize.scope === 'PRO' ? proScope : normalScope)}
               tags={['ACUMULADO', 'PODIO DE LA AGRUPACIÓN']}
             />
           ))
@@ -109,6 +158,8 @@ const remontada: RemontadaData | null = await getRemontada();
           tiers={PER_DATE_PRIZES}
           currency={PRIZE_CURRENCY}
           accent="gold"
+          icon={PER_DATE_PRIZE_ICON}
+          status="CADA FECHA"
           tags={['11 CATEGORÍAS', '4 FECHAS']}
         >
           <div class="categories">
