@@ -1,0 +1,96 @@
+---
+/**
+ * StageStatsRow.astro — las cifras de la jornada de una fecha.
+ *
+ * Muestra lo que el backend calculó (`GET /stages/{slug}/summary` → `stats`):
+ * inscripciones, finalizados, no finalizados, puntos, velocidad del ganador y
+ * número de categorías. Una fecha que aún no se ha disputado no tiene cifras:
+ * se dice con palabras, no con ceros falsos.
+ */
+import type { StageStats } from '../lib/api';
+
+interface Props {
+  stats: StageStats;
+}
+
+const { stats } = Astro.props;
+
+const undisclosed = stats.entries_total === 0;
+
+const cells = [
+  { label: 'INSCRITOS', value: undisclosed ? '—' : String(stats.entries_total) },
+  { label: 'FINALIZARON', value: undisclosed ? '—' : String(stats.finishers) },
+  { label: 'NO FINALIZARON', value: undisclosed ? '—' : String(stats.non_finishers) },
+  { label: 'PUNTOS', value: undisclosed ? '—' : String(stats.points_total) },
+  {
+    label: 'VEL. GANADOR',
+    value: stats.winner_avg_speed_kmh != null ? `${stats.winner_avg_speed_kmh} KM/H` : '—',
+  },
+  { label: 'CATEGORÍAS', value: undisclosed ? '—' : String(stats.categories_count) },
+];
+---
+
+{
+  undisclosed ? (
+    <p class="stats__pending font-mono">
+      [ CIFRAS DE JORNADA — DISPONIBLES AL CERRAR LA FECHA ]
+    </p>
+  ) : (
+    <dl class="stats">
+      {cells.map((cell) => (
+        <div class="stats__cell">
+          <dt class="stats__label font-mono">{cell.label}</dt>
+          <dd class="stats__value font-mono">{cell.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+<style>
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    margin: 1.5rem 0 0;
+    border-top: var(--hairline) solid var(--line);
+    border-left: var(--hairline) solid var(--line);
+  }
+
+  .stats__cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1rem 1.125rem;
+    border-right: var(--hairline) solid var(--line);
+    border-bottom: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+  }
+
+  .stats__label {
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-medium, 500);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .stats__value {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 620;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-strong);
+    line-height: 1.1;
+  }
+
+  .stats__pending {
+    margin: 1.5rem 0 0;
+    padding: 1rem 1.25rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+</style>

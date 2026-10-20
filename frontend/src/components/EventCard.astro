@@ -57,6 +57,10 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
   data-event-id={event.id}
   data-event-type={event.type}
   data-status={event.statusKey}
+  data-page-href={mainHref}
+  tabindex="0"
+  role="link"
+  aria-label={`Ver ficha oficial de ${event.titlePrefix} ${event.titleHighlight}`}
 >
   <!-- Barra de acento superior estilo GetArtCraft (se expande al hover/pasar) -->
   <span class="event-card__accent-bar" aria-hidden="true"></span>
@@ -587,3 +591,43 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     }
   }
 </style>
+
+<script>
+  // Delegación de click y teclado: click en cualquier parte de la tarjeta navega a pageHref,
+  // a menos que se haga click en un botón de acción directa (resultados oficiales o inscripciones).
+  function initCardLinks() {
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // Si el click fue en el link directo, dejamos que navegue por su cuenta
+      if (target.closest('.event-card__direct-link')) {
+        return;
+      }
+
+      // Si fue en cualquier otra parte de la tarjeta
+      const card = target.closest<HTMLElement>('.event-card[data-page-href]');
+      if (card && card.dataset.pageHref) {
+        window.location.href = card.dataset.pageHref;
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      if (target.matches('.event-card[data-page-href]') && !target.closest('.event-card__direct-link')) {
+        const href = target.dataset.pageHref;
+        if (href) window.location.href = href;
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCardLinks, { once: true });
+  } else {
+    initCardLinks();
+  }
+  document.addEventListener('astro:page-load', initCardLinks, { once: true });
+</script>
