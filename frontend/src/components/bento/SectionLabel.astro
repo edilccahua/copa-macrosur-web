@@ -33,8 +33,13 @@ const { number, label, kicker } = Astro.props;
 <style>
   .section-label {
     position: sticky;
-    top: 0;
-    z-index: 30;
+    /* El desplazamiento tiene que ser el alto TOTAL de la cabecera (barra +
+       hairline): si se queda en el alto de la barra, la barra de sección se
+       cuela debajo del borde del menú y, al tener más z-index, lo tapa. */
+    top: var(--header-offset-mobile, 4rem);
+    /* POR DEBAJO de la cabecera (z-index 20). Así el menú gana siempre,
+       aunque el navegador recalcule el sticky en mitad de un scroll. */
+    z-index: 19;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -86,7 +91,7 @@ const { number, label, kicker } = Astro.props;
 
   @media (min-width: 48em) {
     .section-label {
-      top: var(--nav-height);
+      top: var(--header-offset, 3.0625rem);
     }
 
     .section-label__kicker {
