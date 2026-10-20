@@ -981,7 +981,7 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   | :--- | :--- | :--- |
   | `PRO` / `NORMAL` (acumulado) | `GANADOR PROVISIONAL` | el líder de la agrupación con sus puntos (`{pts} PTS · {n} DE {m} FECHAS`). Pasa a `GANADOR` cuando las cuatro fechas están disputadas |
   | `CADA CATEGORÍA` (por fecha) | `CADA FECHA` | no hay un ganador único: hay once podios por fecha |
-  | `KOM` / `QOM` / `KAMIKAZE` | `UNO POR FECHA` | el ganador de la fecha, o `SIN GANADOR TODAVÍA` si todavía no hay intentos |
+  | `KOM` / `QOM` / `KAMIKAZE` | `UNO POR FECHA` | **sin ganador**: son premios POR FECHA y su ganador es el de cada fecha, no el del campeonato. Se publica en la ficha de la fecha (`/fechas/[slug]`) y en la portada |
   - El líder provisional sale de `GET /api/v1/public/standings?scope=PRO|NORMAL`
     (la fila 1). En la portada no cuesta una petición extra: la sección 02 ya
     lee la misma clasificación.
@@ -1010,6 +1010,14 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   - **Sin panels, sin notas sueltas y sin párrafos que repitan lo que dice la
     celda.** La cabecera es el masthead de la referencia (titular grande +
     bajada) y debajo van las tablas.
+  - **El rótulo de la sección no repite los montos**: dice el ÁMBITO del
+    bloque (`PRO Y NORMAL`, `11 CATEGORÍAS · 4 FECHAS`, `LA REMONTADA`,
+    `4 TÍTULOS POR FECHA`), no una tira de cifras. Las cifras ya están en el
+    podio de cada celda.
+  - **`/premios` no publica resultados de los premios por fecha.** El ganador
+    del KOM de la Fecha 1 no es un premio del campeonato: sale en la ficha de
+    esa fecha. Los acumulados (PRO, NORMAL) y el Premio CLARO sí muestran su
+    ganador provisional, porque son de todo el campeonato.
 - **La portada sigue con su propia tarjeta compacta** (`PrizeScale`), que
   comparte escala con `PodiumPanel`: es toda monoespaciada, con el rótulo a
   `.6875 rem` en versalitas, el cuerpo a `--text-sm` en la sans del sitio y

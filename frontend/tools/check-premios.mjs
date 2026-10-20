@@ -190,9 +190,9 @@ ok(
 // La referencia admite cuerpos de hasta ~80 caracteres en la celda
 // ("Every line is on GitHub under permissive licenses. Read it, fork it,
 // build on it."). El criterio del Premio CLARO es el texto oficial que
-// publica la API y llega a 120: es la regla del premio, no una explicación.
+// publica la API (~150): es la regla del premio, no una explicación.
 ok(
-  celdas.every((c) => (c.cuerpo?.length ?? 0) <= 120),
+  celdas.every((c) => (c.cuerpo?.length ?? 0) <= 150),
   `/premios: las reglas no son párrafos (${celdas.map((c) => c.cuerpo?.length ?? 0).join(' · ')} caracteres)`
 );
 
@@ -231,6 +231,31 @@ ok(
 ok(
   celdas.some((c) => c.estado?.toLowerCase().includes('provisional') && c.ganador),
   '/premios: los acumulados muestran su ganador provisional'
+);
+
+// ── 6c · Los premios POR FECHA no muestran ganador en /premios ─────────────
+//
+// El KOM de la Fecha 1 no es un premio del campeonato: su ganador se
+// publica en la ficha de la fecha. En la escala del campeonato sólo va la
+// definición del premio.
+const montana = celdas.filter((c) => ['KOM', 'QOM', 'EL KAMIKAZE', 'LA KAMIKAZE'].includes(c.titulo ?? ''));
+ok(montana.length === 4, `/premios: los 4 títulos de montaña (${montana.length})`);
+ok(
+  montana.every((c) => !c.ganador && !c.detalle),
+  '/premios: los títulos de montaña NO muestran ganador (es un premio por fecha)'
+);
+
+// ── 6d · El rótulo de sección no repite los montos ─────────────────────────
+const rotulos = await page.$$eval('.section-label__kicker', (els) =>
+  els.map((e) => e.textContent.trim())
+);
+ok(
+  rotulos.length === 4,
+  `/premios: las 4 secciones llevan rótulo (${rotulos.length})`
+);
+ok(
+  rotulos.every((r) => !/\d+\s*\/\s*\d+/.test(r)),
+  `/premios: los rótulos no repiten los montos (${rotulos.join(' · ')})`
 );
 
 // ── 7 · La cabecera: masthead de la referencia, sin panel ───────────────────
