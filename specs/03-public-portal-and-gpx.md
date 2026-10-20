@@ -121,9 +121,13 @@ ancla se interceptan en `site-shell.ts`:
   desplaza la página** y no produce salto de layout.
 - Entra con un desplazamiento corto (`translateY(-10px)` + opacidad, 260 ms) y
   los items se **escalonan** (35 ms de retraso por item).
-- **Dice en qué página estamos**: una línea `PÁGINA ACTUAL · <DESTINO>` en la
-  cabecera del cajón, y el item activo con la **misma pastilla invertida** de
-  la barra + una **barra de acento** a la izquierda.
+- **Dice en qué sección estás**: el indicador de la **barra** (no del cajón).
+  En escritorio el nav ya lo dice; en móvil, donde el nav está oculto, una
+  celda de la barra entre la marca y los iconos muestra **sólo el nombre de
+  la sección** (`INICIO`, `FECHAS`, `CLASIFICACIONES`, `ESPECIALES`,
+  `PREMIOS`), sin ninguna descripción. El cajón no lleva la línea
+  "PÁGINA ACTUAL": ahí basta con que el item activo tenga la pastilla
+  invertida y la barra de acento.
 - Accesibilidad: al abrir, el foco entra en el cajón y queda **atrapado**
   (Tab cicla dentro); con Escape se cierra y el foco vuelve al botón; el
   velo cierra al tocarlo; se cierra solo al navegar o al pasar a escritorio.
@@ -319,32 +323,31 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
    llegar ni al irse**. En móvil las cuatro pestañas se estrechan
    (`3.5 / 5 / 4.25 / 4.75rem`, interletraje 0.08em) para que **EQUIPO también
    quepa**: en 390px la barra completa mide 356px y no hay scroll horizontal.
-3. **Selector de CATEGORÍA (casi escondido):** dentro de la pestaña activa
-   ofrece **TODOS** (agrupa las categorías de esa pestaña) o una categoría
-   concreta, que aísla su clasificación.
-4. **Selector de CATEGORÍA (el único dropdown "casi escondido"):** es el
-   **mismo componente** (`ScopeControl.svelte`) en toda la tabla: lista
-   desplazable, mono 11px en mayúsculas y el elemento activo invertido en el
-   color del grupo. El panel va con `z-index: 50` y sombra profunda para leerse
-   por encima de los badges de la tabla, y su **foco usa el color del grupo
-   activo** (`--scope-ink`), nunca el azul por defecto del navegador.
+3. **Selector de CATEGORÍA (el único dropdown "casi escondido"):** dentro de la
+   pestaña activa ofrece **TODOS** (agrupa las categorías de esa pestaña) o una
+   categoría concreta, que aísla su clasificación. Es el **mismo componente**
+   (`ScopeControl.svelte`) en toda la tabla: lista desplazable, mono 11px en
+   mayúsculas y el elemento activo invertido en el color del grupo. El panel va
+   con `z-index: 50` y sombra profunda para leerse por encima de los badges de
+   la tabla, y su **foco usa el color del grupo activo** (`--scope-ink`), nunca
+   el azul por defecto del navegador.
    **La fecha NO se elige con un dropdown**: la elige el navegador de fechas del
-   Tour (item 15). El dropdown `ACUMULADO HASTA` se eliminó por ser una línea
+   Tour (item 13). El dropdown `ACUMULADO HASTA` se eliminó por ser una línea
    interminable en la cabecera y por duplicar ese navegador.
-5. **Barra de controles:** el buscador **ocupa el espacio disponible**
-   (`flex: 1 1 14rem`, hasta `24rem`) entre los dos selectores; no es una caja
+4. **Barra de controles:** el buscador **ocupa el espacio disponible**
+   (`flex: 1 1 14rem`, hasta `24rem`) junto a los selectores; no es una caja
    mínima. En móvil los dos selectores van en una fila de dos columnas
    (`1fr 1fr`) y el buscador al 100% debajo: ~80px menos de alto.
-6. **Tabla:** Puesto · Δ · Ciclista · Categoría · En cat. · Equipo / Club ·
+5. **Tabla:** Puesto · Δ · Ciclista · Categoría · En cat. · Equipo / Club ·
    Tiempo Acum. · Diferencia · Puntos. Todas las columnas numéricas declaran
    `font-variant-numeric: tabular-nums`.
-7. **Color: uno por vista.** Solo el grupo activo tiene color (`.scope-*` →
+6. **Color: uno por vista.** Solo el grupo activo tiene color (`.scope-*` →
    `--scope` / `--scope-ink`): la cinta, la celda activa de la pestaña, la ficha
    del podio y el velo del líder. Las etiquetas de categoría son monocromas.
-9. **El Δ usa colores SEMÁNTICOS**, no el color del grupo: `▲` verde
+7. **El Δ usa colores SEMÁNTICOS**, no el color del grupo: `▲` verde
    (`--status-up`), `▼` rojo (`--status-down`), `=` a α .45 (`--status-flat`),
    en tema claro y oscuro. Informa de ranking, no de estilo.
-10. **Podio.** El podio se marca en la caja del puesto: **1 oro · 2 plata · 3 bronce**
+8. **Podio.** El podio se marca en la caja del puesto: **1 oro · 2 plata · 3 bronce**
    (`--podium-1/2/3`), **insignia SÓLIDA** con texto oscuro encima (`--podium-fg`):
    los tres primeros tienen que verse de un vistazo, también en móvil y con los
    tonos apagados de una tabla con mucha información. Además, borde izquierdo de
@@ -353,17 +356,17 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
    teñida parecía una selección) y el único realce es el **hover** (velo del 5%
    del color del grupo). Nada de fichas con iniciales: eran ruido de plantilla
    y obligaban a reservar un hueco para alinear los nombres.
-11. **Hover discreto:** velo del 5% del color del grupo al pasar el ratón. Es un
+9. **Hover discreto:** velo del 5% del color del grupo al pasar el ratón. Es un
     paso de ratón, no un estado de la fila.
-12. **Ejes de columna:** sin fichas ni huecos reservados, los nombres caen
+10. **Ejes de columna:** sin fichas ni huecos reservados, los nombres caen
     solos en el mismo eje X. El club es la columna que respira
     (`width: 30%; min-width: 180px`, sin recorte): "CLUB ORIGINAL BIKES…" ya no
     se corta cuando sobra espacio en pantalla.
-13. **Diferencia:** la brecha de tiempo acumulado respecto al líder de la
+11. **Diferencia:** la brecha de tiempo acumulado respecto al líder de la
     clasificación (ordenada por puntos). **Puede ser negativa** si un corredor
     con menos puntos acumula menos tiempo; la cabecera y esas celdas llevan un
     `title` que lo explica.
-14. **Modos FECHA | ACUMULADO (pestaña SUPERIOR, fuera de la caja).**
+12. **Modos FECHA | ACUMULADO (pestaña SUPERIOR, fuera de la caja).**
     Es un control de **VISTA**, no un filtro: por eso no se parece al
     segmentado de pestañas de abajo (pastilla invertida) sino a una **barra de
     pestañas** al estilo Tour de Francia: rótulo **grande** (14px / 800 / 0.1em),
@@ -380,18 +383,32 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
       *Clasificación de la fecha* (la isla ajusta `data-mode-title` /
       `data-mode-word`). La cinta cambia: `2 FECHAS DISPUTADAS · 76.34 KM · CORTE
       23 AGO. 2026` ⇄ `FECHA 2 · 35.49 KM · 23 AGO. 2026`.
-15. **Un solo selector de fecha, el del Tour.** Encima de las pestañas de modo
+13. **Un solo selector de fecha, el del Tour.** Encima de las pestañas de modo
     está el **navegador de fechas** (`‹ FECHA 2 · 23 AGO. 2026 · KÚSPIDE Z
     XXTREME III ›`, flechas circulares), y **está siempre visible**: en
     `ACUMULADO` marca el corte (`HASTA FECHA 2`) y en `FECHA` la carrera que se
     está viendo (`FECHA 2`). El dropdown `ACUMULADO HASTA` **se eliminó**: dos
-    selectores de fechahacían lo mismo y el segundo era una línea interminable.
-16. **La cabecera de la vista no lleva enlaces.** Ni podio, ni exportar, ni
+    selectores de fecha hacían lo mismo y el segundo era una línea interminable.
+    Es el control más importante de la cabecera, así que va **grande**: la flecha
+    en un círculo de `2.25rem` (que se llena con el color del grupo al pasar el
+    ratón), el número de fecha a `18px/800` y la fecha y el nombre de la carrera
+    a `12px`.
+14. **Cifras de lo que se está viendo**, entre las pestañas de modo y la caja:
+    `PARTICIPANTES` · `FINALIZARON` · `NO FINALIZARON` · `TIEMPO MEDIO`.
+    - En **FECHA** son las de esa carrera; en **ACUMULADO**, las de la ventana
+      completa y con **corredores distintos** (quien hizo dos fechas cuenta
+      una vez).
+    - Van por **ámbito**: al cambiar a NORMAL cambian, igual que la tabla.
+    - El **tiempo medio** es la media de los tiempos de los que cerraron.
+      **Mezcla categorías** (un ELITE a 1:08 y un MASTER D a 1:50): es un dato
+      de contexto, no un récord, y el tooltip lo explica. El tiempo del ganador
+      está en la tabla, en la primera fila.
+15. **La cabecera de la vista no lleva enlaces.** Ni podio, ni exportar, ni
     nada más junto al selector de fechas: la cabecera dice qué se está viendo
     (el modo, la fecha y su descripción) y la tabla dice los datos. Los enlaces
     de la cabecera compiten con el título y con el nombre de la carrera y los
     hacía ilegibles.
-17. **La tabla recibe argumentos.** `StandingsTable` acepta `initialMode`
+16. **La tabla recibe argumentos.** `StandingsTable` acepta `initialMode`
     (`acumulado` | `fecha`), `initialScope`, `initialCategoryId`,
     `initialStageId` e `initialKind` (`individual` | `teams`).
     `/ranking-general` además lee los query params y los pasa como props:
@@ -399,7 +416,7 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
     `?categoria=ELI` (short_code) · `?fecha=2` (número de fecha).
     Tras una interacción, la vista se escribe en la URL con `replaceState`
     (compartible, sin llenar el historial). Por defecto: **ACUMULADO + PRO + TODOS**.
-18. **No hay página de resultados por evento.** `/fechas/[slug]/resultados` se
+17. **No hay página de resultados por evento.** `/fechas/[slug]/resultados` se
     eliminó: la clasificación oficial de una carrera **es el ranking en modo
     FECHA**. Todos los enlaces que apuntaban a ella (el botón de la ficha de la
     carrera, la timeline de eventos y el pie de página) apuntan ahora al ranking
@@ -409,7 +426,7 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
     (`Ver Resultados →`, que lleva a la fecha de esa carrera en el ranking): el
     botón *Ranking Acumulado* se quitó para no ofrecer dos puertas al mismo
     sitio.
-19. **Móvil (<48em) — celda apilada de 3 columnas**
+18. **Móvil (<48em) — celda apilada de 3 columnas**
     (`44px 1fr auto`, `gap 10px`, `padding 10px 12px`):
     - col 1: caja de `PUESTO` y debajo el `Δ` (11px);
     - col 2: nombre (700 / 13px, con puntos suspensivos) y debajo el badge de
@@ -422,7 +439,7 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
     eran números huérfanos que no se sabían leer.
     La barra de pestañas desliza con `overflow-x: auto` y `scrollbar-width: none`.
     **Sin scroll horizontal**: la tabla cabe en 390px.
-20. **Ancho:** la página usa un contenedor de `108rem` (no el de `80rem` de las
+19. **Ancho:** la página usa un contenedor de `108rem` (no el de `80rem` de las
     demás): una clasificación es una tabla densa y debe aprovechar la pantalla.
 
 **Endpoint:** `GET /api/v1/public/standings?mode=&stage=&scope=&category_id=&kind=`
@@ -434,6 +451,9 @@ con sus categorías, el catálogo de categorías y los metadatos de cabecera.
 - `mode=fecha`: `stage` es la **CARRERA exacta**: solo cuentan sus puntos y su
   tiempo, y la DELTA va vacía (no hay clasificación previa). En la cinta,
   `stages_counted` es 1 y la distancia es la de esa carrera.
+- `context.stats`: las cifras de lo que se está viendo (`participants`,
+  `finishers`, `non_finishers`, `avg_time_ms`), calculadas en el mismo ámbito
+  y con la misma categoría que la tabla.
 
 Es el equivalente a GENERAL / CLASIFICACIÓN DE PASO del Tour de Francia.
 

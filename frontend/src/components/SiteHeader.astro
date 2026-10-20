@@ -56,6 +56,16 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
           ))
         }
       </nav>
+
+      <!--
+        Indicador de sección (móvil). En escritorio el nav ya dice en qué
+        sección estás; en móvil, donde el nav está oculto, este rótulo ocupa
+        su lugar: sólo el nombre de la sección ("INICIO", "FECHAS",
+        "CLASIFICACIONES"…), sin ninguna descripción.
+      -->
+      <span class="hdr__here" data-nav-here>
+        <span class="hdr__here-label" data-nav-current-label>{current?.label ?? 'INICIO'}</span>
+      </span>
     </div>
 
     <div class="hdr__right">
@@ -114,9 +124,6 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
   <div class="hdr__scrim" id="nav-scrim" aria-hidden="true"></div>
 
   <nav class="hdr__drawer" id="nav-panel" aria-label="Menú">
-    <p class="hdr__drawer-current font-mono" data-nav-current>
-      PÁGINA ACTUAL · <strong>{current?.label ?? 'PORTADA'}</strong>
-    </p>
     {
       NAV_GROUPS.map((group) =>
         group.items.map((item, index) => (
@@ -420,6 +427,31 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
     font-weight: 700;
   }
 
+  /**
+   * Indicador de sección de la barra (móvil). Ocupa el lugar del nav, que
+   * en móvil está oculto: dice en qué sección estás, sólo con el nombre.
+   */
+  .hdr__here {
+    display: none;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-inline: 0.875rem;
+    border-left: var(--hairline) solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-medium, 500);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .hdr__here-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .hdr__drawer-link {
     position: relative;
     display: flex;
@@ -480,6 +512,11 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
        con lo esencial). */
     .hdr__cell--hide-sm {
       display: none;
+    }
+
+    /* En móvil el nav está oculto: el indicador de sección ocupa su sitio. */
+    .hdr__here {
+      display: flex;
     }
 
     .hdr__brand {
