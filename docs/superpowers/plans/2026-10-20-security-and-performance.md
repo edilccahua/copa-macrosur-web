@@ -251,7 +251,7 @@ async def test_admin_con_clave_invalida_responde_403(client):
 - [ ] **Step 2: Ejecutar el test y verificar que falla**
 
 Run: `python -m pytest backend/tests/test_security.py -k admin -v`
-Expected: FAIL — `test_admin_sin_clave_responde_403` recibe 200 (el default `***REMOVED-ADMIN-API-KEY***` coincide con el header vacío... en realidad `verify_admin_key` compara `x_admin_key != settings.ADMIN_API_KEY`; sin header devuelve 403, así que **este test puede pasar ya**. El que falla es el de la clave inventada sólo si el default está presente; verificar el resultado real y ajustar la aserción al comportamiento deseado: sin cabecera → 403; con cabecera incorrecta → 403; con la clave real → 200.)
+Expected: FAIL — `test_admin_sin_clave_responde_403` recibe 200 (el default `<CLAVE-ADMIN-ANTERIOR>` coincide con el header vacío... en realidad `verify_admin_key` compara `x_admin_key != settings.ADMIN_API_KEY`; sin header devuelve 403, así que **este test puede pasar ya**. El que falla es el de la clave inventada sólo si el default está presente; verificar el resultado real y ajustar la aserción al comportamiento deseado: sin cabecera → 403; con cabecera incorrecta → 403; con la clave real → 200.)
 
 - [ ] **Step 3: Backend — fail-closed y `.env`**
 
@@ -296,7 +296,7 @@ Crear `.env.example` en la raíz del repo (canónico) con `DATABASE_URL`, `ADMIN
 Crear `frontend/src/lib/admin.ts` con las cuatro funciones de la sección Interfaces.
 
 En `frontend/src/pages/admin/index.astro`:
-- **Eliminar** la línea `const ADMIN_KEY = '***REMOVED-ADMIN-API-KEY***';` y toda referencia a `ADMIN_KEY`.
+- **Eliminar** la línea `const ADMIN_KEY = '<CLAVE-ADMIN-ANTERIOR>';` y toda referencia a `ADMIN_KEY`.
 - Añadir un gate: un `<input type="password" id="admin-key">` y un botón "ENTRAR" que llama a `setAdminKey(input.value)` y recarga la lista. Si `adminKey()` está vacío al cargar, la página muestra el gate y **no** llama a la API.
 - Todas las peticiones usan `adminHeaders()`.
 - `loadPendingPayments()` deja de usar `innerHTML` con interpolación: construye nodos con `document.createElement` y asigna el texto con `textContent`. El `voucher_url` se valida antes de usarlo como `href`:
@@ -313,7 +313,7 @@ En `frontend/src/pages/admin/index.astro`:
 
 - [ ] **Step 5: Escribir la regresión del frontend**
 
-Crear `frontend/tools/check-admin-security.mjs`: lee recursivamente `frontend/src/**` y falla si (a) aparece la cadena `***REMOVED-ADMIN-API-KEY***`, o (b) el archivo `pages/admin/index.astro` contiene `innerHTML` con `${` (interpolación dentro de `innerHTML`).
+Crear `frontend/tools/check-admin-security.mjs`: lee recursivamente `frontend/src/**` y falla si (a) aparece la cadena `<CLAVE-ADMIN-ANTERIOR>`, o (b) el archivo `pages/admin/index.astro` contiene `innerHTML` con `${` (interpolación dentro de `innerHTML`).
 
 ```bash
 node frontend/tools/check-admin-security.mjs
