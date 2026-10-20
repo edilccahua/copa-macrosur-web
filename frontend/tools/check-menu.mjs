@@ -51,7 +51,7 @@ ok(
   'no hay ningún enlace al panel del juez en el panel móvil'
 );
 
-// 2. El menú va PEGADO a la marca, como en getartcraft.com (no centrado)
+// 1b. El menú va PEGADO a la marca, como en getartcraft.com (no centrado)
 const medidas = await page.evaluate(() => {
   const links = [...document.querySelectorAll('.hdr__link')];
   const first = links[0].getBoundingClientRect();
@@ -71,6 +71,73 @@ ok(
   medidas.huecoDerecha > 120,
   `el hueco grande queda a la derecha, como en la referencia (${medidas.huecoDerecha} px)`
 );
+
+// 2. La pastilla va sobre el TEXTO, no sobre la celda entera
+// (como en getartcraft.com: un span con px-1.5 py-0.5 dentro del enlace),
+// y el puntero muestra la MISMA pastilla invertida que el activo.
+const pastilla = await page.evaluate(() => {
+  const links = [...document.querySelectorAll('.hdr__link')];
+  const activo = links.find((a) => a.classList.contains('is-active'));
+  const chip = activo?.querySelector('.hdr__label');
+  const celda = activo?.getBoundingClientRect();
+  const chips = links.map((a) => a.querySelector('.hdr__label').getBoundingClientRect());
+  let hueco = 0;
+  for (let i = 1; i < chips.length; i++) {
+    hueco = Math.max(hueco, Math.round(chips[i].left - chips[i - 1].right));
+  }
+  return {
+    chipH: chip ? Math.round(chip.getBoundingClientRect().height) : 0,
+    celdaH: celda ? Math.round(celda.height) : 0,
+    chipW: chip ? Math.round(chip.getBoundingClientRect().width) : 0,
+    celdaW: celda ? Math.round(celda.width) : 0,
+    hueco
+  };
+});
+ok(
+  pastilla.chipH > 0 && pastilla.chipH < pastilla.celdaH,
+  `la pastilla NO ocupa toda la celda (${pastilla.chipH}px de ${pastilla.celdaH}px)`
+);
+ok(
+  pastilla.chipW < pastilla.celdaW,
+  `la pastilla deja aire a los lados (${pastilla.chipW}px de ${pastilla.celdaW}px)`
+);
+ok(
+  pastilla.hueco >= 20,
+  `hay espacio entre los items (${pastilla.hueco}px entre pastillas; la referencia: 20px)`
+);
+
+// 2b. El puntero muestra la pastilla invertida, no sólo un cambio de color
+const sinPuntero = await page.evaluate(() => {
+  const links = [...document.querySelectorAll('.hdr__link')];
+  const inactivo = links.find((a) => !a.classList.contains('is-active'));
+  return getComputedStyle(inactivo.querySelector('.hdr__label')).backgroundColor;
+});
+ok(
+  sinPuntero === 'rgba(0, 0, 0, 0)',
+  `sin puntero, el item inactivo no tiene pastilla (${sinPuntero})`
+);
+
+const donde = await page.evaluate(() => {
+  const links = [...document.querySelectorAll('.hdr__link')];
+  const inactivo = links.find((a) => !a.classList.contains('is-active'));
+  const r = inactivo.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+});
+await page.mouse.move(donde.x, donde.y);
+await page.waitForTimeout(350);
+const conPuntero = await page.evaluate(() => {
+  const links = [...document.querySelectorAll('.hdr__link')];
+  const sobre = links.find((a) => a.matches(':hover'));
+  if (!sobre) return null;
+  const chip = sobre.querySelector('.hdr__label');
+  return { bg: getComputedStyle(chip).backgroundColor, color: getComputedStyle(chip).color };
+});
+ok(
+  conPuntero !== null && conPuntero.bg !== 'rgba(0, 0, 0, 0)',
+  `el puntero muestra la pastilla invertida (${conPuntero ? conPuntero.bg : 'sin hover'})`
+);
+await page.mouse.move(0, 400);
+await page.waitForTimeout(250);
 
 // 3. El item activo por ruta
 const rutas = [
