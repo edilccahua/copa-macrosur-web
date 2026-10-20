@@ -21,13 +21,25 @@ app = FastAPI(
 )
 
 # CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS or ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+#
+# En desarrollo se acepta cualquier puerto de localhost: si el servidor del
+# front cambia de puerto (Astro toma el siguiente libre si el 4321 está
+# ocupado), el sitio no debe romperse en silencio — el SSR seguiría
+# funcionando porque no lleva `Origin`, pero TODAS las islas de cliente
+# (SSE, clasificaciones, formularios) fallarían.
+#
+# En producción (`ENVIRONMENT=production`) el regex se desactiva y sólo
+# valen los orígenes de `CORS_ORIGINS`.
+cors_options = {
+    "allow_origins": settings.CORS_ORIGINS or ["*"],
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if settings.ENVIRONMENT != "production" and settings.CORS_ORIGIN_REGEX:
+    cors_options["allow_origin_regex"] = settings.CORS_ORIGIN_REGEX
+
+app.add_middleware(CORSMiddleware, **cors_options)
 
 # Routers bajo /api/v1
 app.include_router(timing.router, prefix=settings.API_V1_PREFIX)

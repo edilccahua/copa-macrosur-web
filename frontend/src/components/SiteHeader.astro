@@ -2,14 +2,21 @@
 /**
  * SiteHeader.astro — cabecera oficial de Kúspide MTB.
  *
- * Estructura tomada de getartcraft.com (medida en vivo, no de memoria):
- *   marca │ GRUPO │ [iconos]
- *   - la marca es el LOGO (un icono, no un item de menú). "KÚSPIDE" e
- *     "INICIO" llevan a la portada, pero el que se marca como activo es
- *     "INICIO";
- *   - los items van en mono, versalitas, tracking 0.15em;
- *   - el item activo se invierte (pastilla) y lleva `aria-current`;
- *   - los grupos se separan con un hairline vertical.
+ * Estructura tomada de getartcraft.com (medida en vivo a 1600 px):
+ *
+ *   barra: flex h-12 items-stretch justify-between   (48 px, full-bleed)
+ *   [ marca │ nav ] ......................... [ celdas de iconos ]
+ *     ↑ pegados a la izquierda                  ↑ pegadas al borde
+ *
+ *   - la marca es el LOGO (un icono en el original; aquí el wordmark). No es
+ *     un item de menú: "KÚSPIDE" e "INICIO" llevan a la portada, pero el que
+ *     se marca como activo es "INICIO";
+ *   - los items van en mono 0.6875rem, versalitas, tracking 0.15em, con
+ *     0.625rem de padding a cada lado;
+ *   - el item ACTIVO se invierte (pastilla); al pasar el puntero sólo cambia
+ *     el color, como en la referencia;
+ *   - en la referencia el nav desaparece por debajo de `lg`; aquí el corte
+ *     está en 900px, con un cajón superpuesto en móvil.
  *
  * La cabecera **persiste** entre navegaciones (`transition:persist`): el
  * router de Astro reutiliza este mismo elemento, así que la entrada de la
@@ -20,33 +27,36 @@ import { NAV_GROUPS, CONTACT_WHATSAPP } from '../lib/nav';
 import { isActivePath } from '../lib/nav';
 
 const path = Astro.url.pathname;
+const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(path, item));
 ---
 
 <header class="hdr" id="site-header" transition:persist="site-header">
   <div class="hdr__bar">
-    <a class="hdr__brand" href="/" aria-label="Kúspide MTB — Campeonato 2026">
-      <span class="brand-text">KÚSPIDE</span>
-    </a>
+    <div class="hdr__left">
+      <a class="hdr__brand" href="/" aria-label="Kúspide MTB — Campeonato 2026">
+        <span class="brand-text">KÚSPIDE</span>
+      </a>
 
-    <nav class="hdr__nav" aria-label="Navegación principal">
-      {
-        NAV_GROUPS.map((group) => (
-          <div class:list={['hdr__group', { 'hdr__group--sep': group.separated }]}>
-            {group.items.map((item) => (
-              <a
-                class:list={['hdr__link', { 'is-active': isActivePath(path, item) }]}
-                href={item.href}
-                data-nav-match={item.match.join('|')}
-                data-nav-anchor={item.anchor ? 'true' : undefined}
-                aria-current={isActivePath(path, item) ? 'page' : undefined}
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
-        ))
-      }
-    </nav>
+      <nav class="hdr__nav" aria-label="Navegación principal">
+        {
+          NAV_GROUPS.map((group) => (
+            <div class:list={['hdr__group', { 'hdr__group--sep': group.separated }]}>
+              {group.items.map((item) => (
+                <a
+                  class:list={['hdr__link', { 'is-active': isActivePath(path, item) }]}
+                  href={item.href}
+                  data-nav-match={item.match.join('|')}
+                  data-nav-anchor={item.anchor ? 'true' : undefined}
+                  aria-current={isActivePath(path, item) ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          ))
+        }
+      </nav>
+    </div>
 
     <div class="hdr__right">
       <div class="hdr__cell hdr__cell--hide-sm">
@@ -75,7 +85,14 @@ const path = Astro.url.pathname;
         </button>
       </div>
 
-      <button class="hdr__cell hdr__burger" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-panel" aria-label="Menú">
+      <button
+        class="hdr__cell hdr__burger"
+        id="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="nav-panel"
+        aria-label="Menú"
+      >
         <svg class="i-bars" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
           <line x1="4" y1="7" x2="20" y2="7"></line>
           <line x1="4" y1="12" x2="20" y2="12"></line>
@@ -89,23 +106,35 @@ const path = Astro.url.pathname;
     </div>
   </div>
 
-  <div class="hdr__panel" id="nav-panel">
+  <!--
+    Cajón de navegación (móvil). Va SUPERPUESTO al contenido: no empuja la
+    página ni produce salto de layout. Entra con un desplazamiento corto y
+    los items se escalonan.
+  -->
+  <div class="hdr__scrim" id="nav-scrim" aria-hidden="true"></div>
+
+  <nav class="hdr__drawer" id="nav-panel" aria-label="Menú">
+    <p class="hdr__drawer-current font-mono" data-nav-current>
+      PÁGINA ACTUAL · <strong>{current?.label ?? 'PORTADA'}</strong>
+    </p>
     {
       NAV_GROUPS.map((group) =>
-        group.items.map((item) => (
+        group.items.map((item, index) => (
           <a
-            class:list={['hdr__panel-link', { 'is-active': isActivePath(path, item) }]}
+            class:list={['hdr__drawer-link', { 'is-active': isActivePath(path, item) }]}
             href={item.href}
             data-nav-match={item.match.join('|')}
             data-nav-anchor={item.anchor ? 'true' : undefined}
+            data-nav-label={item.label}
             aria-current={isActivePath(path, item) ? 'page' : undefined}
+            style={`--i: ${index + 1};`}
           >
             {item.label}
           </a>
         ))
       )
     }
-  </div>
+  </nav>
 </header>
 
 <style>
@@ -117,16 +146,30 @@ const path = Astro.url.pathname;
     border-bottom: var(--hairline) solid var(--line);
   }
 
-  /* Tres columnas: marca │ menú (centrado) │ iconos. El menú lleva espacio a
-     los dos lados para quedar centrado en el hueco que le queda. */
+  /* La barra: como la referencia, `justify-between` — la marca y el nav
+     pegados a la izquierda, las celdas de iconos al borde derecho. */
   .hdr__bar {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    display: flex;
     align-items: stretch;
+    justify-content: space-between;
     box-sizing: border-box;
     min-width: 0;
     height: var(--nav-height-mobile, 3rem);
-    padding-inline-end: max(0.5rem, env(safe-area-inset-right));
+    /* Encima del velo y del cajón, que son `fixed`. */
+    position: relative;
+    z-index: 3;
+  }
+
+  .hdr__left {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  .hdr__right {
+    display: flex;
+    align-items: stretch;
+    flex: 0 0 auto;
   }
 
   /* ── Entrada de la barra ────────────────────────────────────────────────
@@ -153,7 +196,6 @@ const path = Astro.url.pathname;
 
   .hdr__bar > :nth-child(1) { --i: 0; }
   .hdr__bar > :nth-child(2) { --i: 1; }
-  .hdr__bar > :nth-child(3) { --i: 2; }
 
   /* Una vez que la entrada ha terminado, la animación se DESACTIVA.
      Motivo: al navegar, el router reinserta la cabecera persistente en el
@@ -175,21 +217,15 @@ const path = Astro.url.pathname;
     white-space: nowrap;
   }
 
-  /* La marca: como el icono de artcraft, es el logo. Un separador vertical
-     la separa del menú. */
+  /* La marca: un separador vertical la separa del menú (como la referencia). */
   .hdr__brand {
     display: flex;
     align-items: center;
-    padding-inline: 1.25rem;
+    padding-inline: 1rem;
     border-right: var(--hairline) solid var(--line);
     color: var(--ink);
     text-decoration: none;
     white-space: nowrap;
-  }
-
-  .hdr__right {
-    display: flex;
-    align-items: stretch;
   }
 
   .hdr__cell {
@@ -210,15 +246,11 @@ const path = Astro.url.pathname;
   .hdr__nav {
     display: none;
     align-items: stretch;
-    justify-content: center;
     min-width: 0;
-    /* Espacio al principio y al final: el menú queda centrado en el hueco
-       que le dejan la marca y los iconos. */
-    padding-inline: 1.5rem;
   }
 
   /* Grupos separados por un hairline vertical, como en getartcraft.com
-     (`<li class="border-l border-line ml-1.5 pl-1.5">`). */
+     (`ml-1.5 + border-l + pl-1.5`). */
   .hdr__group {
     display: flex;
     align-items: stretch;
@@ -234,7 +266,7 @@ const path = Astro.url.pathname;
     display: flex;
     align-items: center;
     flex: 0 0 auto;
-    padding-inline: 0.75rem;
+    padding-inline: 0.625rem;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: var(--font-weight-medium, 500);
@@ -248,8 +280,12 @@ const path = Astro.url.pathname;
       background-color var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
-  /* La pastilla invertida: el activo y el que tiene el puntero encima. */
-  .hdr__link:hover,
+  /* En la referencia el puntero SÓLO aclara el rótulo: la pastilla invertida
+     es del item activo. */
+  .hdr__link:hover {
+    color: var(--ink);
+  }
+
   .hdr__link.is-active {
     background: var(--invert-bg);
     color: var(--invert-fg);
@@ -279,21 +315,101 @@ const path = Astro.url.pathname;
     display: block;
   }
 
-  .hdr__panel {
-    display: none;
-    flex-direction: column;
-    border-top: var(--hairline) solid var(--line);
+  /* ── Cajón (móvil) ───────────────────────────────────────────────────────
+     Va superpuesto al contenido: el cajón es `fixed` y el velo tapa la
+     página. Así no hay salto de layout al abrirlo. */
+
+  .hdr__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: color-mix(in srgb, var(--bg) 55%, #000 45%);
+    opacity: 0;
+    visibility: hidden;
+    touch-action: none;
+    /* Al cerrar, la visibilidad se oculta DESPUÉS del fundido; al abrir,
+       cambia de inmediato (así el cajón ya es enfocable). */
+    transition:
+      opacity 220ms var(--ease-out),
+      visibility 0s linear 220ms;
+  }
+
+  .hdr.is-open .hdr__scrim {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 220ms var(--ease-out),
+      visibility 0s;
+  }
+
+  .hdr__drawer {
+    position: fixed;
+    top: var(--nav-height-mobile, 3rem);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    max-height: calc(100dvh - var(--nav-height-mobile, 3rem));
+    overflow-y: auto;
+    /* El scroll del cajón no se encadena con el de la página. */
+    overscroll-behavior: contain;
     background: var(--bg);
+    border-bottom: var(--hairline) solid var(--line);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+    transform: translateY(-10px);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      transform 260ms var(--ease-out),
+      opacity 200ms var(--ease-out),
+      visibility 0s linear 260ms;
   }
 
-  .hdr.is-open .hdr__panel {
+  .hdr.is-open .hdr__drawer {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    transition:
+      transform 260ms var(--ease-out),
+      opacity 200ms var(--ease-out),
+      visibility 0s;
+  }
+
+  @keyframes drawer-item-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .hdr.is-open .hdr__drawer-link {
+    animation: drawer-item-in 0.32s var(--ease-out) both;
+    animation-delay: calc(0.05s + 0.035s * var(--i, 1));
+  }
+
+  .hdr__drawer-current {
+    padding: 0.75rem 1rem 0.625rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    color: var(--faint);
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .hdr__drawer-current strong {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .hdr__drawer-link {
+    position: relative;
     display: flex;
-  }
-
-  .hdr__panel-link {
-    padding: 0.875rem 1rem;
+    align-items: center;
+    padding: 0.9375rem 1rem;
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: var(--font-weight-medium, 500);
     text-transform: uppercase;
     letter-spacing: 0.15em;
@@ -302,29 +418,25 @@ const path = Astro.url.pathname;
     text-decoration: none;
   }
 
-  .hdr__panel-link.is-active {
+  /* "Dónde estoy": pastilla invertida + una barra de acento a la izquierda,
+     que se lee de un vistazo en pantalla pequeña. */
+  .hdr__drawer-link.is-active {
     background: var(--invert-bg);
     color: var(--invert-fg);
   }
 
-  /* ── Móvil ─────────────────────────────────────────────────────────────── */
-  @media (max-width: 47.99em) {
-    /* El contacto de WhatsApp vive en el pie (en móvil la barra se queda
-       con lo esencial). */
-    .hdr__cell--hide-sm {
-      display: none;
-    }
-
-    .hdr__brand {
-      padding-inline: 0.875rem;
-    }
-
-    .brand-text {
-      font-size: 0.75rem;
-    }
+  .hdr__drawer-link.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent);
   }
 
-  @media (min-width: 48em) {
+  /* ── Escritorio ───────────────────────────────────────────────────────── */
+  @media (min-width: 900px) {
     .hdr__bar {
       height: var(--nav-height, 3.0625rem);
     }
@@ -337,8 +449,27 @@ const path = Astro.url.pathname;
       display: none;
     }
 
-    .hdr__panel {
-      display: none !important;
+    /* En escritorio el cajón no existe: el nav hace ese papel. */
+    .hdr__scrim,
+    .hdr__drawer {
+      display: none;
+    }
+  }
+
+  /* ── Móvil ─────────────────────────────────────────────────────────────── */
+  @media (max-width: 899.99em) {
+    /* El contacto de WhatsApp vive en el pie (en móvil la barra se queda
+       con lo esencial). */
+    .hdr__cell--hide-sm {
+      display: none;
+    }
+
+    .hdr__brand {
+      padding-inline: 0.875rem;
+    }
+
+    .brand-text {
+      font-size: 0.75rem;
     }
   }
 </style>

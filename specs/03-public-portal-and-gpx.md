@@ -57,13 +57,13 @@
 
 ### 0.0.1 Menú del sitio
 
-Fuente única: `frontend/src/lib/nav.ts`. La barra, el panel móvil y el pie se
+Fuente única: `frontend/src/lib/nav.ts`. La barra, el cajón móvil y el pie se
 derivan de ella (antes cada uno tenía su propia lista, con destinos que no
 coincidían).
 
 ```
-[ KÚSPIDE ]  │        INICIO   FECHAS   CLASIFICACIONES   ESPECIALES   PREMIOS        │  [☀]
-               ↑ marca (logo)                                    ↑ menú centrado        ↑ iconos
+[ KÚSPIDE ] │ INICIO  FECHAS  CLASIFICACIONES  ESPECIALES  PREMIOS        │  [☀]
+              ↑ marca (logo)                                    ↑ hueco    ↑ iconos
 ```
 
 | Elemento | Decisión |
@@ -79,15 +79,20 @@ coincidían).
 | `INSCRIPCIÓN` | **Fuera de la barra**: estaba duplicada y no es un destino de navegación. Se llega desde la portada y el pie |
 | Panel del juez | **Cero enlaces públicos**. La URL la comparte el organizador |
 
-Estructura y estilo tomados de `getartcraft.com` (medidos en vivo): marca │
-grupo de items │ iconos, con los items en mono 0.6875rem, versalitas,
-tracking 0.15em, y el item activo en **pastilla invertida** (`--invert-bg` /
-`--invert-fg`) como el `HOME` de la referencia.
+**Geometría tomada de `getartcraft.com` (medida en vivo a 1600 px):**
 
-**El menú va centrado**: la barra es una rejilla de tres columnas
-(`marca │ 1fr │ iconos`) y el menú se centra en la columna central, con
-padding a los dos lados. Medido: 297 px de aire a la izquierda y 297 a la
-derecha a 1280 px.
+| Medida | Valor |
+| :--- | :--- |
+| Barra | 48 px, `display:flex; justify-content:space-between`, full‑bleed |
+| Marca | wordmark + separador vertical a la derecha |
+| Items | `padding: 0 .625rem` · 0.6875rem mono · tracking 0.15em · versalitas |
+| Activo | **pastilla invertida** (`--invert-bg` / `--invert-fg`) |
+| Hover | **sólo cambia el color** (en la referencia el puntero no lleva pastilla) |
+| Grupos | separación con `margin-left` + `border-left` + `padding-left` (13 px) |
+
+El menú va **pegado a la marca, a la izquierda** (como la referencia): el hueco
+grande queda a la derecha, entre el nav y las celdas de iconos. El nav de
+escritorio aparece a partir de **900 px**; por debajo, el cajón.
 
 **El ancla del menú la resuelve el shell, no el router.** El router de Astro
 **no desplaza al fragmento** al navegar (verificado: la ruta cambia pero
@@ -98,10 +103,28 @@ ancla se interceptan en `site-shell.ts`:
 - si no → `navigate()` (la API del router) y, en `astro:page-load`, se
   desplaza al elemento.
 
+### 0.0.1.1 Cajón de navegación (móvil)
+
+- Va **superpuesto** al contenido (`position: fixed` + velo): abrirlo **no
+  desplaza la página** y no produce salto de layout.
+- Entra con un desplazamiento corto (`translateY(-10px)` + opacidad, 260 ms) y
+  los items se **escalonan** (35 ms de retraso por item).
+- **Dice en qué página estamos**: una línea `PÁGINA ACTUAL · <DESTINO>` en la
+  cabecera del cajón, y el item activo con **pastilla invertida + una barra de
+  acento** a la izquierda.
+- Accesibilidad: al abrir, el foco entra en el cajón y queda **atrapado**
+  (Tab cicla dentro); con Escape se cierra y el foco vuelve al botón; el
+  velo cierra al tocarlo; se cierra solo al navegar o al pasar a escritorio.
+- El scroll del cajón no se encadena con el de la página
+  (`overscroll-behavior: contain`) y la rueda sobre el velo no desplaza la
+  página por detrás.
+- `prefers-reduced-motion` lo desactiva todo (regla global de `reset.css`).
+
 **Regresión automatizada:** `frontend/tools/check-menu.mjs` (items exactos, sin
-CTA ni enlaces al juez, menú centrado, item activo correcto en 7 rutas, la
-marca nunca marcada y el ancla de FECHAS desplazando al calendario) y
-`frontend/tools/check-shell.mjs`.
+CTA ni enlaces al juez, menú pegado a la marca, item activo correcto en 7
+rutas, la marca nunca marcada, el ancla de FECHAS desplazando, y en móvil: el
+cajón superpuesto, sin salto de layout, con la página actual marcada y el
+foco dentro) y `frontend/tools/check-shell.mjs`.
 
 ### 0.0.2 Puerta del panel del juez
 
