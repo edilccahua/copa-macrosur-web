@@ -9,6 +9,88 @@
 
 > **Cambio del 20 de Octubre de 2026.** El portal pasó de prerenderizado (SSG) a **SSR con adaptador Node** (`output: 'server'` + `@astrojs/node` en modo `standalone`).
 
+### 0.0 Navegación de cliente (`astro:transitions`)
+
+> **Añadido el 20 de Octubre de 2026.** El portal navega **de cliente**, en la
+> **misma pestaña**, con un fundido corto. Antes cada clic recargaba la
+> página entera: la barra volvía a animarse, el scroll suave se reiniciaba y
+> la lectura se cortaba.
+
+- `<ClientRouter />` se monta en `Base.astro` (todas las páginas).
+- La cabecera lleva `transition:persist="site-header"`: **persiste** entre
+  navegaciones, no se reconstruye y su animación de entrada ocurre **una
+  sola vez por sesión**.
+- El estado activo del menú **se calcula en el cliente** (`site-shell.ts`),
+  porque el HTML del servidor no vuelve a pintarse. Usa **prefijos de
+  ruta**, no el `href`: el fragmento (`/#fechas`) nunca está en el
+  `pathname` y con `startsWith` sobre el href la pestaña "Fechas" no se
+  activaba nunca.
+- Eventos del router que gobiernan el movimiento:
+
+  | Evento | Qué hace |
+  | :--- | :--- |
+  | `astro:before-preparation` | Destruye el movimiento de la página que sale (Lenis + ScrollTrigger) |
+  | `astro:before-swap` | Calcula el item activo del menú con la ruta de destino |
+  | `astro:after-swap` | Repone el tema (el `<html>` se reemplaza) y marca los elementos que quedan fuera de pantalla |
+  | `astro:page-load` | Rearma el movimiento de la página nueva |
+
+- El módulo de movimiento se carga con `import()` **dinámico**
+  (`site-shell.ts` → `showcase-motion.ts`): `/en-vivo` y `/admin/juez` **no
+  descargan GSAP ni Lenis** (AGENTS.md §2). Expone `init()` y `teardown()`.
+- La entrada de la barra es una **animación CSS** (`hdr-item-in`), no de GSAP:
+  el estado inicial vive en la hoja de estilos, así que no hay destello y no
+  depende de que GSAP haya cargado. Al navegar, el router reinserta la
+  cabecera y eso **reinicia las animaciones CSS del elemento**: por eso la
+  clase `is-ready` desactiva la animación una vez terminada, para que la
+  barra **no desaparezca y vuelva a entrar en cada clic**.
+- **Transición de página:** cross-fade de 180 ms (`::view-transition-*`). Los
+  elementos que ya están a la vista entran con el fundido; los que quedan
+  por debajo del pliegue se ocultan (`.is-reveal-pending`) y se revelan al
+  hacer scroll. En la primera carga los oculta `html.motion-ready`.
+- **Morph del póster:** la tarjeta del timeline de la portada y el póster del
+  hero de la ficha comparten `transition:name="poster-{slug}"`: al abrir la
+  ficha, el póster se transforma en su sitio.
+- Regresión automatizada: `frontend/tools/check-shell.mjs` (navegación de
+  cliente, persistencia de la cabecera, estado activo, clicabilidad del CTA y
+  del tema entre 768 y 1280 px) y `frontend/tools/detect-fouc.mjs` (destello
+  del primer pintado).
+
+### 0.0.1 Menú del sitio
+
+Fuente única: `frontend/src/lib/nav.ts`. La barra, el panel móvil y el pie se
+derivan de ella (antes cada uno tenía su propia lista, con destinos que no
+coincidían).
+
+| Elemento | Decisión |
+| :--- | :--- |
+| `KÚSPIDE` | **Wordmark‑logo**, no un item de menú. Es el enlace a la portada |
+| `Campeonato` | **Fuera**: iba al mismo sitio que el logo (la incompatibilidad Kúspide/Campeonato) |
+| `CLASIFICACIONES` | `/ranking-general` (agrupa también `/fechas`, `/corredor`, `/equipos`) |
+| `EVENTOS RUTA` | `/eventos-especiales`, en su propio grupo (hairline vertical) |
+| `INSCRIPCIÓN` | CTA único. Antes "Inscripciones" estaba **dos veces** y el CTA **desaparecía en móvil** |
+| `Reclamos` | Al **pie** (utilidad pública, no navegación principal) |
+| Panel del juez | **Cero enlaces públicos**. La URL la comparte el organizador |
+
+Estructura de grupos tomada de `getartcraft.com` (medida): marca │ grupo 1 │
+grupo 2 │ iconos │ CTA, con los grupos separados por un hairline vertical
+(`margin-left` + `padding-left` + `border-left`) y el item activo en
+**pastilla invertida**.
+
+### 0.0.2 Puerta del panel del juez
+
+- El PIN **no viaja en el código**: `/admin/juez` pide el PIN y lo valida
+  contra `GET /api/v1/stages/{id}/judge-auth` (200/403; **nunca devuelve el
+  PIN**).
+- La **fecha se resuelve sola**: `LIVE` → siguiente con inscripciones
+  abiertas → última disputada.
+- El PIN **se guarda en el dispositivo** (`localStorage`) para el resto del
+  campeonato; hay un botón `[ SALIR ]` que lo borra.
+- El sitio público **no enlaza** a `/admin/juez` (ni en la barra, ni en el
+  panel móvil, ni en el pie).
+- La cola offline usa IndexedDB **sin el índice `synced`**: un booleano no
+  es una clave válida de IndexedDB y el índice quedaba vacío por
+  construcción (`IDBKeyRange.only(false)` lanzaba `DataError`).
+
 ### 0.1 Por qué
 
 Las páginas de datos (resultados por fecha, fichas de fecha, ranking general, perfiles de corredor y de equipo) se construían con `getStaticPaths()` + un `fetch` a la API **durante el build**. El `fetch` estaba envuelto en un `try/catch` vacío, de modo que:
@@ -194,13 +276,11 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
     `ACUMULADO` marca el corte (`HASTA FECHA 2`) y en `FECHA` la carrera que se
     está viendo (`FECHA 2`). El dropdown `ACUMULADO HASTA` **se eliminó**: dos
     selectores de fechahacían lo mismo y el segundo era una línea interminable.
-16. **Los enlaces de la carrera, dentro de su descripción.** `PODIO POR CATEGORÍA
-    ↑` (a `/fechas/<slug>#podio`) y `EXPORTAR PLANILLA [.XLSX] ↓` (a la API de
-    exportación) van **dentro del bloque de descripción de la carrera** y en el
-    **mismo nivel que el selector de fecha**, no en una fila aparte ni dentro
-    de la tabla. Aparecen **solo en modo FECHA**: en ACUMULADO no hay una
-    carrera, hay un corte. Su color es **fijo** (`--muted`, no el del grupo):
-    son un dato, no un acento.
+16. **La cabecera de la vista no lleva enlaces.** Ni podio, ni exportar, ni
+    nada más junto al selector de fechas: la cabecera dice qué se está viendo
+    (el modo, la fecha y su descripción) y la tabla dice los datos. Los enlaces
+    de la cabecera compiten con el título y con el nombre de la carrera y los
+    hacía ilegibles.
 17. **La tabla recibe argumentos.** `StandingsTable` acepta `initialMode`
     (`acumulado` | `fecha`), `initialScope`, `initialCategoryId`,
     `initialStageId` e `initialKind` (`individual` | `teams`).
@@ -211,10 +291,14 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
     (compartible, sin llenar el historial). Por defecto: **ACUMULADO + PRO + TODOS**.
 18. **No hay página de resultados por evento.** `/fechas/[slug]/resultados` se
     eliminó: la clasificación oficial de una carrera **es el ranking en modo
-    FECHA**. Los tres enlaces que apuntaban a ella (el botón *Resultados
-    Oficiales* de la ficha de la carrera, la timeline de eventos y el pie de
-    página) apuntan ahora al ranking con los argumentos:
+    FECHA**. Todos los enlaces que apuntaban a ella (el botón de la ficha de la
+    carrera, la timeline de eventos y el pie de página) apuntan ahora al ranking
+    con los argumentos:
     `/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=<n>`.
+    En la ficha de la carrera hay **una sola** opción para ver los resultados
+    (`Ver Resultados →`, que lleva a la fecha de esa carrera en el ranking): el
+    botón *Ranking Acumulado* se quitó para no ofrecer dos puertas al mismo
+    sitio.
 19. **Móvil (<48em) — celda apilada de 3 columnas**
     (`44px 1fr auto`, `gap 10px`, `padding 10px 12px`):
     - col 1: caja de `PUESTO` y debajo el `Δ` (11px);

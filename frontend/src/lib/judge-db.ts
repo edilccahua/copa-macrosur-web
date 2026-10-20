@@ -32,14 +32,14 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 export async function getJudgeDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
           store.createIndex('created_at', 'created_at', { unique: false });
           return;
         }
         // Base ya existente (v1 → v2): fuera el índice inútil.
-        const store = db.transaction.objectStore(STORE_NAME);
+        const store = transaction.objectStore(STORE_NAME);
         if (store.indexNames.contains('synced')) {
           store.deleteIndex('synced');
         }

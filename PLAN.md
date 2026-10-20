@@ -133,7 +133,7 @@ flowchart TD
    - [x] `/fechas/[slug]` y `/fechas/[slug]/resultados`: Podio, Bento de extremos (*Scratch* `MIN(finish_elapsed_ms)` y *Farolito* `MAX(finish_elapsed_ms)`), podio de equipos, isla `<RouteMapGpx client:visible />` (mapa oscuro + altimetría interactiva sincronizada + descarga GPX), segmentos Strava, premios y galería R2.
    - [x] `/ranking-general`: Isla `<StandingsTable client:load />` con pestañas Individual / Copa de Equipos, filtro por categoría y buscador reactivo `$derived`.
    - [x] Modos **FECHA | ACUMULADO** (pestaña superior fuera de la caja, estilo Tour) con un **único selector de fecha**, el navegador del Tour `‹ FECHA 2 · 23 AGO. 2026 · KÚSPIDE Z XXTREME III ›` (siempre visible: en ACUMULADO marca el corte, `HASTA FECHA 2`). El dropdown `ACUMULADO HASTA` se eliminó. La tabla acepta **argumentos** (`initialMode`, `initialScope`, `initialCategoryId`, `initialStageId`, `initialKind`) y la página lee los query params `?modo=&tabla=&categoria=&fecha=`; por defecto **ACUMULADO + PRO + TODOS**.
-   - [x] **Se eliminó la página `/fechas/[slug]/resultados`**: la clasificación oficial de una carrera es el ranking en modo **FECHA** (`/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=<n>`). Los enlaces que apuntaban a ella (ficha de carrera, timeline, pie de página) apuntan ahora al ranking. El **podio por categoría** y el **exportar Excel** de la fecha viven **dentro de la descripción de la carrera** (mismo nivel que el selector de fecha), solo en modo FECHA y con color fijo. Las pestañas **FECHA | ACUMULADO** son un control de vista: rótulo grande (14px/800) con raya de 3px del color del grupo que se posa sobre el borde de la caja.
+   - [x] **Se eliminó la página `/fechas/[slug]/resultados`**: la clasificación oficial de una carrera es el ranking en modo **FECHA** (`/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=<n>`). Los enlaces que apuntaban a ella (ficha de carrera, timeline, pie de página) apuntan ahora al ranking. La cabecera de la vista **no lleva enlaces** (ni podio, ni exportar): la ficha de la carrera ofrece **una sola** opción para ver los resultados (`Ver Resultados →` → la fecha de esa carrera en el ranking) y se eliminó el botón *Ranking Acumulado* para no duplicar la puerta. Las pestañas **FECHA | ACUMULADO** son un control de vista: rótulo grande (14px/800) con raya de 3px del color del grupo que se posa sobre el borde de la caja.
    - [x] `/corredor/[slug]` (DNI enmascarado `***4567`, historial de fechas, parciales y Strava) y `/equipos/[slug]` (estadísticas, medallero y plantilla).
    - [x] `/inscripciones` (validación DNI, selector/autocompletado de Team o Libre, comprobante a R2 con `payment_status = PENDING`) y `/reclamos` (`FeedbackTicket`).
    - [x] `/admin/index.astro`: Consola ligera del organizador (protegida con `X-Admin-Key`) para aprobar pagos con 1 clic, disparar importación/exportación Excel, subir GPX y gestionar reclamos.
@@ -278,6 +278,47 @@ frontend/
    - **Render SSR (20-Oct-2026):** el build produce `dist/server/entry.mjs` (adaptador `@astrojs/node`). Las páginas de datos responden contra la API en cada request; las rutas inexistentes devuelven `404` en lugar de una página vacía. Ver `specs/03` §0.
 7. **Gate 7 - Seguridad y Aislamiento en Memoria:** `[CUMPLIDO ✅]`
    - Endpoints de juez y admin rechazan peticiones sin `X-Judge-Pin` / `X-Admin-Key` (`401/403`), y ningún endpoint escribe archivos temporales en el disco local.
+   - **Panel del juez (20-Oct-2026):** el PIN **ya no viaja en el código** de la página. Se pide en una puerta, se valida contra `GET /stages/{id}/judge-auth` (que no devuelve el PIN) y se guarda en el dispositivo. El sitio público **no enlaza** a `/admin/juez`. Ver `specs/02` §4.0.
 8. **Gate 8 - Sincronización de Especificaciones:** `[CUMPLIDO ✅]`
    - `specs/01-excel-and-scoring.md` queda actualizado reflejando el adapter legacy de `races/` (regla `AGENTS.md` §3.6), la reconstrucción de renglones partidos de PDF, la autoridad del dorsal oficial y el reporte de reconciliación de puestos (§1.5.1–§1.5.3).
    - `specs/03-public-portal-and-gpx.md` documenta la migración a SSR, sus motivos y sus reglas (§0).
+
+---
+
+## 6. Lote del 20-Oct-2026: Shell, navegación de cliente y correcciones de la auditoría
+
+> **Objetivo:** corregir la auditoría del menú/estilos/cargas y adopts la
+> navegación de cliente de `getartcraft.com` (misma pestaña, transiciones
+> suaves, animaciones de la cabecera **una sola vez por carga**).
+
+### 6.1 Qué cambió
+
+| Área | Antes | Ahora |
+| :--- | :--- | :--- |
+| Navegación | Recarga completa en cada clic | `astro:transitions` (`<ClientRouter />`) + cabecera persistente (`transition:persist`) |
+| Menú | 7 items + icono de cronómetro + "Campeonato" duplicado con el logo | `KÚSPIDE` (logo) │ `CLASIFICACIONES` │ `EVENTOS RUTA` │ `INSCRIPCIÓN` (CTA, también en móvil) |
+| Reclamos | En el nav | En el pie |
+| Estado activo | `startsWith(href)` → "Fechas" nunca activo | Prefijos de ruta calculados en el cliente; `aria-current="page"` |
+| Entrada de la barra | GSAP, con destello (visible → invisible → visible) | Animación **CSS** (`hdr-item-in`), sin destello y **sin repetirse al navegar** |
+| `motion-ready` | Global en `Base.astro` → 4 s de página en blanco en `/eventos-especiales` | Sólo en las páginas con movimiento (`Showcase.astro`) |
+| Panel del juez | PIN hardcodeado en el código; enlazado en la barra y el menú | **Puerta con PIN** + fecha resuelta sola + PIN en el dispositivo; **cero enlaces públicos** |
+| Cola offline (IndexedDB) | `IDBKeyRange.only(false)` → `DataError` en cada lectura | Índice eliminado (un booleano no es clave válida); filtro en memoria |
+| `/en-vivo` | "EN VIVO" con la fecha que aún no se disputa | Sólo retransmite si hay una fecha `LIVE`; si no, lo dice |
+| Cuenta regresiva | "¡ETAPA EN DISPUTA!" al pasar la fecha | El estado lo dice la BD (`Stage.status`) |
+| Clasificación | Doble fetch en cada visita | Una sola clave de vista → sin doble fetch ni barra de progreso espuria |
+| Live board | "RECONECTANDO" desde el primer frame; resalte que nunca se apagaba | Tercer estado "CONECTANDO"; el resalte se apaga por el proxy de Svelte 5 |
+| Pie de página | "Copa de equipos" apuntaba a la misma URL que "Ranking"; "Resultados oficiales" fijado a la Fecha 1; calendario en literal | Destinos correctos (`?tabla=EQUIPO`, `?modo=fecha`) y calendario desde la API |
+| Regulador lateral | Tapaba los clics del CTA (52 px) | Empieza bajo la cabecera; el CTA y el tema son clicables |
+| Tokens | `--status-up/down` definidos dos veces (ganaba el segundo) | Una sola definición, la semántica |
+| CORS | Lista fija de 3 orígenes (producción y puertos alternative bloqueados) | Orígenes por entorno, con los puertos de desarrollo |
+
+### 6.2 Verificación
+
+| Comprobación | Resultado |
+| :--- | :--- |
+| `pytest backend/tests` | **91 passed** (2 tests nuevos: `judge-auth` y largada individual) |
+| `npm --prefix frontend run build` | OK (SSR) |
+| `npx astro check` | **0 errores, 0 warnings, 0 hints** |
+| `node tools/check-shell.mjs` | Todo en verde (navegación de cliente, cabecera persistente, estado activo, CTA y tema clicables de 768 a 1280 px) |
+| `node tools/detect-fouc.mjs` | Sin destello en la portada y en la ficha de fecha |
+| Barrido de consola (11 páginas) | **0 errores** (antes `/admin/juez` lanzaba `DataError`) |
