@@ -84,7 +84,7 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
       </div>
 
       <div class="hdr__cell">
-        <button id="theme-toggle" type="button" aria-label="Conmutar tema">
+        <button id="theme-toggle" class="hdr__theme" type="button" aria-label="Conmutar tema (claro u oscuro)">
           <svg class="i-moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
             <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
           </svg>
@@ -92,6 +92,16 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
             <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
             <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.5"></path>
           </svg>
+
+          <!--
+            Aviso de PRIMERA VISITA: sólo aparece una vez (se guarda la marca
+            en localStorage) y señala que el tema se cambia ahí. Desaparece
+            solo a los 4,5 s.
+          -->
+          <span class="hdr__hint" data-theme-hint role="status" hidden>
+            <strong>CAMBIA EL TEMA AQUÍ</strong>
+            <span>Claro u oscuro. Hasta que lo elijas, sigue al del dispositivo.</span>
+          </span>
         </button>
       </div>
 
@@ -235,19 +245,38 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
     white-space: nowrap;
   }
 
+  /* Las celdas no llevan padding: lo lleva el elemento interactivo, para que
+     el ÁREA CLICABLE sea toda la celda (antes había que apuntar al icono). */
   .hdr__cell {
+    position: relative;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
-    padding-inline: 0.875rem;
     flex: 0 0 auto;
     border-left: var(--hairline) solid var(--line);
     color: var(--muted);
     transition: color var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
+  .hdr__cell > a,
+  .hdr__cell > button {
+    display: grid;
+    place-items: center;
+    padding-inline: 0.875rem;
+    height: 100%;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
   .hdr__cell:hover {
     color: var(--ink);
+  }
+
+  /* El botón del tema ocupa la celda entera. */
+  .hdr__theme {
+    position: relative;
   }
 
   .hdr__nav {
@@ -428,6 +457,87 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
   }
 
   /**
+   * Aviso de primera visita: un globo que señala el botón del tema.
+   *
+   * Aparece UNA sola vez (queda marcado en `localStorage`) y se va solo a los
+   * 4,5 s. Va anclado al botón, no a la celda, para que la flecha apunte
+   * siempre al icono.
+   */
+  .hdr__hint {
+    position: absolute;
+    top: calc(100% + 10px);
+    /* Anclado al BORDE DERECHO del botón, no al centro: el botón está en el
+       extremo de la barra, así que centrado el globo se salía de la
+       pantalla. */
+    right: 0;
+    z-index: 45;
+    width: max-content;
+    max-width: min(16rem, calc(100vw - 2rem));
+    padding: 0.5rem 0.625rem;
+    background: var(--invert-bg);
+    color: var(--invert-fg);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    text-align: left;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+      opacity 280ms var(--ease-out),
+      transform 280ms var(--ease-out);
+    pointer-events: none;
+  }
+
+  .hdr__hint.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* La flecha: sobre el icono (el centro del botón está a ~22 px de su
+     borde derecho). */
+  .hdr__hint::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    right: 16px;
+    width: 10px;
+    height: 10px;
+    background: var(--invert-bg);
+    transform: rotate(45deg);
+  }
+
+  .hdr__hint strong {
+    display: block;
+    font-weight: 700;
+  }
+
+  .hdr__hint span {
+    display: block;
+    margin-top: 0.25rem;
+    opacity: 0.72;
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Transición del tema ─────────────────────────────────────────────────
+     Al cambiar de tema, los colores de todo el documento se interpolan en
+     lugar de saltar. La clase se pone un instante, se fuerza el reflow y se
+     quita al terminar la transición. */
+  :global(html.theme-switching),
+  :global(html.theme-switching *) {
+    transition:
+      background-color 420ms var(--ease-in-out),
+      border-color 420ms var(--ease-in-out),
+      color 420ms var(--ease-in-out),
+      fill 420ms var(--ease-in-out),
+      stroke 420ms var(--ease-in-out),
+      box-shadow 420ms var(--ease-in-out) !important;
+  }
+
+  /**
    * Indicador de sección de la barra (móvil). Ocupa el lugar del nav, que
    * en móvil está oculto: dice en qué sección estás, sólo con el nombre.
    */
@@ -486,7 +596,7 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
   }
 
   /* ── Escritorio ───────────────────────────────────────────────────────── */
-  @media (min-width: 900px) {
+  @media (min-width: 56.25em) {
     .hdr__bar {
       height: var(--nav-height, 3.0625rem);
     }
@@ -507,7 +617,7 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
   }
 
   /* ── Móvil ─────────────────────────────────────────────────────────────── */
-  @media (max-width: 899.99em) {
+  @media (max-width: 56.24em) {
     /* El contacto de WhatsApp vive en el pie (en móvil la barra se queda
        con lo esencial). */
     .hdr__cell--hide-sm {
