@@ -4,7 +4,7 @@
  * Los parámetros NO están inventados: se extrajeron del bundle del original.
  * Los nombres de easing y los números sobreviven a la minificación.
  *
- *   Lenis           new Lenis({ lerp: 0.12, anchors: true })
+ *   Lenis           new Lenis({ lerp: 0.25, anchors: true })
  *   Revelado        from { autoAlpha: 0, y: 28, filter: "blur(8px)" }
  *                   to   { autoAlpha: 1, y: 0,  filter: "blur(0px)",
  *                          duration: 0.9, ease: "power3.out", clearProps: "all" }
@@ -57,11 +57,19 @@ const CASCADE_MAX = 0.18;
  *   wordAt  0.35 → el rótulo empieza a formarse
  *   wordDur 0.85 → duración de la formación de la palabra
  *   copyAt  1.05 → el titular y el texto se revelan
+ *
+ * **AJUSTADOS (20-Oct-2026).** Con los tiempos del original el hero se
+ * quedaba en blanco demasiado: el contenido está oculto desde el primer
+ * pintado (para que no haya destello) y la intro no empezaba hasta un segundo
+ * después de que cargara el módulo. Medido: 2,4 s hasta que se veía el
+ * último texto. Con estos valores el hero está completo en ~1,3 s y la
+ * entrada sigue siendo una cascada (el rótulo se forma y el texto sale
+ * detrás), no un salto seco.
  */
 const INTRO = {
-  wordAt: 0.35,
-  wordDur: 0.85,
-  copyAt: 1.05,
+  wordAt: 0.12,
+  wordDur: 0.7,
+  copyAt: 0.5,
 };
 
 /** Separación extra con la que arrancan las letras del rótulo, en px. */
@@ -119,8 +127,24 @@ export function init(): void {
   (window as any).__kuspideScrollTo = scrollToElement;
 
   /* ── Scroll suave ─────────────────────────────────────────────────────── */
-  const lenis = new Lenis({ lerp: 0.12, anchors: true });
+  /*
+   * `lerp` es la fracción del recorrido pendiente que se cubre en cada
+   * fotograma (a 60 fps):
+   *
+   *   0.12 → el 63 % del recorrido en 150 ms, el 95 % en 415 ms
+   *   0.25 → el 63 % en 70 ms,  el 95 % en 180 ms
+   *
+   * El 0.12 es el del original (getartcraft.com) y se nota demasiado
+   * "tarde": la página tarda en responder a la rueda y el recorrido se
+   * alarga con una cola larga. 0.25 deja un retardo corto y elegante
+   * (justo el que pide el sitio) sin esa demora.
+   */
+  const lenis = new Lenis({ lerp: 0.25, anchors: true });
   lenisInstance = lenis;
+  // El global que espera el timeline (`TimelineEvents.astro`): con él, el
+  // marcador de la espina se actualiza en cada fotograma de Lenis y no
+  // sólo cuando salta el scroll nativo.
+  (window as any).lenis = lenis;
 
   lenis.on('scroll', ScrollTrigger.update);
   gsap.ticker.add((time) => lenis.raf(time * 1000));
@@ -230,6 +254,7 @@ export function teardown(): void {
 
   delete (window as any).__kuspideScrollTo;
   delete (window as any).__kuspideLenis;
+  delete (window as any).lenis;
 
   if (lenisInstance) {
     lenisInstance.destroy();
@@ -283,7 +308,11 @@ function initIntro() {
       REVEAL_FROM,
       {
         ...REVEAL_TO,
-        stagger: 0.08,
+        // El revelado del scroll dura 0,9 s; el del hero, menos: el texto está
+        // escondido desde el primer pintado y cada décima cuenta para quien
+        // llega a la portada.
+        duration: 0.6,
+        stagger: 0.06,
         onStart: () => {
           // El atributo se quita ANTES de que `clearProps` borre los estilos en
           // línea; si no, el elemento volvería a coincidir con motion.css y

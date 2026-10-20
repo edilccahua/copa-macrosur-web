@@ -23,32 +23,50 @@
  */
 interface Props {
   text?: string;
+  /**
+   * Palabra que va en el oro de la copa. En el póster oficial "MTB" y
+   * "EDICIÓN 2026" son las únicas palabras en amarillo: es el color que
+   * distingue a la copa, y el que hace que el hero no sea un bloque
+   * monocromo. Si la palabra no aparece en `text`, no se marca nada.
+   */
+  accent?: string;
 }
 
-const { text = 'ARTCRAFT' } = Astro.props;
+const { text = 'ARTCRAFT', accent } = Astro.props;
 
 /**
  * Palabras y letras, con un índice GLOBAL para la animación (la secuencia de
  * entrada es continua entre palabras). Se calcula aquí y no en la plantilla
  * para que el índice no dependa del orden de render.
  *
- * Las letras van agrupadas por palabra (`wordmark__word`) y el espacio va en
- * el `column-gap` del contenedor. Con un `<span>` más para el espacio, el
- * colapso de espacios en línea lo borraría y las palabras se leerían juntas.
+ * La palabra de acento va SIEMPRE en su propia línea: así el lockup es el
+ * mismo en cualquier ancho. Si dependiera del ancho, el rótulo saltaría de
+ * una línea a dos al cruzar un punto de inflexión, y el salto se vería.
  */
-const rendered = text
-  .split(' ')
-  .filter(Boolean)
-  .map((word) => ({ word, letters: [...word] }));
+const words = text.split(' ').filter(Boolean);
+const accentIndex = accent ? words.indexOf(accent) : -1;
+
+const mainWords = accentIndex >= 0 ? words.filter((_, i) => i !== accentIndex) : words;
+const accentWords = accentIndex >= 0 ? [words[accentIndex]] : [];
+
+/** Un bloque de palabras: cada letra con su índice global. */
+const blocks = [
+  { words: mainWords, accent: false },
+  { words: accentWords, accent: true },
+].filter((block) => block.words.length > 0);
 
 let letterIndex = 0;
 ---
-<div class="wordmark" data-hero-wordmark aria-hidden="true">
+<div class:list={['wordmark', accentIndex >= 0 && 'wordmark--stacked']} data-hero-wordmark aria-hidden="true">
   {
-    rendered.map(({ letters }) => (
-      <span class="wordmark__word">
-        {letters.map((letter) => (
-          <span class="wordmark__letter" data-letter={letterIndex++}>{letter}</span>
+    blocks.map((block) => (
+      <span class:list={['wordmark__line', block.accent && 'wordmark__line--accent']}>
+        {block.words.map((word) => (
+          <span class="wordmark__word">
+            {[...word].map((letter) => (
+              <span class="wordmark__letter" data-letter={letterIndex++}>{letter}</span>
+            ))}
+          </span>
         ))}
       </span>
     ))
@@ -74,6 +92,27 @@ let letterIndex = 0;
 
   .wordmark__word {
     display: inline-flex;
+  }
+
+  /* Con palabra de acento el rótulo se apila: la línea principal y, debajo,
+     la palabra de acento. Es el lockup del póster oficial. */
+  .wordmark--stacked {
+    flex-direction: column;
+    align-items: center;
+    row-gap: 0.06em;
+  }
+
+  .wordmark__line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    column-gap: 0.22em;
+  }
+
+  /* La palabra de acento: el "MTB" del rótulo va en el oro de la copa, como
+     en el póster oficial. */
+  .wordmark__line--accent {
+    color: var(--copa-gold);
   }
 
   .wordmark__letter {

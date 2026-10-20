@@ -1,27 +1,31 @@
 ---
 /**
- * premios.astro — Página de premios del campeonato.
+ * premios.astro — Página de premios de la edición.
  *
- * La ESCALA de premios sale de la BD (`prize_tiers`, en dólares): por
- * categoría y por ámbito —por fecha 70/50/30 y acumulada 300/200/100—. No
- * está escrita a mano en la página: si el organizador cambia un monto, se
- * cambia en un sitio.
+ * La escala se declara en `src/data/prizes.ts` (PROVISIONAL: la BD todavía
+ * conserva la escala anterior; ver `docs/PREMIOS-PENDIENTE.md`). Aquí no se
+ * escribe ningún monto suelto: portada y página leen del mismo módulo.
  *
- * Los PREMIOS ESPECIALES (Premio Coca y Rey de la Montaña) salen de
- * `special_awards`, en la base de datos.
+ * Reglas de la edición:
+ *   · Acumulado del campeonato: 300 / 200 / 100 USD al podio de PRO y al
+ *     podio de NORMAL (por agrupación, no por categoría).
+ *   · Por fecha: 100 / 50 / 30 USD en CADA UNA de las 11 categorías.
+ *
+ * Los premios especiales (Premio Coca y Rey de la Montaña) salen de la API,
+ * con su ganador cuando `winner_rider_id` ya está resuelto.
  */
 import Showcase from '../layouts/Showcase.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
-import { API_V1, getPrizeTiers, type PrizeTier } from '../lib/api';
-
-/** La escala de premios, leída de la API. */
-const tiers: PrizeTier[] = await getPrizeTiers();
-const porFecha = tiers.filter((t) => t.scope === 'FECHA').sort((a, b) => a.position - b.position);
-const acumulado = tiers
-  .filter((t) => t.scope === 'ACUMULADO')
-  .sort((a, b) => a.position - b.position);
+import PrizeScale from '../components/PrizeScale.astro';
+import { API_V1 } from '../lib/api';
+import {
+  ACCUMULATED_PRIZES,
+  PER_DATE_PRIZES,
+  PRIZE_CATEGORIES,
+  PRIZE_CURRENCY,
+} from '../data/prizes';
 
 /** Los premios especiales de la Fecha 1, con su ganador si ya se conoce. */
 let awards: {
@@ -54,90 +58,85 @@ try {
       <div class="page-tag font-mono" data-draw-eyebrow>[ KÚSPIDE XTREME SPORTS // PREMIOS ]</div>
       <h1 class="page-title">PREMIOS</h1>
       <p class="page-desc">
-        Cada categoría reparte premio por separado: el de la jornada y el del
-        campeonato. Los ganadores de cada fecha se anuncian al cerrar la jornada.
+        El acumulado del campeonato reparte 300 / 200 / 100 USD entre los líderes de PRO y de
+        NORMAL. Cada fecha reparte 100 / 50 / 30 USD en cada una de las 11 categorías.
       </p>
     </header>
 
+    <!-- ── 01 · Acumulado del campeonato ─────────────────────────────── -->
     <section class="premios-section">
-      <SectionLabel number="01" label="PREMIO POR CATEGORÍA, POR FECHA" kicker="EN DÓLARES" />
+      <SectionLabel
+        number="01"
+        label="Acumulado del campeonato"
+        kicker={`${PRIZE_CURRENCY} 300 / 200 / 100`}
+      />
 
-      {
-        porFecha.length > 0 ? (
-          <table class="tier-table">
-            <thead>
-              <tr>
-                <th class="font-mono">PUESTO</th>
-                <th class="font-mono">CATEGORÍA</th>
-                <th class="font-mono">PREMIO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {porFecha.map((tier) => (
-                <tr>
-                  <td class="tier-table__pos font-mono">
-                    {tier.position}º
-                  </td>
-                  <td>{tier.label}</td>
-                  <td class="tier-table__amount font-mono">
-                    {tier.currency} {tier.amount_usd}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div class="empty-state" data-reveal>
-            <div class="empty-state__label font-mono">[ EN PREPARACIÓN ]</div>
-            <p class="empty-state__text">
-              Los premios de esta edición se anuncian próximamente. Vuelve pronto.
-            </p>
-          </div>
-        )
-      }
+      <div class="prize-grid">
+        {
+          ACCUMULATED_PRIZES.map((prize) => (
+            <PrizeScale
+              label="CAMPEONATO"
+              title={prize.label}
+              body={prize.blurb}
+              tiers={prize.tiers}
+              currency={PRIZE_CURRENCY}
+              accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
+              tags={['ACUMULADO', 'PODIO DE LA AGRUPACIÓN']}
+            />
+          ))
+        }
+      </div>
     </section>
 
+    <!-- ── 02 · Premio por fecha ─────────────────────────────────────── -->
     <section class="premios-section">
-      <SectionLabel number="02" label="PREMIO POR CATEGORÍA, DEL CAMPEONATO" kicker="EN DÓLARES" />
+      <SectionLabel
+        number="02"
+        label="Premio por fecha"
+        kicker={`${PRIZE_CURRENCY} 100 / 50 / 30 · CADA CATEGORÍA`}
+      />
 
-      {
-        acumulado.length > 0 ? (
-          <table class="tier-table">
-            <thead>
-              <tr>
-                <th class="font-mono">PUESTO</th>
-                <th class="font-mono">CATEGORÍA</th>
-                <th class="font-mono">PREMIO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {acumulado.map((tier) => (
-                <tr>
-                  <td class="tier-table__pos font-mono">
-                    {tier.position}º
-                  </td>
-                  <td>{tier.label}</td>
-                  <td class="tier-table__amount font-mono">
-                    {tier.currency} {tier.amount_usd}
-                  </td>
-                </tr>
+      <div class="date-grid">
+        <PrizeScale
+          label="POR FECHA"
+          title="CADA CATEGORÍA"
+          body="El podio de cada categoría cobra en cada una de las cuatro fechas. No hay una bolsa común para el grupo NORMAL."
+          tiers={PER_DATE_PRIZES}
+          currency={PRIZE_CURRENCY}
+          accent="gold"
+          tags={['11 CATEGORÍAS', '4 FECHAS']}
+        >
+          <div class="categories">
+            <p class="categories__label font-mono">SE REPARTE EN CADA UNA DE ESTAS CATEGORÍAS</p>
+            <ul class="categories__list">
+              {PRIZE_CATEGORIES.map((category) => (
+                <li class="categories__item font-mono">{category}</li>
               ))}
-            </tbody>
-          </table>
-        ) : (
-          <div class="empty-state" data-reveal>
-            <div class="empty-state__label font-mono">[ EN PREPARACIÓN ]</div>
-            <p class="empty-state__text">Los premios acumulados se anuncian pronto.</p>
+            </ul>
           </div>
-        )
-      }
+        </PrizeScale>
+
+        <aside class="prize-note">
+          <p class="prize-note__label font-mono">[ CÓMO SE REPARTE ]</p>
+          <p class="prize-note__text">
+            Cada fecha tiene once podios, uno por categoría. El 1º de cada categoría cobra
+            <strong> {PRIZE_CURRENCY} 100</strong>, el 2º <strong>{PRIZE_CURRENCY} 50</strong> y el
+            3º <strong>{PRIZE_CURRENCY} 30</strong>.
+          </p>
+          <p class="prize-note__text">
+            El acumulado es distinto: no se paga por categoría, sino al líder de puntos de toda la
+            agrupación <strong>PRO</strong> y al de toda la agrupación <strong>NORMAL</strong>.
+          </p>
+        </aside>
+      </div>
     </section>
 
-    {
-      awards.length > 0 && (
-        <section class="premios-section">
-          <SectionLabel number="03" label="PREMIOS ESPECIALES" kicker="FECHA 1" />
+    <!-- ── 03 · Premios especiales ───────────────────────────────────── -->
+    <section class="premios-section">
+      <SectionLabel number="03" label="Premios especiales" kicker="FECHA 1" />
 
+      {
+        awards.length > 0 ? (
           <ul class="awards">
             {awards.map((award) => (
               <li class="award">
@@ -157,9 +156,16 @@ try {
               </li>
             ))}
           </ul>
-        </section>
-      )
-    }
+        ) : (
+          <div class="empty-state">
+            <div class="empty-state__label font-mono">[ EN PREPARACIÓN ]</div>
+            <p class="empty-state__text">
+              Los premios especiales se anuncian al cerrar la fecha. Vuelve pronto.
+            </p>
+          </div>
+        )
+      }
+    </section>
   </main>
 
   <SiteFooter />
@@ -173,7 +179,7 @@ try {
 
   .page-header {
     margin-bottom: 3.5rem;
-    max-width: 50rem;
+    max-width: 52rem;
   }
 
   .page-tag {
@@ -193,73 +199,108 @@ try {
 
   .page-desc {
     margin-top: 1rem;
-    max-width: 46ch;
+    max-width: 52ch;
     font-size: var(--text-base);
     line-height: var(--leading-relaxed);
     color: var(--muted);
   }
 
+  .premios-section + .premios-section {
+    margin-top: 3.5rem;
+  }
+
+  /* La barra de sección ya trae su hairline; la sección no la repite. */
   .premios-section {
-    border-top: var(--hairline) solid var(--line);
-    padding-top: 2.5rem;
+    padding-top: 0;
   }
 
-  .empty-state {
-    padding: 3rem 0;
-    border-bottom: var(--hairline) solid var(--line);
+  .prize-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1.5rem;
   }
 
-  .empty-state__label {
-    font-size: var(--text-xs);
+  .date-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    align-items: start;
+  }
+
+  @media (min-width: 48em) {
+    .prize-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 68.75em) {
+    .date-grid {
+      grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.6fr);
+    }
+  }
+
+  /* ── La nota de la regla ─────────────────────────────────────────────── */
+  .prize-note {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .prize-note__label {
+    margin: 0;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
     letter-spacing: 0.14em;
     color: var(--faint);
   }
 
-  .empty-state__text {
-    margin-top: 0.75rem;
-    max-width: 40ch;
+  .prize-note__text {
+    margin: 0;
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
     color: var(--muted);
   }
 
-  /* ── La escala de premios ───────────────────────────────────────────── */
-  .tier-table {
-    width: 100%;
-    margin-top: 1.5rem;
-    border-collapse: collapse;
-    text-align: left;
+  .prize-note__text strong {
+    color: var(--ink-strong);
+    font-weight: var(--font-weight-medium);
   }
 
-  .tier-table th {
-    padding: 0.75rem 1rem;
-    border-bottom: var(--hairline) solid var(--line);
+  /* ── Las 11 categorías ───────────────────────────────────────────────── */
+  .categories {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .categories__label {
+    margin: 0 0 0.625rem;
     font-size: 0.625rem;
-    font-weight: var(--font-weight-medium, 500);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--faint);
   }
 
-  .tier-table td {
-    padding: 0.9rem 1rem;
-    border-bottom: var(--hairline) solid var(--line);
-    font-size: var(--text-sm);
-    color: var(--ink);
+  .categories__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .tier-table__pos {
-    width: 4rem;
-    font-weight: 700;
+  .categories__item {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
     color: var(--muted);
-  }
-
-  .tier-table__amount {
-    width: 8rem;
-    text-align: right;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink-strong);
+    border: var(--hairline) solid var(--line);
   }
 
   /* ── Los premios especiales ─────────────────────────────────────────── */
@@ -314,5 +355,23 @@ try {
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--faint);
+  }
+
+  .empty-state {
+    padding: 2.5rem 0;
+  }
+
+  .empty-state__label {
+    font-size: var(--text-xs);
+    letter-spacing: 0.14em;
+    color: var(--faint);
+  }
+
+  .empty-state__text {
+    margin-top: 0.75rem;
+    max-width: 40ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
   }
 </style>

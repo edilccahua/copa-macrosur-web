@@ -1,3 +1,11 @@
+import sys
+import pathlib
+
+# Garantizar que la raíz del proyecto esté en sys.path tanto en local como en producción (Render)
+_REPO_ROOT = str(pathlib.Path(__file__).resolve().parents[2])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

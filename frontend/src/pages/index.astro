@@ -6,19 +6,51 @@ import HeroWordmark from '../components/HeroWordmark.astro';
 import DisplayTitle from '../components/DisplayTitle.astro';
 import HeroScene from '../components/HeroScene.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
-import MedalIcon from '../components/MedalIcon.astro';
+import PodiumPanel from '../components/PodiumPanel.astro';
+import PrizeScale from '../components/PrizeScale.astro';
 import EventCountdown from '../components/svelte/EventCountdown.svelte';
 import TimelineEvents from '../components/TimelineEvents.astro';
 import { API_V1 } from '../lib/api';
 import { getStages, formatStageDate } from '../lib/stages';
-import { SITE_NAME, BRAND_WORDMARK, BRAND_EDITION } from '../data/site';
+import { SITE_NAME, BRAND_WORDMARK, BRAND_ACCENT, BRAND_EDITION } from '../data/site';
+import { ACCUMULATED_PRIZES, PER_DATE_PRIZES, PRIZE_CURRENCY } from '../data/prizes';
 
 /**
- * Copa de Equipos: se lee de la API. SIN datos literales: el arreglo de
- * respaldo que había (142/99/88) estaba desactualizado y ponía de líder al
- * equipo equivocado cuando la API no respondía (specs/03 §0.2).
+ * Las tres clasificaciones de la portada se leen de la API. SIN datos
+ * literales: cualquier cifra de respaldo quedaría desactualizada y pondría
+ * de líder a quien no toca (specs/03 §0.2).
+ *
+ * · PRO · TODOS    → acumulado del grupo PRO (todas sus categorías)
+ * · NORMAL · TODOS → acumulado del grupo NORMAL (todas sus categorías)
+ * · EQUIPO         → Copa de Equipos acumulada
  */
-let topTeams: { name: string; points: number }[] = [];
+type PodiumRow = { name: string; points: number };
+
+async function fetchScopePodium(
+  scope: 'PRO' | 'NORMAL'
+): Promise<{ rows: PodiumRow[]; error: boolean }> {
+  try {
+    const res = await fetch(`${API_V1}/public/standings?scope=${scope}`);
+    if (!res.ok) return { rows: [], error: true };
+    const data = await res.json();
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    return {
+      rows: rows
+        .slice(0, 3)
+        .map((r: any) => ({ name: r.rider_name, points: r.total_points })),
+      error: false,
+    };
+  } catch (e) {
+    return { rows: [], error: true };
+  }
+}
+
+const [proPodium, normalPodium] = await Promise.all([
+  fetchScopePodium('PRO'),
+  fetchScopePodium('NORMAL'),
+]);
+
+let topTeams: PodiumRow[] = [];
 let teamsError = false;
 try {
   const res = await fetch(`${API_V1}/public/standings/teams`);
@@ -99,6 +131,7 @@ const nextDistanceText =
   sections={[
     { label: 'Fechas', id: 'fechas' },
     { label: 'Clasificación', id: 'clasificacion' },
+    { label: 'Premios', id: 'premios' },
   ]}
 >
   <SiteHeader />
@@ -111,7 +144,7 @@ const nextDistanceText =
       <div class="hero__content container">
         <div class="hero__eyebrow" data-draw-eyebrow>[ {BRAND_EDITION} ]</div>
 
-        <HeroWordmark text={BRAND_WORDMARK} />
+        <HeroWordmark text={BRAND_WORDMARK} accent={BRAND_ACCENT} />
 
         <div class="hero__copy" data-hero-copy>
           <DisplayTitle size="hero" before="Cuatro fechas de MTB en " accent="Arequipa." />
@@ -192,70 +225,92 @@ const nextDistanceText =
       <TimelineEvents />
     </section>
 
-    <!-- ── 02 · Clasificación y premios ───────────────────────────────── -->
+    <!-- ── 02 · Clasificación ─────────────────────────────────────────── -->
     <section class="section container" id="clasificacion">
-      <SectionLabel number="02" label="Clasificación y premios" kicker="TRAS LAS DOS PRIMERAS FECHAS" />
+      <SectionLabel number="02" label="Clasificación" kicker="ACUMULADO TRAS LAS FECHAS DISPUTADAS" />
 
-      <div class="panels">
-        <div class="panel">
-          <div class="panel__head">[ COPA DE EQUIPOS ]</div>
-          {teamsError ? (
-            <>
-              <h3 class="panel__title">Clasificación no disponible</h3>
-              <p class="panel__body">
-                No pudimos cargar la Copa de Equipos en este momento. Vuelve a intentarlo en unos
-                segundos.
-              </p>
-            </>
-          ) : (
-            <>
-              <h3 class="panel__title">{topTeams[0]?.name ?? 'Sin equipos aún'}</h3>
-              <p class="panel__body">
-                Líder de la Copa de Equipos acumulada tras La Joya Extreme y Z Xtreme 2026.
-              </p>
+      <div class="panels panels--three">
+        <PodiumPanel
+          kicker="[ PRO · TODOS ]"
+          rows={proPodium.rows}
+          error={proPodium.error}
+          body="Líder del acumulado PRO sumando todas sus categorías: Elite, Master A, Master B y Master C."
+          href="/ranking-general?tabla=PRO"
+        />
 
-              <ol class="podium">
-                {
-                  topTeams.map((t, idx) => (
-                    <li class="podium__row">
-                      <MedalIcon rank={(idx + 1) as 1 | 2 | 3} size={20} class="podium__medal" />
-                      <span class="podium__name">{t.name}</span>
-                      <span class="podium__pts">{t.points} pts</span>
-                    </li>
-                  ))
-                }
-              </ol>
-            </>
-          )}
+        <PodiumPanel
+          kicker="[ NORMAL · TODOS ]"
+          rows={normalPodium.rows}
+          error={normalPodium.error}
+          body="Líder del acumulado NORMAL sumando todas sus categorías: Turismo, Master D, Damas y Juveniles."
+          href="/ranking-general?tabla=NORMAL"
+        />
 
-          <a class="panel__cta" href="/ranking-general?tabla=EQUIPO">Ver copa completa →</a>
-        </div>
+        <PodiumPanel
+          kicker="[ COPA DE EQUIPOS ]"
+          rows={topTeams}
+          error={teamsError}
+          body="Líder de la Copa de Equipos acumulada del campeonato."
+          href="/ranking-general?tabla=EQUIPO"
+          scope="team"
+        />
+      </div>
+    </section>
 
-        <div class="panel">
-          <div class="panel__head">[ PREMIOS ESPECIALES ]</div>
+    <!-- ── 03 · Premios ───────────────────────────────────────────────── -->
+    <section class="section container" id="premios">
+      <SectionLabel number="03" label="Premios" kicker="EN DÓLARES · EDICIÓN 2026" />
 
-          {
-            awards.length > 0 ? (
-              awards.map((award) => (
-                <div class="award">
-                  {award.sponsor_logo_url && (
-                    <img src={award.sponsor_logo_url} alt={award.title} loading="lazy" />
+      <div class="panels panels--three">
+        {
+          ACCUMULATED_PRIZES.map((prize) => (
+            <PrizeScale
+              label="ACUMULADO"
+              title={prize.label}
+              body={prize.blurb}
+              tiers={prize.tiers}
+              currency={PRIZE_CURRENCY}
+              accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
+              tags={['CAMPEONATO']}
+            />
+          ))
+        }
+
+        <PrizeScale
+          label="POR FECHA"
+          title="CADA CATEGORÍA"
+          body="El podio de cada una de las 11 categorías, en cada una de las cuatro fechas."
+          tiers={PER_DATE_PRIZES}
+          currency={PRIZE_CURRENCY}
+          accent="gold"
+          tags={['11 CATEGORÍAS', '4 FECHAS']}
+        />
+      </div>
+
+      <div class="panel panel--awards">
+        <div class="panel__head font-mono">[ PREMIOS ESPECIALES ]</div>
+
+        {
+          awards.length > 0 ? (
+            awards.map((award) => (
+              <div class="award">
+                {award.sponsor_logo_url && (
+                  <img src={award.sponsor_logo_url} alt={award.title} loading="lazy" />
+                )}
+                <div>
+                  <h4 class="award__name">{award.title}</h4>
+                  {award.prize_description && (
+                    <p class="award__text font-mono">{award.prize_description}</p>
                   )}
-                  <div>
-                    <h4 class="award__name">{award.title}</h4>
-                    {award.prize_description && (
-                      <p class="award__text font-mono">{award.prize_description}</p>
-                    )}
-                  </div>
                 </div>
-              ))
-            ) : (
-              <p class="panel__body">Los premios especiales se anuncian al cerrar la fecha.</p>
-            )
-          }
+              </div>
+            ))
+          ) : (
+            <p class="panel__body">Los premios especiales se anuncian al cerrar la fecha.</p>
+          )
+        }
 
-          <a class="panel__cta" href="/fechas/la-joya-extreme">Ver ganadores →</a>
-        </div>
+        <a class="panel__cta" href="/premios">Ver todos los premios →</a>
       </div>
     </section>
   </main>
@@ -333,7 +388,9 @@ const nextDistanceText =
     font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    color: var(--faint);
+    /* El oro de la copa: en el póster oficial "EDICIÓN 2026" también va en
+       amarillo. Es el único color del hero. */
+    color: var(--copa-gold);
   }
 
   .hero__copy {
@@ -466,6 +523,12 @@ const nextDistanceText =
     margin-bottom: 4rem;
   }
 
+  /* La sección de premios cierra con la tarjeta de premios especiales. */
+  .panel--awards {
+    margin-top: -2.5rem;
+    margin-bottom: 4rem;
+  }
+
   .panel {
     display: flex;
     flex-direction: column;
@@ -483,53 +546,10 @@ const nextDistanceText =
     color: var(--faint);
   }
 
-  .panel__title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
-    color: var(--ink-strong);
-  }
-
   .panel__body {
     margin: 0;
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
-    color: var(--muted);
-  }
-
-  .podium {
-    margin: 0.5rem 0 0;
-    padding: 0;
-    list-style: none;
-    border-top: var(--hairline) solid var(--line);
-  }
-
-  .podium__row {
-    display: grid;
-    grid-template-columns: 1.25rem 1fr auto;
-    gap: 1rem;
-    align-items: center;
-    padding-block: 0.6rem;
-    border-bottom: var(--hairline) solid var(--line);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-  }
-
-  .podium__medal {
-    align-self: center;
-  }
-
-  .podium__name {
-    overflow: hidden;
-    color: var(--ink);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .podium__pts {
     color: var(--muted);
   }
 
@@ -666,6 +686,11 @@ const nextDistanceText =
   @media (min-width: 68.75em) {
     .hero {
       --hero-next-height: 5.25rem;
+    }
+
+    /* Tres clasificaciones y tres bloques de premios en una sola línea. */
+    .panels--three {
+      grid-template-columns: repeat(3, 1fr);
     }
 
     /* En la banda ancha la fecha se apila ARRIBA del nombre de la carrera, en
