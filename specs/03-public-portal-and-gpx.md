@@ -998,12 +998,18 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   - La grilla dibuja los filetes con `gap: 1px` sobre su propio fondo y las
     celdas lo tapan con el fondo de la página: por eso es **una rejilla**, no
     un mosaico de cajas. Dos columnas en las secciones 01-03, cuatro en la 04.
-  - **El premio se DIBUJA, no se resume.** Una escala con tres peldaños se
-    lee como un podio: la medalla, el puesto y su cifra
-    (`🥇 1º … USD 300`), con la cifra a la derecha de la fila. Es la misma
-    lectura que usa `PodiumPanel` en las clasificaciones. La tira plana
-    ("USD 300 / 200 / 100") queda sólo en el rótulo de la sección, como
-    resumen.
+  - **El premio se DIBUJA, no se resume.** Hay dos formas, según cuántos
+    peldaños tenga el premio:
+    - **Con tres peldaños (PRO, NORMAL, CADA CATEGORÍA): un PODIO.** Tres
+      escalones —tercero, primero y segundo, con el primero en el centro y
+      el más alto— con su medalla dentro y **la cifra encima de su
+      escalón**. La medalla ya lleva el puesto calado al vacío, así que el
+      "1º" **no** se repite en texto.
+    - **Con un solo premio (Premio CLARO, títulos de montaña): un STICKER.**
+      La cifra va en una pegatina dorada junto al titular. Un premio único no
+      necesita un podio: necesita una etiqueta.
+    - La tira plana ("USD 300 / 200 / 100") queda sólo en el rótulo de la
+      sección, como resumen.
   - El emblema es un cuadro de 2.25 rem con el icono del ámbito (o el
     logotipo del patrocinador, a su proporción). La cifra va en monoespaciada
     y en el color del ámbito (el oro de la copa para el resto).
