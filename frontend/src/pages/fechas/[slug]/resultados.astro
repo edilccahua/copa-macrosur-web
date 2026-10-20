@@ -1,0 +1,290 @@
+---
+import Base from '../../../layouts/Base.astro';
+import SiteHeader from '../../../components/SiteHeader.astro';
+import SiteFooter from '../../../components/SiteFooter.astro';
+import { API_V1 } from '../../../lib/api';
+
+// SSR: la ruta es dinámica y se resuelve contra la API en cada request.
+// Antes era prerenderizada con `getStaticPaths` + `fetch` de build-time, lo que
+// horneaba la página VACÍA (sin ningún aviso) si el backend no estaba arriba
+// durante `npm run build`. Ver specs/03 §2.
+const { slug } = Astro.params;
+
+let stageData: any = null;
+let notFound = false;
+try {
+  const res = await fetch(`${API_V1}/stages/${slug}/results`);
+  if (res.status === 404) {
+    notFound = true;
+    Astro.response.status = 404;
+  } else if (res.ok) {
+    stageData = await res.json();
+  }
+} catch (e) {
+  Astro.response.status = 503;
+}
+
+const stageName = stageData?.stage?.name || 'Resultados de Etapa';
+const stageId = stageData?.stage?.id;
+// Ordenar: finalistas por puesto, no finalistas (sin tiempo) al final
+const categories: Record<string, any[]> = {};
+for (const [catName, riders] of Object.entries(stageData?.categories || {})) {
+  categories[catName] = (riders as any[]).slice().sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
+}
+---
+<Base title={`Resultados Oficiales: ${stageName} — Kúspide MTB`}>
+  <SiteHeader />
+
+  <main class="container page-content">
+    {
+      notFound ? (
+        <div class="header-box">
+          <h1 class="page-title">FECHA NO ENCONTRADA</h1>
+          <p class="page-desc">
+            No existe una fecha con el identificador <span class="font-mono">{slug}</span>.
+          </p>
+          <div class="actions-bar">
+            <a href="/fechas" class="btn btn--ghost font-mono">← VOLVER AL CALENDARIO</a>
+          </div>
+        </div>
+      ) : (
+        <>
+    <div class="header-box">
+      <div class="breadcrumb font-mono">
+        <a href={`/fechas/${slug}`}>← VOLVER A LA FICHA</a>
+        <span class="breadcrumb__sep">/</span>
+        <span>{stageName}</span>
+      </div>
+      <h1 class="page-title">RESULTADOS OFICIALES: {stageName}</h1>
+      <p class="page-desc">
+        Clasificación completa de meta por categorías con tiempos netos y puntos asignados según la escala reglamentaria.
+      </p>
+
+      <div class="actions-bar">
+        <a href={`/fechas/${slug}#podio`} class="btn btn--ghost font-mono">PODIO POR CATEGORÍA ↑</a>
+        {
+          stageId && (
+            <a href={`${API_V1}/stages/${stageId}/export-excel`} class="btn btn--solid font-mono">
+              EXPORTAR PLANILLA OFICIAL [.XLSX] ↓
+            </a>
+          )
+        }
+      </div>
+    </div>
+
+    <!-- Tablas por categoría -->
+    <div class="categories-list">
+      {
+        Object.entries(categories).map(([catName, riders]: [string, any]) => (
+          <div class="cat-block">
+            <div class="cat-header">
+              <h2 class="cat-title">{catName}</h2>
+              <span class="cat-count font-mono">{riders.length} ciclistas</span>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th class="col-rank">Puesto</th>
+                    <th class="col-bib">Dorsal</th>
+                    <th>Ciclista</th>
+                    <th>Equipo / Club</th>
+                    <th class="col-time">Tiempo Oficial</th>
+                    <th class="col-pts">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {riders.map((r: any) => (
+                    <tr>
+                      <td class="col-rank font-mono">{r.rank ? `${r.rank}°` : '-'}</td>
+                      <td class="col-bib font-mono bib-tag">#{r.bib_number}</td>
+                      <td>
+                        <a href={`/corredor/${r.rider_slug}`} class="rider-link">
+                          {r.rider_name}
+                        </a>
+                      </td>
+                      <td>{r.team_name}</td>
+                      <td class="col-time font-mono">{r.formatted_time}</td>
+                      <td class="col-pts font-mono pts-tag">+{r.points_earned} pts</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+        </>
+      )
+    }
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+  }
+
+  .header-box {
+    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .breadcrumb a {
+    color: var(--accent, #ff5500);
+    text-decoration: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  .breadcrumb__sep {
+    color: var(--faint);
+  }
+
+  .page-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    color: var(--ink-strong);
+    text-wrap: balance;
+    margin: 1rem 0;
+  }
+
+  .page-desc {
+    max-width: 45rem;
+    font-size: 0.9375rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-excel {
+    display: inline-block;
+    padding: 0.75rem 1.25rem;
+    background: #10b981;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+  }
+
+  .btn-excel:hover {
+    background: #059669;
+  }
+
+  .categories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    margin-bottom: 4rem;
+  }
+
+  .cat-block {
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+  }
+
+  .cat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--bg);
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .cat-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.125rem;
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.02em;
+    color: var(--ink-strong);
+    margin: 0;
+  }
+
+  .cat-count {
+    font-size: 0.6875rem;
+    color: var(--muted);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.8125rem;
+  }
+
+  .data-table th {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: var(--hairline) solid var(--line);
+    background: var(--bg);
+  }
+
+  .data-table td {
+    padding: 0.75rem 1.25rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .col-rank {
+    width: 3.75rem;
+    font-weight: 800;
+  }
+
+  .col-bib {
+    width: 4.375rem;
+  }
+
+  .bib-tag {
+    font-weight: 800;
+  }
+
+  .rider-link {
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .rider-link:hover {
+    color: var(--accent, #ff5500);
+  }
+
+  .col-time {
+    width: 7.5rem;
+  }
+
+  .col-pts {
+    width: 5.625rem;
+    text-align: right;
+  }
+
+  .pts-tag {
+    font-weight: 800;
+    color: var(--accent, #ff5500);
+  }
+</style>

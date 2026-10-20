@@ -56,7 +56,6 @@ const stats = [
       class="profile__img"
       src={`/profiles/${slug}.svg`}
       alt={`Perfil de altimetría de ${stageName}: ${profile.distance_km} km, ${profile.elevation_gain_m} m de desnivel`}
-      loading="lazy"
       decoding="async"
     />
     <p class="profile__scale font-mono">
@@ -144,7 +143,10 @@ const stats = [
   .profile__img {
     display: block;
     width: 100%;
+    /* El SVG trae su viewBox: sin altura fija, la imagen escala con su
+       proporción (2400 × 900). */
     height: auto;
+    aspect-ratio: 2400 / 900;
     border: var(--hairline) solid var(--line);
     background: var(--bg-sunken);
   }
