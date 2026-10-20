@@ -52,6 +52,19 @@ SCOPE_LABELS: Dict[str, str] = {
 
 SCOPE_ORDER: List[str] = ["PRO", "NORMAL", "E-MTB"]
 
+#: Modos de la clasificación pública.
+#: - "acumulado": la fecha es el CORTE (se suma todo lo disputado hasta ahí).
+#: - "fecha": la fecha es la CARRERA EXACTA (solo sus puntos y su tiempo).
+#: Es el equivalente a GENERAL / CLASIFICACIÓN DE PASO del Tour de Francia.
+MODE_ACUMULADO = "acumulado"
+MODE_FECHA = "fecha"
+MODES = (MODE_ACUMULADO, MODE_FECHA)
+
+
+def normalize_mode(mode: Optional[str]) -> str:
+    """Modo válido; cualquier valor desconocido cae en el acumulado."""
+    return mode if mode in MODES else MODE_ACUMULADO
+
 
 def scope_short_codes(scope: str) -> List[str]:
     """Devuelve los short_codes de categoría que integran un ámbito."""
@@ -88,13 +101,22 @@ async def _finished_entries(
     session: AsyncSession,
     stage_limit: Optional[int],
     category_ids: Optional[List[int]],
+    exact: bool = False,
 ) -> List[Any]:
+    """
+    Entradas finalizadas, acotadas por fecha.
+
+    `exact=False` (acumulado): hasta el CORTE `stage_limit` inclusive.
+    `exact=True` (modo fecha): SOLO la carrera `stage_limit`.
+    """
     stmt = select(StageEntry).where(
         StageEntry.race_status == RaceStatusEnum.FINISHED,
         StageEntry.finish_elapsed_ms.is_not(None),
     )
     if stage_limit is not None:
-        stmt = stmt.where(StageEntry.stage_id <= stage_limit)
+        stmt = stmt.where(
+            StageEntry.stage_id == stage_limit if exact else StageEntry.stage_id <= stage_limit
+        )
     if category_ids:
         stmt = stmt.where(StageEntry.category_id.in_(category_ids))
     stmt = stmt.order_by(StageEntry.stage_id)
@@ -135,16 +157,23 @@ async def compute_standings(
     stage_limit: Optional[int] = None,
     scope: str = "COMBINED",
     category_id: Optional[int] = None,
+    mode: str = MODE_ACUMULADO,
 ) -> List[Dict[str, Any]]:
     """
-    Ranking individual acumulado hasta la fecha `stage_limit` (None = todas).
+    Ranking individual: acumulado hasta la fecha `stage_limit` (None = todas).
 
     `scope` acota las categorías (`COMBINED`, `PRO`, `NORMAL`, `E-MTB`) y
     `category_id`, si se indica, acota a una categoría concreta y anula el ámbito.
 
+    `mode`:
+    - "acumulado": `stage_limit` es el CORTE (se suma todo lo disputado hasta ahí).
+    - "fecha": `stage_limit` es la CARRERA exacta (solo sus puntos y su tiempo).
+      No hay carrera previa con la que comparar, así que el delta va vacío.
+
     Cada fila incluye: puesto en el ámbito, puesto dentro de su categoría, puntos,
     victorias, tiempo acumulado, diferencia al líder y delta contra la fecha previa.
     """
+    exact = normalize_mode(mode) == MODE_FECHA
     cats = await _category_index(session)
 
     category_ids: Optional[List[int]] = None
@@ -154,7 +183,7 @@ async def compute_standings(
         codes = scope_short_codes(scope)
         matched = [c.id for c in cats.values() if c.short_code in codes]
         category_ids = matched or None
-    entries = await _finished_entries(session, stage_limit, category_ids)
+    entries = await _finished_entries(session, stage_limit, category_ids, exact=exact)
     if not entries:
         return []
 
@@ -216,8 +245,13 @@ async def compute_standings(
 
     _rank_rows(rows)
 
-    # Delta contra la fecha anterior
-    prev_stage_id = await _previous_stage_id(session, stage_limit) if stage_limit is not None else None
+    # Delta contra la fecha anterior. En modo "fecha" no aplica: la carrera
+    # aislada no tiene una clasificación previa con la que compararse.
+    prev_stage_id = (
+        None
+        if exact
+        else (await _previous_stage_id(session, stage_limit) if stage_limit is not None else None)
+    )
     prev_ranks: Dict[int, int] = {}
     if prev_stage_id is not None:
         prev_rows = await compute_standings(
@@ -272,9 +306,15 @@ async def _previous_ranks(
 async def compute_team_standings(
     session: AsyncSession,
     stage_limit: Optional[int] = None,
+    mode: str = MODE_ACUMULADO,
 ) -> List[Dict[str, Any]]:
-    """Copa de Equipos acumulada hasta la fecha `stage_limit` (None = todas)."""
-    entries = await _finished_entries(session, stage_limit, None)
+    """
+    Copa de Equipos: acumulada hasta la fecha `stage_limit` (None = todas).
+
+    `mode="fecha"`: solo los puntos de esa carrera exacta.
+    """
+    exact = normalize_mode(mode) == MODE_FECHA
+    entries = await _finished_entries(session, stage_limit, None, exact=exact)
     if not entries:
         return []
 
@@ -341,8 +381,14 @@ async def compute_team_standings(
 async def standings_context(
     session: AsyncSession,
     stage_limit: Optional[int] = None,
+    mode: str = MODE_ACUMULADO,
 ) -> Dict[str, Any]:
-    """Datos de cabecera: etapas disputadas, fechas disponibles y distancia acumulada."""
+    """
+    Datos de cabecera: etapas disputadas, fechas disponibles y distancia acumulada.
+
+    En modo "fecha" la distancia es la de esa carrera (no la suma acumulada) y
+    `stages_counted` es 1.
+    """
     stages = (await session.exec(select(Stage).order_by(Stage.stage_number))).all()
     cats = (await session.exec(select(Category))).all()
     finished = [s for s in stages if s.status == "FINISHED"]
@@ -364,11 +410,15 @@ async def standings_context(
     if target_id is None and available:
         target_id = available[-1]["id"]
 
+    exact = normalize_mode(mode) == MODE_FECHA
     distance = 0.0
     stages_count = 0
     for s in finished:
-        if target_id is not None and s.id > target_id:
-            continue
+        if target_id is not None:
+            if exact and s.id != target_id:
+                continue
+            if not exact and s.id > target_id:
+                continue
         distance += (s.distance_km or 0.0) * (s.laps or 1)
         stages_count += 1
 

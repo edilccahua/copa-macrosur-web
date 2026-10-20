@@ -25,17 +25,11 @@
     value: string;
     /** Antetítulo del control (p.ej. "FECHA", "ÁMBITO"). */
     label?: string;
-    /**
-     * Oculta el dato secundario en el botón (no en la lista). El selector de
-     * fechas lo usa: en la cabecera cabe el nombre de la carrera, pero la
-     * fecha sí interesa en la lista desplegable.
-     */
-    hideMeta?: boolean;
     /** Texto del chevron anterior/siguiente. */
     onchange?: (value: string) => void;
   }
 
-  let { options, value, label = '', hideMeta = false, onchange }: Props = $props();
+  let { options, value, label = '', onchange }: Props = $props();
 
   let open = $state(false);
   let activeIndex = $state(0);
@@ -117,7 +111,7 @@
       onkeydown={onKeydown}
     >
       <span class="sc__value">{current?.label ?? '—'}</span>
-      {#if current?.meta && !hideMeta}<span class="sc__meta">{current.meta}</span>{/if}
+      {#if current?.meta}<span class="sc__meta">{current.meta}</span>{/if}
       <svg class="sc__chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
         <path d="M1 3.5 L5 7 L9 3.5" fill="none" stroke="currentColor" stroke-width="1.3" />
       </svg>

@@ -231,3 +231,98 @@ async def test_team_standings_cut_by_stage(world):
     #          BETA  = 19 (10 + 9) + 8 (EPSILON) = 27
     assert by_name["TEAM ALPHA"]["total_points"] == 39
     assert by_name["TEAM BETA"]["total_points"] == 27
+
+
+# --- Modo "fecha" (una sola carrera, sin acumulado) --------------------------
+#
+# El modo "fecha" NO es un acumulado con otro corte: es la clasificación de la
+# CARRERA exacta. Solo cuentan sus puntos y su tiempo, y no hay DELTA porque no
+# existe una clasificación previa con la que compararse.
+
+@pytest.mark.asyncio
+async def test_fecha_mode_counts_only_that_stage(world):
+    stage2 = world["stages"][2].id
+    rows = await compute_standings(world["session"], stage_limit=stage2, scope="PRO",
+                                    mode="fecha")
+    by_name = {r["rider_name"]: r for r in rows}
+
+    # Fecha 2: GAMMA 10 (1º MASTER A), ALEX 9 (2º ELITE), EPSILON 8 (3º MASTER B).
+    assert by_name["GAMMA GOLF"]["total_points"] == 10
+    assert by_name["ALEX ALPHA"]["total_points"] == 9
+    assert by_name["EPSILON ECHO"]["total_points"] == 8
+
+    # El tiempo también es el de esa carrera, no el acumulado.
+    assert by_name["ALEX ALPHA"]["total_elapsed_ms"] == ms(2, 3, 0)
+    assert by_name["ALEX ALPHA"]["stages_completed"] == 1
+
+    # Quien no corrió esa fecha no aparece en la tabla.
+    assert "BETA BRAVO" not in by_name
+    assert "DELTA DELTA" not in by_name
+
+
+@pytest.mark.asyncio
+async def test_fecha_mode_has_no_delta(world):
+    """Una carrera aislada no tiene con qué compararse: el Δ va vacío."""
+    stage2 = world["stages"][2].id
+    rows = await compute_standings(world["session"], stage_limit=stage2, scope="PRO",
+                                    mode="fecha")
+    assert all(r["rank_delta"] == 0 for r in rows)
+    assert all(r["previous_rank"] is None for r in rows)
+    assert all(r["is_debut"] is False for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_fecha_mode_of_the_first_stage(world):
+    stage1 = world["stages"][1].id
+    rows = await compute_standings(world["session"], stage_limit=stage1, scope="PRO",
+                                    mode="fecha")
+    by_name = {r["rider_name"]: r for r in rows}
+    assert by_name["ALEX ALPHA"]["total_points"] == 10
+    assert by_name["GAMMA GOLF"]["total_points"] == 10
+    # En la fecha 1 el acumulado y la fecha aislada coinciden.
+    acumulado = await compute_standings(world["session"], stage_limit=stage1, scope="PRO")
+    assert [r["rider_name"] for r in rows] == [r["rider_name"] for r in acumulado]
+
+
+@pytest.mark.asyncio
+async def test_acumulado_mode_is_untouched_by_the_new_mode(world):
+    """El modo por defecto sigue siendo el acumulado hasta el corte."""
+    stage2 = world["stages"][2].id
+    rows = await compute_standings(world["session"], stage_limit=stage2, scope="PRO")
+    by_name = {r["rider_name"]: r for r in rows}
+    assert by_name["ALEX ALPHA"]["total_points"] == 19   # 10 + 9
+    assert by_name["ALEX ALPHA"]["rank_delta"] == -1     # sí compara con la fecha 1
+
+
+@pytest.mark.asyncio
+async def test_team_standings_in_fecha_mode(world):
+    stage2 = world["stages"][2].id
+    rows = await compute_team_standings(world["session"], stage_limit=stage2, mode="fecha")
+    by_name = {r["team_name"]: r for r in rows}
+    # Solo la fecha 2: ALPHA = 10 (GAMMA) + 9 (ALEX) = 19 | BETA = 8 (EPSILON)
+    assert by_name["TEAM ALPHA"]["total_points"] == 19
+    assert by_name["TEAM BETA"]["total_points"] == 8
+    assert by_name["TEAM ALPHA"]["total_riders"] == 2
+
+
+@pytest.mark.asyncio
+async def test_fecha_mode_context_counts_one_stage(world):
+    """En modo fecha la cinta dice UNA fecha y la distancia es la de esa carrera."""
+    from backend.app.services.standings_service import standings_context
+
+    stage2 = world["stages"][2].id
+    ctx = await standings_context(world["session"], stage_limit=stage2, mode="fecha")
+    assert ctx["stages_counted"] == 1
+    assert ctx["selected_stage_id"] == stage2
+
+    ctx_acum = await standings_context(world["session"], stage_limit=stage2, mode="acumulado")
+    assert ctx_acum["stages_counted"] == 2
+
+
+@pytest.mark.asyncio
+async def test_unknown_mode_falls_back_to_acumulado(world):
+    stage2 = world["stages"][2].id
+    rows = await compute_standings(world["session"], stage_limit=stage2, scope="PRO",
+                                    mode="inventado")
+    by_name = {r["rider_name"]: r for r in rows}
+    assert by_name["ALEX ALPHA"]["total_points"] == 19

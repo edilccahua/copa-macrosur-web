@@ -17,10 +17,18 @@ const { stats } = Astro.props;
 
 const undisclosed = stats.entries_total === 0;
 
+/**
+ * `non_finishers` solo cuenta abandonos cuando la fecha ya se ha disputado.
+ * En una fecha con inscripción abierta no hay abandonos: hay gente que
+ * todavía no corre, y la cifra se rotula distinto para no mentir.
+ */
+const nonFinishersLabel =
+  stats.non_finishers > 0 ? 'NO FINALIZARON' : 'AÚN NO COMPITEN';
+
 const cells = [
   { label: 'INSCRITOS', value: undisclosed ? '—' : String(stats.entries_total) },
   { label: 'FINALIZARON', value: undisclosed ? '—' : String(stats.finishers) },
-  { label: 'NO FINALIZARON', value: undisclosed ? '—' : String(stats.non_finishers) },
+  { label: nonFinishersLabel, value: undisclosed ? '—' : String(stats.non_finishers) },
   { label: 'PUNTOS', value: undisclosed ? '—' : String(stats.points_total) },
   {
     label: 'VEL. GANADOR',

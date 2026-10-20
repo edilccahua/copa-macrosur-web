@@ -12,7 +12,7 @@ from backend.app.models.schemas import PreRegistrationCreate, FeedbackTicketCrea
 from backend.app.services.excel_service import slugify, resolve_or_create_team
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.standings_service import (
-    compute_standings, compute_team_standings, standings_context,
+    compute_standings, compute_team_standings, normalize_mode, standings_context,
 )
 
 router = APIRouter(prefix="/public", tags=["Public Portal"])
@@ -24,31 +24,40 @@ async def get_standings(
     scope: str = Query("COMBINED", description="COMBINED | PRO | NORMAL | E-MTB"),
     category_id: Optional[int] = Query(None, description="Acota a una categoría concreta"),
     kind: str = Query("individual", description="individual | teams"),
+    mode: str = Query("acumulado", description="acumulado | fecha"),
     session: AsyncSession = Depends(get_session)
 ):
     """
-    Ranking acumulado "a la fecha" (patrón Tour de Francia).
+    Clasificación oficial (patrón Tour de Francia).
+
+    `mode` define qué significa la fecha:
+    - "acumulado" (por defecto): la fecha es el CORTE; se suma todo lo disputado
+      hasta ahí y la DELTA compara contra la fecha anterior.
+    - "fecha": la fecha es la CARRERA exacta; solo se cuentan sus puntos y su
+      tiempo, y no hay DELTA (no existe una clasificación previa que comparar).
 
     `scope` define el ámbito de categorías pooled (COMBINED = PRO + NORMAL);
     `category_id` acota a una categoría y anula el ámbito. `kind=teams` devuelve
-    la Copa de Equipos con la misma fecha de corte.
+    la Copa de Equipos con la misma fecha.
     """
+    mode = normalize_mode(mode)
     # Se resuelve primero la fecha efectiva (la última disputada si no se indica):
     # la DELTA necesita un corte concreto para compararlo con la fecha anterior.
-    context = await standings_context(session, stage_limit=stage)
+    context = await standings_context(session, stage_limit=stage, mode=mode)
     target_stage = context["selected_stage_id"]
 
     if kind == "teams":
-        rows = await compute_team_standings(session, stage_limit=target_stage)
+        rows = await compute_team_standings(session, stage_limit=target_stage, mode=mode)
     else:
         rows = await compute_standings(
-            session, stage_limit=target_stage, scope=scope, category_id=category_id
+            session, stage_limit=target_stage, scope=scope, category_id=category_id, mode=mode
         )
 
     return {
         "kind": kind,
         "scope": scope if kind == "individual" else None,
         "category_id": category_id,
+        "mode": mode,
         "rows": rows,
         "context": context,
     }
