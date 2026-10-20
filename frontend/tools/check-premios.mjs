@@ -145,9 +145,13 @@ const secciones = await page.$$eval('.premios-section', (els) =>
     celdas: el.querySelectorAll('.cell').length,
   }))
 );
-ok(secciones.length === 4, `/premios: hay 4 secciones (${secciones.length})`);
+ok(secciones.length === 5, `/premios: hay 5 secciones (${secciones.length})`);
 ok(
-  secciones.map((s) => s.celdas).join('·') === '2·2·2·4',
+  secciones.map((s) => s.id).join('·') === 'acumulado·por-fecha·equipos·claro·montana',
+  `/premios: las secciones en orden (${secciones.map((s) => s.id).join(' · ')})`
+);
+ok(
+  secciones.map((s) => s.celdas).join('·') === '2·2·2·2·4',
   `/premios: cada sección tiene sus celdas (${secciones.map((s) => s.celdas).join('·')})`
 );
 
@@ -168,12 +172,20 @@ const celdas = await page.$$eval('.cell', (els) =>
       podio: [...el.querySelectorAll('.cell__step')].map((r) => ({
         medalla: r.querySelector('.medal') ? 'ok' : null,
         cifra: r.querySelector('.cell__step-value')?.textContent?.trim() ?? null,
+        titular: r.querySelector('.cell__step-name')?.textContent?.trim() ?? null,
+        provisional: r.querySelector('.cell__step-state')?.textContent?.trim() ?? null,
         alto: r.querySelector('.cell__step-block')
           ? Math.round(r.querySelector('.cell__step-block').getBoundingClientRect().height)
           : 0,
       })),
       sticker: el.querySelector('.cell__sticker')?.textContent?.trim() ?? null,
       puestoEnTexto: el.querySelector('.cell__podium-pos')?.textContent?.trim() ?? null,
+      colorKicker: el.querySelector('.cell__label')
+        ? getComputedStyle(el.querySelector('.cell__label')).color
+        : null,
+      colorValor: el.querySelector('.cell__step-value')
+        ? getComputedStyle(el.querySelector('.cell__step-value')).color
+        : null,
       estado: el.querySelector('.cell__state')?.textContent?.trim() ?? null,
       ganador: el.querySelector('.cell__value')?.textContent?.trim() ?? null,
       detalle: el.querySelector('.cell__detail')?.textContent?.trim() ?? null,
@@ -182,14 +194,17 @@ const celdas = await page.$$eval('.cell', (els) =>
   })
 );
 
-ok(celdas.length === 10, `/premios: hay 10 celdas (8 premios + 2 notas) (${celdas.length})`);
 ok(
-  celdas.filter((c) => c.titulo).every((c) => c.emblema),
-  '/premios: cada premio tiene emblema e índice'
+  celdas.length === 12,
+  `/premios: hay 12 celdas (8 premios + 1 equipos + 3 notas) (${celdas.length})`
 );
 ok(
-  celdas.filter((c) => c.titulo).every((c, i) => c.indice === String(i + 1).padStart(2, '0')),
-  `/premios: los premios van numerados (${celdas.map((c) => c.indice).join(' ')})`
+  celdas.filter((c) => c.titulo).every((c) => c.emblema),
+  '/premios: cada premio tiene emblema'
+);
+ok(
+  celdas.every((c) => !c.indice),
+  '/premios: las tarjetas ya no llevan el número arriba a la derecha'
 );
 // La referencia admite cuerpos de hasta ~80 caracteres en la celda
 // ("Every line is on GitHub under permissive licenses. Read it, fork it,
@@ -203,8 +218,8 @@ ok(
 // ── 6b · El premio se DIBUJA: un podio con medallas, no una tira de cifras ──
 const conEscala = celdas.filter((c) => c.podio.length > 0);
 ok(
-  conEscala.length === 3,
-  `/premios: tres premios con podio (${conEscala.length})`
+  conEscala.length === 4,
+  `/premios: cuatro premios con podio (${conEscala.length})`
 );
 ok(
   conEscala.every((c) => c.podio.length === 3),
@@ -249,6 +264,34 @@ ok(
   '/premios: las escalas con tres peldaños NO llevan sticker'
 );
 
+// ── 6b-ter · El ganador provisional va DENTRO de su peldaño ────────────────
+//
+// Sólo en los acumulados (PRO, NORMAL y equipos): los por fecha se resuelven
+// en cada carrera.
+const conGanador = celdas.filter((c) => c.podio.some((r) => r.titular));
+ok(
+  conGanador.length === 3,
+  `/premios: tres podios con ganador provisional (${conGanador.length})`
+);
+ok(
+  conGanador.every((c) => c.podio.every((r) => r.titular && r.provisional)),
+  '/premios: cada peldaño lleva su ganador provisional'
+);
+const porFecha = celdas.filter((c) => c.titulo === 'CADA CATEGORÍA');
+ok(
+  porFecha.every((c) => c.podio.every((r) => !r.titular)),
+  '/premios: el premio por fecha NO muestra ganador (es por fecha)'
+);
+
+// ── 6b-cuarto · Sin colores de ámbito: una sola tinta ──────────────────────
+const tintes = new Set(
+  celdas.flatMap((c) => [c.colorKicker, c.colorValor].filter(Boolean))
+);
+ok(
+  tintes.size <= 2,
+  `/premios: los premios usan una sola tinta (${[...tintes].join(' · ')})`
+);
+
 // La tira plana "USD 300 / 200 / 100" NO debe aparecer en la tabla.
 ok(
   !celdas.some((c) => /\d\s*\/\s*\d\s*\/\s*\d/.test(c.monto ?? '')),
@@ -280,8 +323,8 @@ const rotulos = await page.$$eval('.section-label__kicker', (els) =>
   els.map((e) => e.textContent.trim())
 );
 ok(
-  rotulos.length === 4,
-  `/premios: las 4 secciones llevan rótulo (${rotulos.length})`
+  rotulos.length === 5,
+  `/premios: las 5 secciones llevan rótulo (${rotulos.length})`
 );
 ok(
   rotulos.every((r) => !/\d+\s*\/\s*\d+/.test(r)),
@@ -329,7 +372,7 @@ const tablas = await page.evaluate(() =>
   })
 );
 ok(
-  tablas.length === 4,
+  tablas.length === 5,
   `/premios: cada sección es una tabla (${tablas.length})`
 );
 ok(

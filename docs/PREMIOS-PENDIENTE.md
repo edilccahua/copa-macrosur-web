@@ -20,7 +20,27 @@ Aclaraciones que la UI deja explícitas:
 
 ---
 
-## 2. Qué hay hoy en la base de datos
+## 1.1 Premio acumulado de equipos (20-Oct-2026)
+
+La página `/premios` tiene una sección nueva, **03 · Premio de equipos**, con
+el podio de la **Copa de Equipos acumulada**: los tres clubes con más puntos
+y el premio que le toca a cada puesto.
+
+**El monto está en el aire:** la página usa la escala acumulada de siempre
+(300 / 200 / 100 USD, la misma de `ACCUMULATED_PRIZES`) porque es la única
+escala acumulada que hay en `frontend/src/data/prizes.ts`. **Falta que el
+organizador confirme el monto del premio de equipos** y, si es otro, se
+cambia en un solo sitio (el `podium={...}` de la sección 03 de
+`frontend/src/pages/premios.astro`).
+
+La BD tampoco lo tiene: `prize_tiers` sigue con las filas de §2 (y con los
+montos viejos). Cuando se migre, hará falta una fila más para la agrupación
+`EQUIPOS` en el scope `ACUMULADO`.
+
+Los ganadores de cada peldaño son **provisionales**: son los tres primeros de
+`GET /api/v1/public/standings?kind=teams`, y el campeonato sigue abierto.
+
+---
 
 `prize_tiers` (6 filas):
 
