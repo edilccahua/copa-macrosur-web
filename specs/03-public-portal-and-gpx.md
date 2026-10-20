@@ -1051,7 +1051,11 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   frontend es `frontend/src/data/prizes.ts` y tiene que decir lo mismo; la
   deuda y el detalle están en `docs/PREMIOS-PENDIENTE.md`.
 - La portada reproduce la misma escala en la sección `03 · Premios` y enlaza
-  a esta página.
+  a esta página. **Su versión es la tarjeta compacta** (`PrizeScale`): misma
+  figura del podio, pero **sin ganadores** —la portada publica la ESCALA, no
+  los resultados— y con cuatro bloques (PRO, NORMAL, CADA CATEGORÍA y
+  EQUIPOS). Los premios especiales van con el **sticker** del monto, también
+  sin ganador. Los dos bloques terminan con su enlace a `/premios`.
 - **Premio CLARO (USD 100) — la remontada, ACUMULADO.** Se entrega al cerrar
   las cuatro fechas y **no aparece en la ficha de una fecha**
   (`special_awards.stage_id = NULL`). Se resuelve con

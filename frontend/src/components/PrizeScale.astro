@@ -20,6 +20,8 @@
  */
 import Icon from './Icon.astro';
 import type { IconName } from './Icon.astro';
+import Podium from './Podium.astro';
+import type { PodiumStep } from './Podium.astro';
 import type { PrizeStep } from '../data/prizes';
 
 /**
@@ -48,6 +50,11 @@ interface Props {
   body?: string;
   /** Los tres peldaños del podio. */
   tiers: PrizeStep[];
+  /**
+   * Dibuja los peldaños como la FIGURA del podio (medallas y cifras encima)
+   * en vez de la lista de cifras. Es el mismo dibujo que usa `/premios`.
+   */
+  podium?: PodiumStep[];
   /** Moneda de los montos. */
   currency?: string;
   /** Etiquetas de contexto (categorías, fechas...). */
@@ -69,6 +76,7 @@ const {
   title,
   body,
   tiers,
+  podium,
   currency = 'USD',
   tags = [],
   accent = 'gold',
@@ -107,25 +115,33 @@ const leaderDetail = leader
         </span>
       )
     }
-    <h2 class="prize__label">{title}</h2>
-    <span class="prize__scope font-mono">· {label}</span>
+    <span class="prize__titleGroup">
+      <h2 class="prize__label">{title}</h2>
+      <span class="prize__scope font-mono">· {label}</span>
+    </span>
     <span class="prize__currency font-mono">{currency}</span>
   </header>
 
   {body && <p class="prize__body">{body}</p>}
 
-  <ol class="prize__tiers">
-    {
-      tiers.map((tier) => (
-        <li class="prize__tier">
-          <span class="prize__pos font-mono">{tier.position}º</span>
-          <span class="prize__amount tabular">
-            {currency} {tier.amountUsd}
-          </span>
-        </li>
-      ))
-    }
-  </ol>
+  {
+    podium ? (
+      <Podium steps={podium} />
+    ) : (
+      <ol class="prize__tiers">
+        {
+          tiers.map((tier) => (
+            <li class="prize__tier">
+              <span class="prize__pos font-mono">{tier.position}º</span>
+              <span class="prize__amount tabular">
+                {currency} {tier.amountUsd}
+              </span>
+            </li>
+          ))
+        }
+      </ol>
+    )
+  }
 
   {
     tags.length > 0 && (
@@ -171,6 +187,9 @@ const leaderDetail = leader
     background: var(--bg-raised);
     border: var(--hairline) solid var(--line);
     text-decoration: none;
+    /* El podio se mide a sí mismo para bajar la cifra si la pista es
+       estrecha. */
+    container-type: inline-size;
     transition: border-color var(--default-transition-duration)
       var(--default-transition-timing-function);
   }
@@ -193,6 +212,11 @@ const leaderDetail = leader
     --prize-accent-ink: var(--scope-ink, var(--line-strong));
   }
 
+  /* El podio de la tarjeta toma el acento de la tarjeta. */
+  .prize {
+    --podium-accent: var(--prize-accent, var(--copa-gold));
+  }
+
   a.prize:hover {
     border-color: var(--prize-accent, var(--line-strong));
   }
@@ -202,6 +226,16 @@ const leaderDetail = leader
     align-items: center;
     gap: 0.375rem;
     min-height: 1.25rem;
+  }
+
+  /* El titular y su calificador van juntos: si no caben en la pista, el
+     calificador baja de línea en vez de partirse en dos. */
+  .prize__titleGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.375rem;
+    min-width: 0;
   }
 
   /* El icono va EN LÍNEA: sin caja, sin borde, sin fondo. */

@@ -67,6 +67,11 @@ const leerTarjetas = (page, selector) =>
         pie: pie?.textContent?.trim() ?? null,
         nombre: el.querySelector('.prize__foot-name')?.textContent?.trim() ?? null,
         detalle: el.querySelector('.prize__foot-detail')?.textContent?.trim() ?? null,
+        podio: [...el.querySelectorAll('.podium__step')].map((r) => ({
+          medalla: r.querySelector('.medal') ? 'ok' : null,
+          cifra: r.querySelector('.podium__value')?.textContent?.trim() ?? null,
+          titular: r.querySelector('.podium__name')?.textContent?.trim() ?? null,
+        })),
         borde: getComputedStyle(el).borderTopColor,
         maxFontSize: sizes.length ? Math.max(...sizes) : 0,
       };
@@ -81,23 +86,26 @@ await page.waitForTimeout(1200);
 
 const portada = await leerTarjetas(page, '#premios .prize');
 
-ok(portada.length === 3, `portada: hay 3 tarjetas de premios (${portada.length})`);
+ok(portada.length === 4, `portada: hay 4 tarjetas de premios (${portada.length})`);
 ok(
-  portada[0]?.pie === 'GANADOR PROVISIONAL',
-  `portada: PRO dice "GANADOR PROVISIONAL" (${portada[0]?.pie})`
-);
-ok(!!portada[0]?.nombre, `portada: PRO muestra el nombre del líder (${portada[0]?.nombre})`);
-ok(
-  /\d+\s*PTS/.test(portada[0]?.detalle ?? ''),
-  `portada: PRO muestra los puntos del líder (${portada[0]?.detalle})`
+  portada.every((t) => !t.nombre && !t.detalle && !/GANADOR/.test(t.pie ?? '')),
+  `portada: las tarjetas NO muestran ganadores provisionales (${portada.map((t) => t.pie).join(' · ')})`
 );
 ok(
-  portada[1]?.pie === 'GANADOR PROVISIONAL' && !!portada[1]?.nombre,
-  `portada: NORMAL dice "GANADOR PROVISIONAL" con nombre (${portada[1]?.nombre})`
+  portada.every((t) => t.podio.length === 3),
+  'portada: las 4 tarjetas dibujan el podio'
 );
 ok(
-  portada[2]?.pie === 'CADA FECHA',
-  `portada: CADA CATEGORÍA dice "CADA FECHA" (${portada[2]?.pie})`
+  portada[0]?.label === 'PRO' && portada[0]?.scope === '· ACUMULADO',
+  `portada: el rótulo es "PRO · ACUMULADO" (${portada[0]?.label} ${portada[0]?.scope})`
+);
+ok(
+  portada[2]?.label === 'CADA CATEGORÍA' && portada[2]?.scope === '· POR FECHA',
+  `portada: el rótulo es "CADA CATEGORÍA · POR FECHA" (${portada[2]?.label} ${portada[2]?.scope})`
+);
+ok(
+  portada[3]?.label === 'EQUIPOS',
+  `portada: la cuarta tarjeta es la de equipos (${portada[3]?.label})`
 );
 
 // ── 2 · La escala tipográfica es la de la sección 02 ───────────────────────
@@ -127,11 +135,11 @@ ok(
   'portada: las tres tarjetas comparten el mismo borde (sin franja ni acento lateral)'
 );
 
-// ── 5 · Los tres iconos son distintos ──────────────────────────────────────
+// ── 3 · Los tres iconos son distintos ──────────────────────────────────────
 const iconos = portada.map((t) => t.icono);
 ok(
-  new Set(iconos).size === 3,
-  `portada: los tres iconos son distintos (${iconos.map((i) => (i ? 'svg' : '—')).join(' · ')})`
+  new Set(iconos).size === 4,
+  `portada: los cuatro iconos son distintos (${iconos.map((i) => (i ? 'svg' : '—')).join(' · ')})`
 );
 
 // ── 6 · /premios: CUATRO secciones, una sola gramática ────────────────────
@@ -169,13 +177,13 @@ const celdas = await page.$$eval('.cell', (els) =>
       etiqueta: el.querySelector('.cell__label')?.textContent?.trim() ?? null,
       cuerpo: el.querySelector('.cell__body')?.textContent?.trim() ?? null,
       monto: el.querySelector('.cell__amount')?.textContent?.trim() ?? null,
-      podio: [...el.querySelectorAll('.cell__step')].map((r) => ({
+      podio: [...el.querySelectorAll('.podium__step')].map((r) => ({
         medalla: r.querySelector('.medal') ? 'ok' : null,
-        cifra: r.querySelector('.cell__step-value')?.textContent?.trim() ?? null,
-        titular: r.querySelector('.cell__step-name')?.textContent?.trim() ?? null,
-        provisional: r.querySelector('.cell__step-state')?.textContent?.trim() ?? null,
-        alto: r.querySelector('.cell__step-block')
-          ? Math.round(r.querySelector('.cell__step-block').getBoundingClientRect().height)
+        cifra: r.querySelector('.podium__value')?.textContent?.trim() ?? null,
+        titular: r.querySelector('.podium__name')?.textContent?.trim() ?? null,
+        provisional: r.querySelector('.podium__state')?.textContent?.trim() ?? null,
+        alto: r.querySelector('.podium__block')
+          ? Math.round(r.querySelector('.podium__block').getBoundingClientRect().height)
           : 0,
       })),
       sticker: el.querySelector('.cell__sticker')?.textContent?.trim() ?? null,
