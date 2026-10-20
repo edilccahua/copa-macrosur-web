@@ -150,6 +150,40 @@ Dada la cantidad de participantes (cientos de ciclistas), la interfaz móvil ofr
 
 ## 5. Portal de Espectadores en Vivo (`/en-vivo`)
 - Página Astro ultra-ligera con Isla Svelte 5 (`<LiveLeaderboard stageId={currentStageId} />`).
+- La página **no decide por su cuenta** si hay carrera en vivo: lee `GET /api/v1/public/live-status` (ver §6). Solo en estado `live` monta el tablero SSE.
 - Al montar, solicita primero el snapshot `/api/v1/stages/{stage_id}/live-summary` para pintar la tabla al instante.
 - Abre la conexión con `EventSource` nativo consumiendo `/api/v1/stages/{stage_id}/stream` para aplicar deltas en vivo.
 - Si la conexión se pierde y se restablece, vuelve a solicitar `/live-summary` para subsanar cualquier evento no recibido.
+- Fuera de la ventana (`before_start`, `closed`, `no_race_today`) muestra el aviso correspondiente y, cuando aplica, enlaza a la clasificación de la fecha o a la próxima carrera.
+
+---
+
+## 6. Ventana de transmisión y cierre manual (`live_service.py`)
+
+> **Añadido el 20 de Octubre de 2026.** El enlace "en vivo" no puede estar
+> siempre encendido: sería una señal falsa. La ventana se resuelve en el
+> servidor, en **America/Lima** (UTC-5), nunca con la hora del servidor.
+
+| Estado | Condición | Efecto |
+| :--- | :--- | :--- |
+| `live` | Hay carrera hoy, ya pasaron las **08:00** y `Stage.live_closed_at IS NULL` | Enlace activo a `/en-vivo` |
+| `before_start` | Hay carrera hoy y aún no son las 08:00 | Aviso "HOY · ABRE 08:00", sin enlace |
+| `closed` | Hay carrera hoy y el admin cerró (`live_closed_at` con valor) | "TRANSMISIÓN FINALIZADA" + enlace a resultados |
+| `no_race_today` | No hay carrera hoy | Sección informativa con la próxima fecha |
+
+- **Apertura automática:** a las 08:00 del día de la carrera, sin acción del
+  admin.
+- **Cierre manual:** el organizador lo hace desde `/admin` (módulo
+  "TRANSMISIÓN EN VIVO"). No hay cierre automático a las 12:00: esa hora es
+  la referencia de fin de carrera, no una regla.
+- **Una sola fuente:** `GET /api/v1/public/live-status` devuelve
+  `{active, state, stage, next_stage, opens_at, closed_at}`. Lo consumen la
+  portada (sección `04 · Transmisión`), `/en-vivo` y la consola del admin.
+- **Cierre/reapertura:** `POST /api/v1/admin/stages/{stage_id}/live` con
+  `{"active": false}` marca `live_closed_at`; `{"active": true}` lo limpia.
+  Requiere `X-Admin-Key`. **Solo se puede cerrar el día de la carrera**:
+  cerrar una fecha futura la dejaría apagada cuando llegue su día (HTTP 400).
+- **Refresco:** la portada consulta el estado cada 60 s, de modo que una
+  página abierta antes de las 08:00 se enciende sola y se apaga cuando el
+  admin cierra.
+- **Persistencia:** `Stage.live_closed_at` (ver `specs/00` §1.4).

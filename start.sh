@@ -41,9 +41,9 @@ done
 # 3. Levantar frontend Astro
 cd frontend
 if [ "$MODE" = "prod" ]; then
-  echo "[3/3] Construyendo y levantando el servidor SSR de Astro en http://localhost:4321..."
+  echo "[3/3] Construyendo y levantando el servidor de producción (Cloudflare Pages) en http://localhost:4321..."
   npm run build
-  PORT=4321 HOST=0.0.0.0 node dist/server/entry.mjs &
+  npx wrangler pages dev dist --port 4321 &
 else
   echo "[3/3] Levantando frontend Astro (dev) en http://localhost:4321..."
   npm run dev &
@@ -55,5 +55,5 @@ echo "  - Portal Web: http://localhost:4321"
 echo "  - API Backend: http://localhost:8000/docs"
 echo "  - Panel Juez PWA: http://localhost:4321/admin/juez"
 
-trap "kill $BACKEND_PID $FRONTEND_PID" EXIT
+trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; pkill -P $FRONTEND_PID 2>/dev/null" EXIT
 wait

@@ -51,6 +51,7 @@ Representa a la persona física a lo largo de todo el campeonato (sin login obli
 - `strava_route_url`: String (Nullable — enlace público a la ruta de Strava de la fecha)
 - `gallery_r2_prefix`: String (Carpeta de fotos de la fecha en R2)
 - `judge_pin`: String (Código o token de acceso rápido para los jueces de la fecha, ej. `***REMOVED***`)
+- `live_closed_at`: DateTime (Nullable — cierre MANUAL de la transmisión de llegadas; `NULL` = abierta o nunca cerrada. La apertura es automática a las 08:00 de Lima el día de la carrera, ver `specs/02` §6)
 
 ### 1.5 `StartWave` (Mangas de Largada por Fecha)
 Permite largadas escalonadas por grupos de categorías o individuales.

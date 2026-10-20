@@ -1,0 +1,286 @@
+---
+/**
+ * RouteEventCard.astro — la tarjeta de una clásica de ruta / evento especial.
+ *
+ * NO es el `EventCard.astro` de la portada (ese vive en el timeline de
+ * `TimelineEvents` y ya tiene su propio montaje con morph de póster). Este
+ * reproduce la gramática de `copiaartcraft/src/components/AppCard.astro`, que
+ * es la tarjeta real de la referencia:
+ *
+ *   media 16:10  ·  índice + categoría  ·  icono + nombre
+ *   texto  ·  estado  ·  etiquetas  ·  «Explorar →»
+ *
+ * Lo que desaparece de la versión anterior de la página: la lista de
+ * rótulo/valor (FECHA: / PARTIDA: / DISTANCIA: / COSTO:), la banda con
+ * `backdrop-filter` sobre el póster y el segundo botón. Ahora hay **una**
+ * acción principal y un enlace secundario de verdad (el afiche completo).
+ *
+ * El color: ninguno. La tarjeta es tinta y hairline, como el resto de la
+ * casa; el estado se dice con la palabra y el ícono, no con un tinte.
+ */
+export interface RouteEvent {  id: number;
+  name: string;
+  short_name?: string;
+  slug: string;
+  event_type: string;
+  edition?: string;
+  dates_text: string;
+  start_location?: string;
+  start_time?: string;
+  distance_text?: string;
+  description?: string;
+  poster_url?: string;
+  whatsapp_contact?: string;
+  registration_fee_text?: string;
+  status: string;
+}
+
+interface Props {
+  event: RouteEvent;
+  /** Índice de la tarjeta en la grilla: `01`, `02`… */
+  index: string;
+}
+
+const { event, index } = Astro.props;
+
+const poster = event.poster_url ?? '';
+const posterFull = poster.replace('-card.webp', '-full.webp');
+
+const statusLabel =
+  event.status === 'FINISHED'
+    ? 'Finalizada'
+    : event.status === 'REGISTRATION_OPEN'
+      ? 'Inscripciones abiertas'
+      : event.status === 'LIVE'
+        ? 'En vivo'
+        : 'Próximamente';
+
+const waUrl = `https://wa.me/51${event.whatsapp_contact || '994382248'}?text=${encodeURIComponent(
+  `Hola, deseo solicitar información e inscribirme a ${event.name}`,
+)}`;
+
+/** Las etiquetas: los datos duros del evento, en monoespaciada. */
+const tags = [
+  event.dates_text,
+  event.start_location,
+  event.distance_text,
+  event.registration_fee_text,
+].filter((t): t is string => Boolean(t));
+---
+
+<article class="appcard" data-reveal>
+  <div class="appcard__media">
+    {poster && (
+      <img
+        src={posterFull || poster}
+        alt={`Afiche oficial de ${event.name}`}
+        loading="lazy"
+        decoding="async"
+      />
+    )}
+  </div>
+
+  <div class="appcard__body">
+    <header class="appcard__head">
+      <span class="appcard__index tabular">{index}</span>
+      <span class="appcard__category">{event.edition || 'EDICIÓN ÚNICA'}</span>
+    </header>
+
+    <div class="appcard__title-row">
+      <span class="appcard__icon" aria-hidden="true">{event.name.slice(0, 1)}</span>
+      <h3 class="appcard__name">{event.name}</h3>
+    </div>
+
+    {event.description && <p class="appcard__text">{event.description}</p>}
+
+    <p class="appcard__status">{statusLabel}</p>
+
+    {tags.length > 0 && (
+      <ul class="appcard__platforms">
+        {tags.map((tag) => (
+          <li class="appcard__platform">{tag}</li>
+        ))}
+      </ul>
+    )}
+
+    <div class="appcard__foot">
+      <a class="appcard__explore" href={waUrl} target="_blank" rel="noopener noreferrer">
+        Inscribirme por WhatsApp →
+      </a>
+      {posterFull && (
+        <a class="appcard__link" href={posterFull} target="_blank" rel="noopener noreferrer">
+          AFICHE COMPLETO ↗
+        </a>
+      )}
+    </div>
+  </div>
+</article>
+
+<style>
+  /* ── La tarjeta, tal cual la referencia ─────────────────────────────── */
+  .appcard {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--radius, 0);
+    overflow: hidden;
+    transition: border-color var(--default-transition-duration)
+      var(--default-transition-timing-function);
+  }
+
+  .appcard:hover {
+    border-color: var(--line-strong);
+  }
+
+  .appcard__media {
+    position: relative;
+    display: grid;
+    place-items: center;
+    /* 16/10, la proporción de la media del `AppCard` de la referencia. */
+    aspect-ratio: 16 / 10;
+    background: var(--bg-sunken);
+    border-bottom: var(--hairline) solid var(--line);
+    overflow: hidden;
+  }
+
+  .appcard__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Los carteles son verticales 4:5: se recorta por arriba, que es donde
+       está el título del evento, no el cyclists. */
+    object-position: top center;
+    transition: transform var(--default-transition-duration)
+      var(--default-transition-timing-function);
+  }
+
+  .appcard:hover .appcard__media img {
+    transform: scale(1.02);
+  }
+
+  .appcard__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1.25rem;
+  }
+
+  .appcard__head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .appcard__index {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--faint);
+  }
+
+  .appcard__category {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+
+  .appcard__title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  .appcard__icon {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: 0 0 auto;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--ink);
+  }
+
+  .appcard__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: var(--ink-strong);
+  }
+
+  .appcard__text {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .appcard__status {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+  }
+
+  .appcard__platforms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: var(--hairline) solid var(--line);
+    list-style: none;
+  }
+
+  .appcard__platform {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.5rem;
+    color: var(--muted);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .appcard__foot {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .appcard__explore {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--ink-strong);
+    text-decoration: none;
+  }
+
+  .appcard__explore:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .appcard__link {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--faint);
+    text-decoration: none;
+  }
+
+  .appcard__link:hover {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+</style>

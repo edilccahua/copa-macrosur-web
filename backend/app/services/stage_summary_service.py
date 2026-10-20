@@ -40,6 +40,7 @@ from backend.app.services.strava_selection import (
     is_measured_on_stage,
     select_segments,
 )
+from backend.app.services.special_prizes_service import clean_display_name
 from backend.app.models.schemas import (
     AwardSummaryRead,
     CategoryPodiumRead,
@@ -745,7 +746,7 @@ async def compute_stage_awards(
         riders = (
             await session.exec(select(Rider).where(Rider.id.in_(winner_ids)))
         ).all()
-        names = {r.id: r.full_name for r in riders}
+        names = {r.id: clean_display_name(r.full_name) for r in riders}
 
     return [
         AwardSummaryRead(

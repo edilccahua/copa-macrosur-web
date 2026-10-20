@@ -11,10 +11,15 @@
  * pieza que usa Strava en sus clasificaciones. La geometría vive en
  * `src/assets/medals/medal-N.svg` y la dibuja `MedalIcon.astro`, que la
  * inserta en línea para que herede el color del token `--podium-N` y para
- * que el número calado deje ver el fondo de la página.
+ * que el número calado deje ver el fondo real de la página.
  *
- * El acento de cada categoría es el de su grupo (PRO / NORMAL / E-BIKE) y se
- * ve al pasar el ratón por encima: el título toma el color del grupo.
+ * **AGRUPACIÓN POR GRUPO.** Antes las once categorías se listaban en una
+ * grilla de tres columnas con el título de cada una teñido del color de su
+ * grupo: once rótulos en tres colores a la vez, un arcoíris. Ahora las
+ * categorías van agrupadas en bloques PRO / NORMAL / E-BIKE, y el color del
+ * grupo aparece **una sola vez por bloque**, en la etiqueta del grupo. El
+ * título de la categoría va en tinta: lo que dice la etiqueta es a qué
+ * agrupación pertenece, no cómo se colorea.
  */
 import type { CategoryPodium } from '../lib/api';
 import MedalIcon from './MedalIcon.astro';
@@ -27,9 +32,9 @@ interface Props {
 const { podium, id } = Astro.props;
 
 /**
- * El acento de la categoría sale de su grupo: PRO, NORMAL o E-BIKE. Los
- * grupos del backend se mapean a las clases `scope-*` de `tokens.css`, que
- * ya definen el par `--scope` / `--scope-ink` de cada uno.
+ * El acento por grupo vive en `tokens.css` (`.scope-pro`, `.scope-normal`,
+ * `.scope-ebike`), que define `--scope` (color vivo) y `--scope-ink` (su
+ * variante legible). Aquí solo se consume.
  */
 const SCOPE_CLASS: Record<string, string> = {
   PRO: 'scope-pro',
@@ -37,46 +42,139 @@ const SCOPE_CLASS: Record<string, string> = {
   'E-BIKE': 'scope-ebike',
 };
 const groupClass = (group: string) => SCOPE_CLASS[group] ?? 'scope-pro';
+
+/** El orden de los bloques: primero los profesionales, luego el resto. */
+const GROUP_ORDER = ['PRO', 'NORMAL', 'E-BIKE'];
+
+/** Los bloques, con sus categorías, en el orden de arriba. */
+const groups = GROUP_ORDER.map((name) => ({
+  name,
+  label: name === 'E-BIKE' ? 'E-BIKE' : name,
+  categories: podium.filter((c) => c.group === name),
+})).filter((g) => g.categories.length > 0);
+
+/** Los que no caen en ningún grupo conocido, al final y sin color. */
+const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
 ---
 
 <div class="leaderboard" id={id}>
   {
-    podium.map((category) => (
-      <section class={`cat ${groupClass(category.group)}`}>
-        <header class="cat__head">
-          <span class="cat__name">{category.category_name}</span>
+    groups.map((group) => (
+      <section class={`group ${groupClass(group.name)}`}>
+        <header class="group__head">
+          <span class="group__name">{group.label}</span>
+          <span class="group__meta font-mono">
+            {group.categories.length} {group.categories.length === 1 ? 'CATEGORÍA' : 'CATEGORÍAS'}
+          </span>
         </header>
 
-        <ol class="cat__podium">
-          {category.entries.map((entry) => (
-            <li class="cat__row" data-rank={entry.rank}>
-              <MedalIcon rank={entry.rank as 1 | 2 | 3} size={18} class="cat__medal" />
-              <a class="cat__rider" href={`/corredor/${entry.rider_slug}`}>
-                {entry.rider_name}
-              </a>
-              <span class="cat__team">
-                {entry.team_slug ? (
-                  <a href={`/equipos/${entry.team_slug}`}>{entry.team_name}</a>
-                ) : (
-                  entry.team_name
-                )}
-              </span>
-            </li>
+        <div class="group__cats">
+          {group.categories.map((category) => (
+            <section class="cat">
+              <h3 class="cat__name">{category.category_name}</h3>
+
+              <ol class="cat__podium">
+                {category.entries.map((entry) => (
+                  <li class="cat__row" data-rank={entry.rank}>
+                    <MedalIcon rank={entry.rank as 1 | 2 | 3} size={18} class="cat__medal" />
+                    <a class="cat__rider" href={`/corredor/${entry.rider_slug}`}>
+                      {entry.rider_name}
+                    </a>
+                    <span class="cat__team">
+                      {entry.team_slug ? (
+                        <a href={`/equipos/${entry.team_slug}`}>{entry.team_name}</a>
+                      ) : (
+                        entry.team_name
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
           ))}
-        </ol>
+        </div>
       </section>
     ))
+  }
+
+  {
+    leftovers.length > 0 && (
+      <section class="group">
+        <header class="group__head">
+          <span class="group__name">OTRAS CATEGORÍAS</span>
+          <span class="group__meta font-mono">{leftovers.length}</span>
+        </header>
+        <div class="group__cats">
+          {leftovers.map((category) => (
+            <section class="cat">
+              <h3 class="cat__name">{category.category_name}</h3>
+              <ol class="cat__podium">
+                {category.entries.map((entry) => (
+                  <li class="cat__row" data-rank={entry.rank}>
+                    <MedalIcon rank={entry.rank as 1 | 2 | 3} size={18} class="cat__medal" />
+                    <a class="cat__rider" href={`/corredor/${entry.rider_slug}`}>
+                      {entry.rider_name}
+                    </a>
+                    <span class="cat__team">{entry.team_name}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ))}
+        </div>
+      </section>
+    )
   }
 </div>
 
 <style>
   .leaderboard {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-    gap: 0 1.5rem;
     margin-top: 1.5rem;
     margin-bottom: 3.5rem;
-    border-top: var(--hairline) solid var(--line);
+  }
+
+  /* ── Bloque de grupo ────────────────────────────────────────────────── */
+  .group {
+    margin-top: 2.25rem;
+  }
+
+  .group:first-child {
+    margin-top: 0;
+  }
+
+  .group__head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding-bottom: 0.625rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  /* El color del grupo aparece AQUÍ, una vez por bloque, y no en los once
+     títulos de categoría. */
+  .group__name {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-medium, 500);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--scope-ink, var(--ink-strong));
+  }
+
+  .group__meta {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  /* ── Categorías ─────────────────────────────────────────────────────── */
+  .group__cats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: 0 1.5rem;
   }
 
   .cat {
@@ -85,41 +183,20 @@ const groupClass = (group: string) => SCOPE_CLASS[group] ?? 'scope-pro';
     min-width: 0;
   }
 
-  /* El acento por grupo vive en `tokens.css` (`.scope-pro`, `.scope-normal`,
-     `.scope-ebike`), que define `--scope` (color vivo) y `--scope-ink` (su
-     variante legible). Aquí solo se consume. */
-
-  .cat__head {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    margin-bottom: 0.5rem;
-  }
-
-  /* Solo el título de la categoría: el código corto (EBK, ELI, MSA…) ya no
-     acompaña, y el color del grupo aparece al pasar el ratón.
-     El título NO es blanco como el resto del texto: va en la tipografía
-     display, con más cuerpo y con el acento del grupo (PRO / NORMAL /
-     E-BIKE) para que se lea de un vistazo qué categoría es cuál y se
-     distinga de los nombres de los corredores, que van en tinta neutra. */
+  /* El título de la categoría va en tinta: el grupo ya está dicho arriba. */
   .cat__name {
+    margin: 0 0 0.5rem;
     font-family: var(--font-display);
-    font-size: var(--text-lg);
-    font-weight: 680;
+    font-size: var(--text-base);
+    font-weight: 620;
     font-stretch: 118%;
     letter-spacing: -0.02em;
     line-height: 1.1;
     text-transform: uppercase;
-    color: var(--scope-ink, var(--ink-strong));
+    color: var(--ink-strong);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    transition: color var(--default-transition-duration)
-      var(--default-transition-timing-function);
-  }
-
-  .cat:hover .cat__name {
-    color: var(--scope, var(--ink-strong));
   }
 
   .cat__podium {
@@ -149,7 +226,7 @@ const groupClass = (group: string) => SCOPE_CLASS[group] ?? 'scope-pro';
   .cat__rider {
     grid-area: rider;
     font-size: 0.8125rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--ink);
     text-decoration: none;
     overflow: hidden;
@@ -163,12 +240,10 @@ const groupClass = (group: string) => SCOPE_CLASS[group] ?? 'scope-pro';
     color: var(--ink-strong);
   }
 
-  .cat:hover .cat__row[data-rank='1'] .cat__rider {
-    color: var(--scope-ink, var(--ink-strong));
-  }
-
   .cat__rider:hover {
-    color: var(--scope-ink, var(--ink-strong));
+    color: var(--ink-strong);
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
   }
 
   .cat__team {

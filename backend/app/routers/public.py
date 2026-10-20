@@ -14,6 +14,7 @@ from backend.app.models.schemas import (
 )
 from backend.app.services.excel_service import slugify, resolve_or_create_team
 from backend.app.services.live_service import resolve_live_status
+from backend.app.services.special_prizes_service import compute_claro_remontada
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.standings_service import (
     compute_standings, compute_team_standings, normalize_mode, normalize_scope,
@@ -32,6 +33,16 @@ async def get_live_status(session: AsyncSession = Depends(get_session)):
     no mostrar un enlace "en vivo" cuando no hay carrera.
     """
     return await resolve_live_status(session)
+
+
+@router.get("/remontada")
+async def get_claro_remontada(session: AsyncSession = Depends(get_session)):
+    """Premio CLARO a la remontada (specs/03 §1.7).
+
+    El ganador se recalcula en cada request sobre las fechas ya disputadas;
+    mientras falten fechas para cerrar el campeonato es **provisional**.
+    """
+    return await compute_claro_remontada(session)
 
 
 @router.get("/prizes", response_model=List[PrizeTierRead])

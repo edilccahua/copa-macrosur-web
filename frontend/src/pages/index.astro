@@ -9,12 +9,21 @@ import SectionLabel from '../components/bento/SectionLabel.astro';
 import PodiumPanel from '../components/PodiumPanel.astro';
 import PrizeScale from '../components/PrizeScale.astro';
 import LiveSection from '../components/LiveSection.svelte';
+import Icon from '../components/Icon.astro';
 import EventCountdown from '../components/svelte/EventCountdown.svelte';
 import TimelineEvents from '../components/TimelineEvents.astro';
-import { API_V1, type LiveStageBrief, type LiveStatus } from '../lib/api';
+import {
+  API_V1,
+  getRemontada,
+  type LiveStageBrief,
+  type LiveStatus,
+  type MountainTitle,
+  type RemontadaData,
+} from '../lib/api';
 import { getStages, formatStageDate } from '../lib/stages';
 import { SITE_NAME, BRAND_WORDMARK, BRAND_ACCENT, BRAND_EDITION } from '../data/site';
 import { ACCUMULATED_PRIZES, PER_DATE_PRIZES, PRIZE_CURRENCY } from '../data/prizes';
+import { MOUNTAIN_TITLES } from '../data/mountain-titles';
 
 /**
  * Las tres clasificaciones de la portada se leen de la API. SIN datos
@@ -117,22 +126,35 @@ try {
  * conmemorativo a la máxima persistencia" frente a "Trofeo Conmemorativo
  * Coca de Bronce").
  */
-let awards: {
-  title: string;
-  sponsor_name?: string | null;
-  sponsor_logo_url?: string | null;
-  prize_description?: string | null;
-  winner_name?: string | null;
-}[] = [];
+/** Los cuatro títulos de montaña de la Fecha 1 (KOM/QOM/Kamikaze). */
+const mountain: Record<
+  'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female',
+  MountainTitle | null
+> = {
+  kom: null,
+  qom: null,
+  kamikaze_male: null,
+  kamikaze_female: null,
+};
+
 try {
   const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
   if (res.ok) {
     const data = await res.json();
-    awards = Array.isArray(data.awards) ? data.awards : [];
+    mountain.kom = data.kom ?? null;
+    mountain.qom = data.qom ?? null;
+    mountain.kamikaze_male = data.kamikaze_male ?? null;
+    mountain.kamikaze_female = data.kamikaze_female ?? null;
   }
 } catch (e) {
-  awards = [];
+  /* Las tarjetas quedan "por anunciar". */
 }
+
+/**
+ * El Premio CLARO es ACUMULADO: se entrega al cerrar las cuatro fechas y no
+ * pertenece a la ficha de una carrera. Su fuente es `/public/remontada`.
+ */
+const remontada: RemontadaData | null = await getRemontada();
 
 const countdownTarget = nextStage
   ? `${nextStage.date}T${(nextStage.start_time ?? '08:00').replace(' AM', '').replace(' PM', '')}:00-05:00`
@@ -273,7 +295,7 @@ const nextDistanceText =
           kicker="[ PRO · TODOS ]"
           rows={proPodium.rows}
           error={proPodium.error}
-          body="Líder del acumulado PRO sumando todas sus categorías: Elite, Master A, Master B y Master C."
+          body="Los tres primeros del acumulado PRO, sumando todas sus categorías: Elite, Master A, Master B y Master C."
           href="/ranking-general?tabla=PRO"
         />
 
@@ -281,7 +303,7 @@ const nextDistanceText =
           kicker="[ NORMAL · TODOS ]"
           rows={normalPodium.rows}
           error={normalPodium.error}
-          body="Líder del acumulado NORMAL sumando todas sus categorías: Turismo, Master D, Damas y Juveniles."
+          body="Los tres primeros del acumulado NORMAL, sumando todas sus categorías: Turismo, Master D, Damas y Juveniles."
           href="/ranking-general?tabla=NORMAL"
         />
 
@@ -289,7 +311,7 @@ const nextDistanceText =
           kicker="[ COPA DE EQUIPOS ]"
           rows={topTeams}
           error={teamsError}
-          body="Líder de la Copa de Equipos acumulada del campeonato."
+          body="Los tres clubes con más puntos de la Copa de Equipos acumulada."
           href="/ranking-general?tabla=EQUIPO"
           scope="team"
         />
@@ -326,28 +348,51 @@ const nextDistanceText =
         />
       </div>
 
-      <div class="panel panel--awards">
-        <div class="panel__head font-mono">[ PREMIOS ESPECIALES ]</div>
+      <div class="specials">
+        <div class="specials__head">
+          <span class="specials__label font-mono">[ PREMIOS ESPECIALES ]</span>
+          <span class="specials__meta font-mono">USD 100 + 4 × USD 15</span>
+        </div>
 
-        {
-          awards.length > 0 ? (
-            awards.map((award) => (
-              <div class="award">
-                {award.sponsor_logo_url && (
-                  <img src={award.sponsor_logo_url} alt={award.title} loading="lazy" />
-                )}
-                <div>
-                  <h4 class="award__name">{award.title}</h4>
-                  {award.prize_description && (
-                    <p class="award__text font-mono">{award.prize_description}</p>
-                  )}
+        <div class="special-grid">
+          <article class="special special--claro">
+            <div class="special__media special__media--logo">
+              <img
+                src={remontada?.sponsor_logo_url ?? '/images/sponsors/claro.svg'}
+                alt="Claro"
+                loading="lazy"
+              />
+            </div>
+            <p class="special__label font-mono">ACUMULADO · 4 FECHAS</p>
+            <h4 class="special__title">{remontada?.title ?? 'Premio CLARO'}</h4>
+            <p class="special__amount font-mono">
+              USD {remontada?.amount_usd ?? 100}
+            </p>
+            <p class="special__winner font-mono">
+              {
+                remontada?.winner
+                  ? `${remontada.provisional ? 'PROVISIONAL' : 'GANADOR'}: ${remontada.winner.rider_name}`
+                  : 'POR ANUNCIAR'
+              }
+            </p>
+          </article>
+
+          {
+            MOUNTAIN_TITLES.map((definition) => (
+              <article class="special">
+                <div class="special__media special__media--icon">
+                  <Icon name={definition.icon} size={28} />
                 </div>
-              </div>
+                <p class="special__label font-mono">TÍTULO DE MONTAÑA</p>
+                <h4 class="special__title">{definition.title}</h4>
+                <p class="special__amount font-mono">USD {definition.amountUsd}</p>
+                <p class="special__winner font-mono">
+                  {mountain[definition.key]?.athlete_name ?? 'POR ANUNCIAR'}
+                </p>
+              </article>
             ))
-          ) : (
-            <p class="panel__body">Los premios especiales se anuncian al cerrar la fecha.</p>
-          )
-        }
+          }
+        </div>
 
         <a class="panel__cta" href="/premios">Ver todos los premios →</a>
       </div>
@@ -573,67 +618,108 @@ const nextDistanceText =
     margin-bottom: 4rem;
   }
 
-  /* La sección de premios cierra con la tarjeta de premios especiales. */
-  .panel--awards {
+  /* ── Premios especiales (CLARO + títulos de montaña) ─────────────────── */
+  .specials {
     margin-top: -2.5rem;
     margin-bottom: 4rem;
   }
 
-  .panel {
+  .specials__head {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    background: var(--bg-raised);
-    border: var(--hairline) solid var(--line);
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: var(--hairline) solid var(--line);
   }
 
-  .panel__head {
-    font-family: var(--font-mono);
+  .specials__label {
     font-size: 0.6875rem;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: var(--faint);
   }
 
-  .panel__body {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
-    color: var(--muted);
+  .specials__meta {
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    color: var(--faint);
+    white-space: nowrap;
   }
 
-  .award {
+  .special-grid {
     display: grid;
-    grid-template-columns: 4rem 1fr;
+    grid-template-columns: 1fr;
     gap: 1rem;
-    align-items: center;
-    padding-block: 0.75rem;
-    border-top: var(--hairline) solid var(--line);
+    margin-top: 1rem;
   }
 
-  .award img {
-    display: block;
-    width: 4rem;
-    height: 4rem;
-    object-fit: cover;
+  .special {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg-raised);
     border: var(--hairline) solid var(--line);
   }
 
-  .award__name {
+  .special__media {
+    display: grid;
+    place-items: center;
+    height: 4.5rem;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+    color: var(--copa-gold);
+  }
+
+  .special__media--logo {
+    padding: 0.5rem;
+    background: #fff;
+  }
+
+  .special__media--logo img {
+    display: block;
+    max-width: 100%;
+    max-height: 3rem;
+    object-fit: contain;
+  }
+
+  .special__label {
+    margin: 0;
+    font-size: 0.5625rem;
+    letter-spacing: 0.12em;
+    color: var(--faint);
+  }
+
+  .special__title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
+    line-height: var(--leading-tight);
     letter-spacing: var(--tracking-tight);
     color: var(--ink-strong);
   }
 
-  .award__text {
-    margin: 0.2rem 0 0;
-    font-size: 0.8125rem;
+  .special__amount {
+    margin: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    color: var(--copa-gold);
+  }
+
+  .special__winner {
+    margin: auto 0 0;
+    padding-top: 0.6rem;
+    border-top: var(--hairline) solid var(--line);
+    font-size: 0.5625rem;
     line-height: 1.5;
+    letter-spacing: 0.08em;
     color: var(--muted);
+  }
+
+  .specials .panel__cta {
+    margin-top: 1rem;
   }
 
   .panel__cta {
@@ -728,6 +814,10 @@ const nextDistanceText =
       margin-top: 4rem;
     }
 
+    .special-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
     .panels {
       grid-template-columns: repeat(2, 1fr);
     }
@@ -741,6 +831,11 @@ const nextDistanceText =
     /* Tres clasificaciones y tres bloques de premios en una sola línea. */
     .panels--three {
       grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* CLARO + los cuatro títulos de montaña, en una sola fila. */
+    .special-grid {
+      grid-template-columns: repeat(5, 1fr);
     }
 
     /* En la banda ancha la fecha se apila ARRIBA del nombre de la carrera, en

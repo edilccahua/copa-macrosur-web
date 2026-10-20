@@ -1,0 +1,135 @@
+---
+/**
+ * MountainTitleCard.astro — una tarjeta de KOM / QOM / Kamikaze.
+ *
+ * El ganador llega resuelto desde el resumen de la fecha
+ * (`kom`, `qom`, `kamikaze_male`, `kamikaze_female`). Si no hay intentos
+ * del género, la tarjeta dice "POR ANUNCIAR": no se inventa un ganador.
+ */
+import Icon from './Icon.astro';
+import type { MountainTitle as MountainTitleData } from '../lib/api';
+import type { MountainTitleDef } from '../data/mountain-titles';
+
+interface Props {
+  definition: MountainTitleDef;
+  winner: MountainTitleData | null;
+}
+
+const { definition, winner } = Astro.props;
+---
+
+<article class="mountain-card">
+  <header class="mountain-card__head">
+    <span class="mountain-card__icon">
+      <Icon name={definition.icon} size={18} />
+    </span>
+    <span class="mountain-card__amount font-mono">USD {definition.amountUsd}</span>
+  </header>
+
+  <h3 class="mountain-card__title">{definition.title}</h3>
+  <p class="mountain-card__subtitle font-mono">{definition.subtitle}</p>
+  <p class="mountain-card__criterion">{definition.criterion}</p>
+
+  <div class="mountain-card__winner">
+    {
+      winner ? (
+        <>
+          <p class="mountain-card__name">{winner.athlete_name}</p>
+          <p class="mountain-card__detail font-mono">
+            {winner.formatted_time} · {winner.segment_name}
+          </p>
+        </>
+      ) : (
+        <p class="mountain-card__pending font-mono">POR ANUNCIAR</p>
+      )
+    }
+  </div>
+</article>
+
+<style>
+  .mountain-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .mountain-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .mountain-card__icon {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--copa-gold);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .mountain-card__amount {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--copa-gold);
+  }
+
+  .mountain-card__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--ink-strong);
+  }
+
+  .mountain-card__subtitle {
+    margin: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .mountain-card__criterion {
+    margin: 0.25rem 0 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .mountain-card__winner {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .mountain-card__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--ink-strong);
+  }
+
+  .mountain-card__detail {
+    margin: 0.2rem 0 0;
+    font-size: 0.625rem;
+    line-height: 1.5;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .mountain-card__pending {
+    margin: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    color: var(--faint);
+  }
+</style>

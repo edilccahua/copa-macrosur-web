@@ -17,7 +17,18 @@ const { sections } = Astro.props;
     {
       sections.map((section) => (
         <li>
-          <a class="pageindex__link" href={`#${section.id}`} data-section={section.id}>
+          {/*
+            `data-nav-anchor`: el shell intercepta el clic y desplaza con
+            Lenis (`window.__kuspideScrollTo`). Sin esa marca, el salto nativo
+            del ancla lo captura el scroll suave y la página se queda a medio
+            camino en vez de llegar a la sección.
+          */}
+          <a
+            class="pageindex__link"
+            href={`#${section.id}`}
+            data-section={section.id}
+            data-nav-anchor
+          >
             {section.label}
           </a>
         </li>

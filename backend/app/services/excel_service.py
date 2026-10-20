@@ -209,7 +209,7 @@ async def import_riders_from_excel(
 
         rows_data.append({
             "dni": raw_dni,
-            "full_name": re.sub(r"\.+$", "", raw_name).strip(),
+            "full_name": re.sub(r"[\s\-.;]+$", "", raw_name).strip(),
             "gender": raw_gender,
             "team_name": raw_team,
             "category_id": cat_obj.id,

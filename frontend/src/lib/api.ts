@@ -410,3 +410,44 @@ export async function getLiveStatus(): Promise<LiveStatus> {
   return res.json();
 }
 
+// --- Premio CLARO a la remontada --------------------------------------------
+
+export interface RemontadaWinner {
+  rider_id: number;
+  rider_name: string;
+  rider_slug: string;
+  team_name: string;
+  team_slug: string | null;
+  category_name: string;
+  category_short_code: string;
+  first_stage_number: number;
+  first_stage_name: string;
+  first_rank: number;
+  last_stage_number: number;
+  last_stage_name: string;
+  last_rank: number;
+  positions_gained: number;
+}
+
+export interface RemontadaData {
+  title: string;
+  sponsor_name: string;
+  sponsor_logo_url: string;
+  amount_usd: number;
+  criterion: string;
+  stages_counted: number;
+  total_stages: number;
+  provisional: boolean;
+  winner: RemontadaWinner | null;
+}
+
+export async function getRemontada(): Promise<RemontadaData | null> {
+  try {
+    const res = await fetch(`${API_V1}/public/remontada`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return (await res.json()) as RemontadaData;
+  } catch {
+    return null;
+  }
+}
+

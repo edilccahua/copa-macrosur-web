@@ -52,6 +52,29 @@ No se agregaron montos literales en el marcado de las páginas.
 
 ---
 
+## 3.1 Premio CLARO y títulos de montaña (20-Oct-2026)
+
+Esto **sí se actualizó en la BD** (no es la escala de `prize_tiers`):
+
+- `special_awards` ya no tiene el Premio Coca ni el KOM de USD 150.
+- La fila de prueba es **Premio CLARO** (`USD 100`), con el logo de Claro en
+  `frontend/public/images/sponsors/claro.svg` y el ganador provisional en
+  `winner_rider_id`. Es un premio **ACUMULADO**: `stage_id = NULL`, se entrega
+  al cerrar las cuatro fechas y **no aparece en la ficha de una fecha**.
+- El criterio es la **remontada**: haber terminado todas las fechas y subir
+  más puestos en su categoría entre la primera y la última. Se recalcula en
+  `GET /api/v1/public/remontada` y se guarda una instantánea en la BD.
+- KOM, QOM, El Kamikaze y La Kamikaze se muestran en la ficha de cada fecha y
+  en `/premios` a **USD 15 cada uno**, con un solo ganador por título. Sus
+  ganadores salen de Strava (`compute_stage_mountain_titles`), no de
+  `special_awards`.
+
+El logo de Claro es un recurso **de prueba**: para publicarlo hace falta la
+autorización del patrocinador y, si corresponde, sustituirlo por el manual de
+marca oficial.
+
+---
+
 ## 4. Migración propuesta (cuando se autorice)
 
 ### 4.1 Modelo
