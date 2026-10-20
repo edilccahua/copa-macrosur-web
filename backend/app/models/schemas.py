@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date as date_cls, datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from backend.app.models.entities import (
     GenderEnum, StageStatusEnum, PaymentStatusEnum, RaceStatusEnum,
     TicketTypeEnum, TicketStatusEnum
@@ -104,6 +104,55 @@ class StageRead(BaseModel):
     live_closed_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StagePublicRead(BaseModel):
+    """La fecha tal como la ve el PÚBLICO: sin credenciales y sin geometría.
+
+    Este es el contrato de lectura de `/api/v1/stages`. Dos campos del modelo
+    ORM `Stage` NO están aquí, y no es un descuido:
+
+    · `judge_pin` es una **credencial**: con él se mandan marcaciones de
+      cronometraje falsas (`/timing/events`) y se largan mangas
+      (`/waves/*/start`). La garantía de que no sale es el `response_model`
+      de la ruta, no un filtro a mano (specs/00 §1.4).
+    · `route_geojson` pesa ~58 KB y ninguna página lo consume: el perfil se
+      dibuja con el SVG estático de `/profiles/{slug}.svg`.
+
+    `distance_km` y `elevation_gain_m` pueden ser `None`: una fecha sin ruta
+    publicada (la Fecha 4) no puede afirmar cifras. `None` = "por confirmar",
+    no 0.
+    """
+
+    id: int
+    stage_number: int
+    name: str
+    short_name: Optional[str] = None
+    title: Optional[str] = None
+    slug: str
+    date: str
+    status: StageStatusEnum
+    start_location: Optional[str] = None
+    start_time: Optional[str] = None
+    poster_url: Optional[str] = None
+    gpx_file_url: Optional[str] = None
+    distance_km: Optional[float] = None
+    elevation_gain_m: Optional[int] = None
+    laps: int = 1
+    strava_route_url: Optional[str] = None
+    official_results: Optional[int] = None
+    official_points: Optional[int] = None
+    live_closed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def _fecha_a_texto_iso(cls, value: Any) -> Any:
+        """La fecha de la BD es un `date`; en el JSON viaja como texto ISO."""
+        if isinstance(value, (date_cls, datetime)):
+            return value.isoformat()
+        return value
 
 
 # --- Resumen de presentación de una fecha (`GET /stages/{slug}/summary`) ---
@@ -227,7 +276,35 @@ class RouteProfileRead(BaseModel):
     max_grade_at_km: float
     # False cuando la geometría es de UNA vuelta de un circuito por vueltas.
     geometry_covers_full_stage: bool
-    points: List[RoutePointRead] = []
+    # La traza punto a punto (500 puntos, ~58 KB) NO se serializa: el perfil se
+    # dibuja con el SVG estático de `/profiles/{slug}.svg`. El campo sigue en el
+    # modelo para el resto del código (scripts, tests), pero ninguna respuesta
+    # lo lleva: el `response_model` de la ruta pública usa
+    # `RouteProfileSummaryRead`, que ni siquiera lo declara.
+    points: List[RoutePointRead] = Field(default_factory=list, exclude=True)
+
+
+class RouteProfileSummaryRead(BaseModel):
+    """El perfil de altimetría SIN la traza punto a punto.
+
+    Mismos campos que `RouteProfileRead` menos `points`: las cifras del perfil
+    (desnivel, pendiente, punto de máxima pendiente) son las que consume la
+    ficha; los 500 puntos de la traza no los usa nadie.
+    """
+
+    distance_km: float
+    distance_km_stage: float
+    elevation_min_m: int
+    elevation_max_m: int
+    elevation_gain_m: int
+    elevation_loss_m: int
+    mean_grade_pct: float
+    max_grade_pct: float
+    max_grade_at_km: float
+    # False cuando la geometría es de UNA vuelta de un circuito por vueltas.
+    geometry_covers_full_stage: bool
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SummitRead(BaseModel):
@@ -303,9 +380,14 @@ class StageNavigationRead(BaseModel):
 
 
 class StageSummaryRead(BaseModel):
-    """Agregado completo de presentación de una fecha."""
+    """Agregado completo de presentación de una fecha.
 
-    stage: StageRead
+    Es el `response_model` de `GET /api/v1/stages/{slug}/summary`: refleja
+    EXACTAMENTE lo que devuelve el endpoint. La `stage` va en su versión
+    pública (`StagePublicRead`): sin PIN de juez y sin geometría.
+    """
+
+    stage: StagePublicRead
     stats: StageStatsRead
     podium: List[CategoryPodiumRead]
     teams: List[TeamPodiumRead]
@@ -313,7 +395,47 @@ class StageSummaryRead(BaseModel):
     checkpoints: List[CheckpointRead]
     awards: List[AwardSummaryRead]
     extremes: StageExtremesRead
+    # El perfil sin la traza punto a punto: el dibujo es un SVG estático.
+    route_profile: Optional[RouteProfileSummaryRead] = None
+    summits: List[SummitRead] = Field(default_factory=list)
+    # Los cuatro títulos de montaña de la jornada.
+    kom: Optional[MountainTitleRead] = None
+    qom: Optional[MountainTitleRead] = None
+    kamikaze_male: Optional[MountainTitleRead] = None
+    kamikaze_female: Optional[MountainTitleRead] = None
     navigation: StageNavigationRead
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StageDetailPublicRead(BaseModel):
+    """La ficha de una fecha (`GET /api/v1/stages/{slug}`).
+
+    El sobre que hoy devuelve el endpoint: la fecha, sus premios especiales,
+    sus segmentos de Strava y los extremos de la jornada. La `stage` va en su
+    versión pública: sin PIN de juez.
+    """
+
+    stage: StagePublicRead
+    awards: List[AwardSummaryRead]
+    strava_segments: List[Dict[str, Any]]
+    extremes: StageExtremesRead
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StageResultsPublicRead(BaseModel):
+    """Los resultados de una fecha (`GET /api/v1/stages/{slug}/results`).
+
+    Las filas de cada categoría son libres a propósito: cada una lleva el
+    dorsal, el tiempo formateado y los puntos, y el motor de la página decide
+    qué columnas pintar.
+    """
+
+    stage: StagePublicRead
+    categories: Dict[str, List[Dict[str, Any]]]
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Extra Events Schemas
