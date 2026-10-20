@@ -187,6 +187,92 @@ ok(
   'ficha: el icono es el mismo que en la portada y en /premios'
 );
 
+// ── 6 · La cabecera de /premios tiene su segunda columna ───────────────────
+//
+// El masthead era un bloque pegado a la izquierda: el titular y la bajada
+// ocupaban la mitad de la página y la otra mitad se quedaba vacía. Ahora
+// lleva el panel de la escala de la edición, con el dinero en el oro de la
+// copa.
+await page.goto(`${BASE}/premios`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(1200);
+
+const masthead = await page.evaluate(() => {
+  const m = document.querySelector('.masthead');
+  const aside = document.querySelector('.masthead__aside');
+  const dd = [...document.querySelectorAll('.scale-panel__row dd')].map((n) => ({
+    text: n.textContent.trim(),
+    size: parseFloat(getComputedStyle(n).fontSize),
+    color: getComputedStyle(n).color,
+  }));
+  return {
+    display: m ? getComputedStyle(m).display : null,
+    cols: m ? getComputedStyle(m).gridTemplateColumns : null,
+    asideWidth: aside ? aside.getBoundingClientRect().width : 0,
+    dd,
+  };
+});
+ok(masthead.display === 'grid', `cabecera: el masthead es un grid (${masthead.display})`);
+ok(
+  (masthead.cols ?? '').split(' ').length === 2,
+  `cabecera: la cabecera tiene dos columnas (${masthead.cols})`
+);
+ok(
+  masthead.dd.length === 4,
+  `cabecera: el panel lista las 4 escalas (${masthead.dd.length})`
+);
+ok(
+  masthead.dd.every((d) => d.size >= 13),
+  `cabecera: las cifras del panel son legibles (${masthead.dd.map((d) => d.size).join(' · ')})`
+);
+// El oro de la copa tiene dos valores (tema claro y oscuro). Se aceptan los
+// dos: lo que se comprueba es que el dinero va en el oro, no en la tinta.
+const GOLDS = ['rgb(154, 106, 0)', 'rgb(240, 194, 46)'];
+
+ok(
+  masthead.dd.every((d) => GOLDS.includes(d.color)),
+  `cabecera: las cifras del panel van en el oro de la copa (${masthead.dd.map((d) => d.color).join(' · ')})`
+);
+
+// ── 7 · El PREMIO es el titular de su tarjeta ──────────────────────────────
+//
+// El dinero era una etiqueta diminuta en la esquina ("USD 15") mientras el
+// nombre del premio ("KOM", "Premio CLARO") se llevaba el titular. Ahora la
+// cifra manda y el nombre baja.
+const montos = await page.evaluate(() => {
+  const leer = (sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const s = getComputedStyle(el);
+    return { text: el.textContent.trim(), size: parseFloat(s.fontSize), color: s.color };
+  };
+  return {
+    montana: leer('.mountain-card__amount'),
+    tituloMontana: leer('.mountain-card__title'),
+    claro: leer('.claro__amount'),
+    tituloClaro: leer('.claro__title'),
+  };
+});
+ok(
+  (montos.montana?.size ?? 0) >= 24,
+  `títulos de montaña: el premio es el titular (${montos.montana?.text} a ${montos.montana?.size}px)`
+);
+ok(
+  (montos.montana?.size ?? 0) > (montos.tituloMontana?.size ?? 0),
+  'títulos de montaña: el premio es más grande que el nombre del título'
+);
+ok(
+  (montos.claro?.size ?? 0) >= 24,
+  `premio CLARO: el premio es el titular (${montos.claro?.text} a ${montos.claro?.size}px)`
+);
+ok(
+  (montos.claro?.size ?? 0) > (montos.tituloClaro?.size ?? 0),
+  'premio CLARO: el premio es más grande que el nombre del premio'
+);
+ok(
+  GOLDS.includes(montos.montana?.color ?? '') && GOLDS.includes(montos.claro?.color ?? ''),
+  `los premios especiales van en el oro de la copa (${montos.montana?.color} · ${montos.claro?.color})`
+);
+
 await browser.close();
 
 console.log(fallos.length ? `\n${fallos.length} FALLO(S)` : '\nTodo en verde.');

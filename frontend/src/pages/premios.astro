@@ -29,6 +29,7 @@ import {
   PER_DATE_PRIZE_ICON,
   PRIZE_CATEGORIES,
   PRIZE_CURRENCY,
+  type PrizeStep,
 } from '../data/prizes';
 import type { PrizeLeader } from '../components/PrizeScale.astro';
 
@@ -99,6 +100,11 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
     totalStages: remontada?.total_stages ?? 0,
   };
 }
+
+/** "300 / 200 / 100": los peldaños de una escala, en una línea. */
+function escala(tiers: PrizeStep[]): string {
+  return tiers.map((tier) => tier.amountUsd).join(' / ');
+}
 ---
 
 <Showcase
@@ -113,7 +119,37 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
       before="La escala de "
       accent="premios"
       lead="El acumulado del campeonato reparte 300 / 200 / 100 USD entre los líderes de PRO y de NORMAL. Cada fecha reparte 100 / 50 / 30 USD en cada una de las 11 categorías."
-    />
+    >
+      {/*
+        La segunda columna de la cabecera: el dinero de la edición, en la
+        cifra de la casa (monoespaciada y tabular) y en el oro de la copa.
+        Es el resumen de las tres escalas más el premio especial; los
+        detalles de cada una están en su sección.
+      */}
+      <Fragment slot="aside">
+        <div class="scale-panel">
+          <p class="scale-panel__label font-mono">[ ESCALA DE LA EDICIÓN ]</p>
+          <dl class="scale-panel__list">
+            <div class="scale-panel__row">
+              <dt class="font-mono">ACUMULADO</dt>
+              <dd class="font-mono">{escala(ACCUMULATED_PRIZES[0].tiers)}</dd>
+            </div>
+            <div class="scale-panel__row">
+              <dt class="font-mono">POR FECHA</dt>
+              <dd class="font-mono">{escala(PER_DATE_PRIZES)}</dd>
+            </div>
+            <div class="scale-panel__row">
+              <dt class="font-mono">TÍTULOS DE MONTAÑA</dt>
+              <dd class="font-mono">{MOUNTAIN_TITLES[0].amountUsd} CADA UNO</dd>
+            </div>
+            <div class="scale-panel__row">
+              <dt class="font-mono">PREMIO CLARO</dt>
+              <dd class="font-mono">{remontada?.amount_usd ?? 100}</dd>
+            </div>
+          </dl>
+        </div>
+      </Fragment>
+    </PageHeader>
 
     <!-- ── 01 · Acumulado del campeonato ─────────────────────────────── -->
     <section class="premios-section">
@@ -206,8 +242,19 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
 
         <div class="claro__body">
           <p class="claro__eyebrow font-mono">
-            ACUMULADO · {PRIZE_CURRENCY} {remontada?.amount_usd ?? 100}
+            ACUMULADO · {remontada?.total_stages ?? 4} FECHAS
           </p>
+
+          {/*
+            El PREMIO es el titular: la cifra va en monoespaciada, en el oro
+            de la copa y con cifras tabulares. El nombre del premio baja a la
+            escala de titular de la casa (620 + 118 %), así que ya no le
+            dispute el sitio a la cifra.
+          */}
+          <p class="claro__amount font-mono">
+            {PRIZE_CURRENCY} {remontada?.amount_usd ?? 100}
+          </p>
+
           <h2 class="claro__title">{remontada?.title ?? 'PREMIO CLARO'}</h2>
           <p class="claro__criterion">
             {remontada?.criterion ??
@@ -220,17 +267,18 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
             la <strong>última</strong>. Hasta entonces, el ganador es
             <strong>provisional</strong>.
           </p>
+        </div>
 
-          <div class="claro__winner">
-            {
-              remontada?.winner ? (
-                <>
-                  <p class="claro__winner-label font-mono">
-                    {remontada.provisional ? 'GANADOR PROVISIONAL' : 'GANADOR'}
-                  </p>
-                  <p class="claro__winner-name">{remontada.winner.rider_name}</p>
-                  <p class="claro__winner-detail font-mono">
-                    FECHA {remontada.winner.first_stage_number}: {remontada.winner.first_rank}º →
+        <div class="claro__winner">
+          {
+            remontada?.winner ? (
+              <>
+                <p class="claro__winner-label font-mono">
+                  {remontada.provisional ? 'GANADOR PROVISIONAL' : 'GANADOR'}
+                </p>
+                <p class="claro__winner-name">{remontada.winner.rider_name}</p>
+                <p class="claro__winner-detail font-mono">
+                  FECHA {remontada.winner.first_stage_number}: {remontada.winner.first_rank}º →
                     FECHA {remontada.winner.last_stage_number}: {remontada.winner.last_rank}º · +
                     {remontada.winner.positions_gained} PUESTOS ·{' '}
                     {remontada.winner.category_name}
@@ -243,7 +291,6 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
                 <p class="claro__winner-label font-mono">POR ANUNCIAR</p>
               )
             }
-          </div>
         </div>
       </div>
     </section>
@@ -256,12 +303,20 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
         kicker={`${PRIZE_CURRENCY} 15 CADA UNO`}
       />
 
-      <p class="mountain-note">
-        Cuatro títulos por fecha, con <strong>un solo ganador</strong> cada uno. Se resuelven con
-        los intentos de Strava de la ruta oficial y cada uno cobra
-        <strong>{PRIZE_CURRENCY} 15</strong>. Los que se ven aquí son los de la Fecha 1; se
-        actualizan al cerrar cada carrera.
-      </p>
+      <div class="mountain-intro">
+        <p class="mountain-note">
+          Cuatro títulos por fecha, con <strong>un solo ganador</strong> cada uno. Los que se ven
+          aquí son los de la Fecha 1; se actualizan al cerrar cada carrera.
+        </p>
+
+        <aside class="prize-note">
+          <p class="prize-note__label font-mono">[ CÓMO SE RESUELVEN ]</p>
+          <p class="prize-note__text">
+            Se resuelven con los intentos de Strava de la ruta oficial: el más rápido en cada
+            tramo, en su género. Cada uno cobra <strong>{PRIZE_CURRENCY} 15</strong>.
+          </p>
+        </aside>
+      </div>
 
       <div class="mountain-grid">
         {
@@ -415,26 +470,91 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
     gap: 0.6rem;
   }
 
+  /* ── El panel de la cabecera: el dinero de la edición ────────────────── */
+  .scale-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .scale-panel__label {
+    margin: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .scale-panel__list {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .scale-panel__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 0.55rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .scale-panel__row:last-child {
+    border-bottom: 0;
+  }
+
+  .scale-panel__row dt {
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .scale-panel__row dd {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--copa-gold);
+  }
+
   .claro__eyebrow {
     margin: 0;
     font-size: 0.625rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* El premio es el titular: cifra grande, monoespaciada y en el oro. */
+  .claro__amount {
+    margin: 0.35rem 0 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1;
     color: var(--copa-gold);
   }
 
   .claro__title {
-    margin: 0;
+    margin: 0.35rem 0 0;
     font-family: var(--font-display);
-    font-size: clamp(1.75rem, 4vw, 2.75rem);
-    font-weight: var(--font-weight-medium);
-    line-height: 1;
+    font-size: var(--text-xl);
+    font-weight: 620;
+    font-stretch: 118%;
+    line-height: 1.1;
     letter-spacing: var(--tracking-tight);
     color: var(--ink-strong);
   }
 
   .claro__criterion {
-    margin: 0;
+    margin: 0.35rem 0 0;
     max-width: 58ch;
     font-size: var(--text-base);
     line-height: var(--leading-relaxed);
@@ -470,9 +590,10 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
   .claro__winner-name {
     margin: 0.35rem 0 0;
     font-family: var(--font-display);
-    font-size: var(--text-2xl);
+    font-size: var(--text-xl);
     font-weight: var(--font-weight-medium);
-    line-height: var(--leading-tight);
+    font-stretch: 118%;
+    line-height: 1.1;
     color: var(--ink-strong);
   }
 
@@ -492,9 +613,24 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
   }
 
   /* ── Títulos de montaña ─────────────────────────────────────────────── */
+  .mountain-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+    align-items: start;
+  }
+
+  @media (min-width: 68.75em) {
+    .mountain-intro {
+      grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+      gap: 2rem;
+    }
+  }
+
   .mountain-note {
     max-width: 62ch;
-    margin: 1.5rem 0 0;
+    margin: 0;
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
     color: var(--muted);
@@ -520,6 +656,24 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
 
     .mountain-grid {
       grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* En la banda ancha el ganador del Premio CLARO deja de ser un bloque
+     debajo del texto y pasa a ser su propia columna: la tarjeta deja de
+     tener media página vacía a la derecha. */
+  @media (min-width: 68.75em) {
+    .claro {
+      grid-template-columns: 13rem minmax(0, 1fr) minmax(15rem, 19rem);
+      gap: 2rem;
+    }
+
+    .claro__winner {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+      border-left: var(--hairline) solid var(--line);
+      padding-left: 2rem;
     }
   }
 </style>
