@@ -114,19 +114,19 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
         aria-label="Menú"
       >
         <!--
-          Mismo tamaño que el icono de tema (16 px) y el mismo grosor de
-          trazo. Antes el burger era de 18 px pero sus tres líneas sólo
-          ocupaban 12 px de alto: ópticamente se veía más pequeño que el
-          sol. Ahora llena la caja.
+          Mismo tamaño ÓPTICO que el icono de tema. El sol dibuja un
+          círculo con rayos que llegan a r=10 (13 px de diámetro útil);
+          las tres líneas, con 16 px de caja, sólo llegaban a 10 px de
+          alto y se veían más pequeñas. Ahora ocupan 13 x 12 px.
         -->
         <svg class="i-bars" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-          <line x1="3.5" y1="5" x2="20.5" y2="5"></line>
-          <line x1="3.5" y1="12" x2="20.5" y2="12"></line>
-          <line x1="3.5" y1="19" x2="20.5" y2="19"></line>
+          <line x1="3" y1="3.5" x2="21" y2="3.5"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="20.5" x2="21" y2="20.5"></line>
         </svg>
         <svg class="i-close" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-          <line x1="5.5" y1="5.5" x2="18.5" y2="18.5"></line>
-          <line x1="18.5" y1="5.5" x2="5.5" y2="18.5"></line>
+          <line x1="4.5" y1="4.5" x2="19.5" y2="19.5"></line>
+          <line x1="19.5" y1="4.5" x2="4.5" y2="19.5"></line>
         </svg>
       </button>
     </div>
