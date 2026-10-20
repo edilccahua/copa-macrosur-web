@@ -14,8 +14,29 @@ PYTHONPATH=. python3 -m backend.app.seed
 
 # 2. Levantar backend FastAPI en segundo plano
 echo "[2/3] Levantando backend FastAPI en http://localhost:8000..."
-PYTHONPATH=. python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 &
+if [ "$MODE" = "prod" ]; then
+  PYTHONPATH=. python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 &
+else
+  # En desarrollo, --reload: sin él, un cambio en los modelos no llega al
+  # servidor y el frontend lee campos inexistentes (specs/03 §0.2).
+  PYTHONPATH=. python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload &
+fi
 BACKEND_PID=$!
+
+# 2b. Esperar a que el API responda antes de levantar el frontend: si el
+# backend no está listo, el SSR devuelve 503 en todas las páginas de datos.
+echo "     Esperando al backend..."
+for i in $(seq 1 30); do
+  if curl -sf http://localhost:8000/api/v1/stages > /dev/null 2>&1; then
+    echo "     Backend listo."
+    break
+  fi
+  if [ "$i" = "30" ]; then
+    echo "     ERROR: el backend no respondió en 30 s. Revisa el log de uvicorn." >&2
+    exit 1
+  fi
+  sleep 1
+done
 
 # 3. Levantar frontend Astro
 cd frontend
