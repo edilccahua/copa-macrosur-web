@@ -1,0 +1,166 @@
+---
+/**
+ * PodiumPanel.astro — tarjeta de podio de una clasificación.
+ *
+ * Es la tarjeta que la portada ya usaba para la Copa de Equipos, extraída
+ * para que PRO · TODOS, NORMAL · TODOS y EQUIPO compartan exactamente la
+ * misma estructura (sin copiar el marcado tres veces).
+ *
+ * No calcula nada: recibe las tres primeras filas ya resueltas por la API.
+ */
+import MedalIcon from './MedalIcon.astro';
+
+export interface PodiumRow {
+  name: string;
+  points: number;
+}
+
+interface Props {
+  /** Rótulo superior, p. ej. "[ PRO · TODOS ]". */
+  kicker: string;
+  /** Filas del podio (máximo 3). */
+  rows: PodiumRow[];
+  /** Texto de contexto bajo el nombre del líder. */
+  body: string;
+  /** Destino de la clasificación completa. */
+  href: string;
+  /** Texto del enlace. */
+  cta?: string;
+  /** Acento del ámbito. */
+  scope?: 'pro' | 'normal' | 'team';
+  /** La API falló: se muestra el aviso en vez de un podio vacío. */
+  error?: boolean;
+}
+
+const {
+  kicker,
+  rows,
+  body,
+  href,
+  cta = 'Ver clasificación completa →',
+  scope,
+  error = false,
+} = Astro.props;
+
+const leader = rows[0]?.name ?? 'Sin resultados aún';
+---
+
+<div class:list={['panel', scope && `scope-${scope}`]}>
+  <div class="panel__head font-mono">{kicker}</div>
+
+  {
+    error ? (
+      <>
+        <h3 class="panel__title">Clasificación no disponible</h3>
+        <p class="panel__body">
+          No pudimos cargar esta clasificación en este momento. Vuelve a intentarlo en unos
+          segundos.
+        </p>
+      </>
+    ) : (
+      <>
+        <h3 class="panel__title">{leader}</h3>
+        <p class="panel__body">{body}</p>
+
+        <ol class="podium">
+          {
+            rows.map((row, idx) => (
+              <li class="podium__row">
+                <MedalIcon rank={(idx + 1) as 1 | 2 | 3} size={20} class="podium__medal" />
+                <span class="podium__name">{row.name}</span>
+                <span class="podium__pts">{row.points} pts</span>
+              </li>
+            ))
+          }
+        </ol>
+      </>
+    )
+  }
+
+  <a class="panel__cta" href={href}>{cta}</a>
+</div>
+
+<style>
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .panel__head {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--scope-ink, var(--faint));
+  }
+
+  .panel__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--ink-strong);
+  }
+
+  .panel__body {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .podium {
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .podium__row {
+    display: grid;
+    grid-template-columns: 1.25rem 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding-block: 0.6rem;
+    border-bottom: var(--hairline) solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .podium__medal {
+    align-self: center;
+  }
+
+  .podium__name {
+    overflow: hidden;
+    color: var(--ink);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .podium__pts {
+    color: var(--muted);
+  }
+
+  .panel__cta {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: var(--hairline) solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .panel__cta:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.1875rem;
+  }
+</style>

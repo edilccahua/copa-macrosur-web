@@ -26,6 +26,8 @@ export interface StageOption {
   start_time?: string | null;
   laps: number;
   status?: string;
+  poster_url?: string | null;
+  live_closed_at?: string | null;
 }
 
 export interface StandingsRow {
@@ -370,3 +372,41 @@ export async function getPrizeTiers(): Promise<PrizeTier[]> {
   const data = await res.json();
   return Array.isArray(data) ? (data as PrizeTier[]) : [];
 }
+
+// --- Ventana de transmisión en vivo -----------------------------------------
+//
+// Una sola fuente para la portada, `/en-vivo` y el admin (specs/02 §6).
+// La apertura es automática a las 08:00 de Lima el día de la carrera; el
+// cierre es manual del organizador.
+
+export type LiveState = 'live' | 'before_start' | 'closed' | 'no_race_today';
+
+export interface LiveStageBrief {
+  id: number;
+  stage_number: number;
+  name: string;
+  short_name: string | null;
+  slug: string;
+  date: string;
+  status: string;
+  start_time: string | null;
+  poster_url: string | null;
+}
+
+export interface LiveStatus {
+  active: boolean;
+  state: LiveState;
+  /** Etapa de hoy o, si hoy no hay carrera, la próxima. */
+  stage: LiveStageBrief | null;
+  /** Próxima fecha futura (para el aviso informativo). */
+  next_stage: LiveStageBrief | null;
+  opens_at: string | null;
+  closed_at: string | null;
+}
+
+export async function getLiveStatus(): Promise<LiveStatus> {
+  const res = await fetch(`${API_V1}/public/live-status`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`live-status HTTP ${res.status}`);
+  return res.json();
+}
+

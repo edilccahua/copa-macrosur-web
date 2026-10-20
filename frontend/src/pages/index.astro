@@ -8,9 +8,10 @@ import HeroScene from '../components/HeroScene.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
 import PodiumPanel from '../components/PodiumPanel.astro';
 import PrizeScale from '../components/PrizeScale.astro';
+import LiveSection from '../components/LiveSection.svelte';
 import EventCountdown from '../components/svelte/EventCountdown.svelte';
 import TimelineEvents from '../components/TimelineEvents.astro';
-import { API_V1 } from '../lib/api';
+import { API_V1, type LiveStageBrief, type LiveStatus } from '../lib/api';
 import { getStages, formatStageDate } from '../lib/stages';
 import { SITE_NAME, BRAND_WORDMARK, BRAND_ACCENT, BRAND_EDITION } from '../data/site';
 import { ACCUMULATED_PRIZES, PER_DATE_PRIZES, PRIZE_CURRENCY } from '../data/prizes';
@@ -74,6 +75,43 @@ const nextStage =
   null;
 
 /**
+ * Estado de la transmisión (specs/02 §6). La portada NO decide por su cuenta:
+ * el backend resuelve la ventana en hora de Lima y el cierre manual del
+ * organizador. Si el endpoint falla, la sección cae al modo informativo y
+ * nunca afirma que hay una carrera en vivo.
+ */
+function toLiveBrief(s: typeof nextStage): LiveStageBrief | null {
+  if (!s) return null;
+  return {
+    id: s.id,
+    stage_number: s.stage_number,
+    name: s.name,
+    short_name: s.short_name ?? null,
+    slug: s.slug,
+    date: s.date,
+    status: s.status ?? 'UPCOMING',
+    start_time: s.start_time ?? null,
+    poster_url: s.poster_url ?? null,
+  };
+}
+
+const fallbackBrief = toLiveBrief(nextStage);
+let liveStatus: LiveStatus = {
+  active: false,
+  state: 'no_race_today',
+  stage: fallbackBrief,
+  next_stage: fallbackBrief,
+  opens_at: null,
+  closed_at: null,
+};
+try {
+  const res = await fetch(`${API_V1}/public/live-status`, { cache: 'no-store' });
+  if (res.ok) liveStatus = await res.json();
+} catch (e) {
+  /* La sección informativa se muestra igual. */
+}
+
+/**
  * Los premios especiales de la Fecha 1, leídos de la API. Antes el panel
  * escribía a mano el texto del premio y no coincidía con la BD ("trofeo
  * conmemorativo a la máxima persistencia" frente a "Trofeo Conmemorativo
@@ -132,6 +170,7 @@ const nextDistanceText =
     { label: 'Fechas', id: 'fechas' },
     { label: 'Clasificación', id: 'clasificacion' },
     { label: 'Premios', id: 'premios' },
+    { label: 'Transmisión', id: 'envivo' },
   ]}
 >
   <SiteHeader />
@@ -312,6 +351,17 @@ const nextDistanceText =
 
         <a class="panel__cta" href="/premios">Ver todos los premios →</a>
       </div>
+    </section>
+
+    <!-- ── 04 · Transmisión en vivo ──────────────────────────────────── -->
+    <section class="section container" id="envivo">
+      <SectionLabel
+        number="04"
+        label="Transmisión"
+        kicker="SEGUIMIENTO DE LLEGADAS EN VIVO"
+      />
+
+      <LiveSection client:visible initial={liveStatus} />
     </section>
   </main>
 

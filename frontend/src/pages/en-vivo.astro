@@ -3,52 +3,82 @@ import Base from '../layouts/Base.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import LiveLeaderboard from '../components/svelte/LiveLeaderboard.svelte';
-import { API_V1 } from '../lib/api';
-
-interface StageBrief {
-  id: number;
-  stage_number: number;
-  name: string;
-  slug: string;
-  date: string;
-  status: string;
-}
+import { API_V1, type LiveStatus } from '../lib/api';
+import { formatStageDate } from '../lib/stages';
+import { toDisplayTime } from '../lib/datetime';
 
 /**
- * Sólo se retransmite lo que está EN VIVO de verdad. Antes la página elegía
- * "LIVE o, si no, la siguiente con inscripciones abiertas" y se presented
- * como una transmisión en vivo de una carrera que no había empezado.
+ * La página NO decide por su cuenta si hay carrera en vivo: lee el mismo
+ * estado que la portada (`GET /public/live-status`, specs/02 §6).
+ *
+ *   live          → tablero SSE
+ *   before_start  → hoy hay carrera, abre a las 08:00
+ *   closed        → el admin cerró la transmisión
+ *   no_race_today → próxima fecha
  */
-let liveStage: StageBrief | null = null;
-let nextStage: StageBrief | null = null;
+let status: LiveStatus | null = null;
 let apiError = false;
 
 try {
-  const res = await fetch(`${API_V1}/stages`);
+  const res = await fetch(`${API_V1}/public/live-status`, { cache: 'no-store' });
   if (res.ok) {
-    const stages: StageBrief[] = await res.json();
-    liveStage = stages.find((s) => s.status === 'LIVE') ?? null;
-    nextStage =
-      stages.find((s) => s.status === 'REGISTRATION_OPEN') ??
-      stages.find((s) => s.status === 'UPCOMING') ??
-      null;
+    status = await res.json();
   } else {
     apiError = true;
   }
 } catch (e) {
   apiError = true;
 }
+
+const state = status?.state ?? 'no_race_today';
+const stage = status?.stage ?? null;
+const nextStage = status?.next_stage ?? null;
+const isLive = state === 'live';
+
+const stageName = stage ? stage.name.replace(/^Fecha\s+\d+\s*:\s*/i, '') : '';
+const nextStageName = nextStage
+  ? nextStage.name.replace(/^Fecha\s+\d+\s*:\s*/i, '')
+  : '';
+const openTime = stage ? toDisplayTime(stage.start_time) : '08:00 HRS';
+const resultsHref = stage
+  ? `/ranking-general?modo=fecha&fecha=${stage.stage_number}`
+  : '/ranking-general';
+
+const title = isLive
+  ? 'TIEMPOS Y LLEGADAS EN VIVO'
+  : state === 'before_start'
+    ? 'LA TRANSMISIÓN ABRE HOY'
+    : state === 'closed'
+      ? 'TRANSMISIÓN FINALIZADA'
+      : 'TIEMPOS Y LLEGADAS EN VIVO';
+
+const description = isLive
+  ? 'Transmisión directa de las marcaciones de los jueces de meta. Los tiempos y puestos se actualizan a medida que los ciclistas cruzan la línea.'
+  : state === 'before_start'
+    ? `Hoy se corre ${stageName}. La transmisión de llegadas se abre a las ${openTime}; vuelve a esta página a esa hora.`
+    : state === 'closed'
+      ? 'La transmisión de llegadas terminó. Consulta la clasificación oficial de la fecha.'
+      : 'El seguimiento en vivo se abre el día de la carrera a las 08:00 y se cierra cuando el organizador lo indica. Mientras tanto, puedes consultar las clasificaciones y los resultados de las fechas disputadas.';
 ---
+
 <Base title="Cronometraje En Vivo — Copa MacroSur MTB">
   <SiteHeader />
 
   <main class="container page-content">
     <div class="page-header">
       {
-        liveStage ? (
+        isLive ? (
           <div class="live-pill font-mono">
             <span class="live-pulse-dot" aria-hidden="true" />
-            <span>[ TRANSMISIÓN EN VIVO // CANAL SSE ]</span>
+            <span>[ TRANSMISIÓN EN VIVO // LLEGADAS A META ]</span>
+          </div>
+        ) : state === 'before_start' ? (
+          <div class="live-pill live-pill--off font-mono">
+            <span>[ HOY · ABRE {openTime} ]</span>
+          </div>
+        ) : state === 'closed' ? (
+          <div class="live-pill live-pill--off font-mono">
+            <span>[ TRANSMISIÓN FINALIZADA ]</span>
           </div>
         ) : (
           <div class="live-pill live-pill--off font-mono">
@@ -56,33 +86,59 @@ try {
           </div>
         )
       }
-      <h1 class="page-title">TIEMPOS Y LLEGADAS EN VIVO</h1>
-      <p class="page-desc">
-        {
-          liveStage
-            ? 'Transmisión directa de las marcaciones de los jueces de meta mediante Server-Sent Events (SSE). Los tiempos y deltas se actualizan instantáneamente sin recargar la página.'
-            : 'El cronómetro en vivo se abre cuando hay una fecha en disputa. Mientras tanto, puedes consultar las clasificaciones y los resultados de las fechas ya disputadas.'
-        }
-      </p>
+      <h1 class="page-title">{title}</h1>
+      <p class="page-desc">{description}</p>
     </div>
 
     {
-      liveStage ? (
-        <LiveLeaderboard client:load stageId={liveStage.id} stageName={liveStage.name} />
+      isLive && stage ? (
+        <LiveLeaderboard client:load stageId={stage.id} stageName={stage.name} />
       ) : (
         <div class="offline-card">
           {apiError && (
-            <p class="offline-text">No pudimos contactar al servidor de cronometraje. Vuelve a intentarlo en unos segundos.</p>
-          )}
-          {nextStage && (
             <p class="offline-text">
-              La próxima fecha del campeonato es la <strong>{nextStage.name}</strong>. El cronómetro se
-              abrirá el día de la carrera.
+              No pudimos contactar al servidor de cronometraje. Vuelve a intentarlo en unos
+              segundos.
             </p>
           )}
-          <a class="offline-link font-mono" href="/ranking-general">
-            VER CLASIFICACIONES →
-          </a>
+
+          {state === 'closed' && (
+            <>
+              <p class="offline-text">
+                La transmisión de <strong>{stageName}</strong> ya cerró. Los resultados oficiales
+                están en la clasificación de la fecha.
+              </p>
+              <a class="offline-link font-mono" href={resultsHref}>
+                VER RESULTADOS DE LA FECHA →
+              </a>
+            </>
+          )}
+
+          {state === 'before_start' && (
+            <p class="offline-text">
+              La carrera de hoy es <strong>{stageName}</strong>. Las llegadas se transmiten desde
+              las {openTime}; esta página se activa sola a esa hora.
+            </p>
+          )}
+
+          {state === 'no_race_today' && (
+            <>
+              {nextStage ? (
+                <p class="offline-text">
+                  La próxima fecha es <strong>{nextStageName}</strong>, el{' '}
+                  {formatStageDate(nextStage.date)} a las {toDisplayTime(nextStage.start_time)}. El
+                  seguimiento de llegadas se abre ese día a las 08:00.
+                </p>
+              ) : (
+                <p class="offline-text">
+                  El calendario de la edición ya terminó. Consulta las clasificaciones oficiales.
+                </p>
+              )}
+              <a class="offline-link font-mono" href="/ranking-general">
+                VER CLASIFICACIONES →
+              </a>
+            </>
+          )}
         </div>
       )
     }

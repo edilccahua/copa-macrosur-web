@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, ConfigDict
 from backend.app.models.entities import (
@@ -10,6 +11,12 @@ from backend.app.models.entities import (
 # Timing Sync
 class TimeSyncResponse(BaseModel):
     server_time_ms: int
+
+
+class LiveToggle(BaseModel):
+    """Abrir o cerrar la transmisión de una etapa (panel del organizador)."""
+
+    active: bool
 
 
 # Timing Event Payloads
@@ -94,6 +101,7 @@ class StageRead(BaseModel):
     route_geojson: Optional[Dict[str, Any]] = None
     laps: int = 1
     strava_route_url: Optional[str] = None
+    live_closed_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
