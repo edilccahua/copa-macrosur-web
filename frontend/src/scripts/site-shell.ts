@@ -413,8 +413,37 @@ type MotionModule = {
   teardown: () => void;
 };
 
+type RulerModule = {
+  initPageRuler: () => void;
+  destroyPageRuler: () => void;
+};
+
 let motion: MotionModule | null = null;
 let motionLoading: Promise<MotionModule | null> | null = null;
+let ruler: RulerModule | null = null;
+let rulerLoading: Promise<RulerModule | null> | null = null;
+
+/**
+ * El regulador de scroll vive en `page-ruler.ts`, que no arrastra GSAP ni
+ * Lenis: así está en TODAS las páginas (incluidas las de datos) sin que
+ * `/en-vivo` ni `/admin/juez` descarguen las librerías pesadas.
+ */
+async function ensureRuler(): Promise<RulerModule | null> {
+  if (ruler) return ruler;
+  if (!document.querySelector('[data-ruler]')) return null;
+  if (!rulerLoading) {
+    rulerLoading = import('./page-ruler')
+      .then((mod) => {
+        ruler = mod as RulerModule;
+        return ruler;
+      })
+      .catch((err) => {
+        console.error('No se pudo cargar el regulador de scroll', err);
+        return null;
+      });
+  }
+  return rulerLoading;
+}
 
 /**
  * El módulo de movimiento se carga SÓLO si la página lo pide
@@ -466,9 +495,12 @@ function releasePendingReveals(): void {
 }
 
 function initRouter(): void {
-  // Al salir de una página, se destruye su movimiento (Lenis, ScrollTrigger).
+  // Al salir de una página, se destruye su movimiento (Lenis, ScrollTrigger)
+  // y su regulador: el <body> se reemplaza y la regleta nueva es otro
+  // elemento (si no se desmontara, los listeners de scroll se acumularían).
   document.addEventListener('astro:before-preparation', () => {
     motion?.teardown();
+    ruler?.destroyPageRuler();
   });
 
   // Antes del intercambio se corrige el item activo: la cabecera persiste y
@@ -495,6 +527,11 @@ function initRouter(): void {
   document.addEventListener('astro:page-load', async () => {
     restoreTheme();
     applyActiveNav(window.location.pathname);
+
+    // El regulador de scroll está en todas las páginas.
+    const rul = await ensureRuler();
+    rul?.initPageRuler();
+
     if (!pageWantsMotion()) {
       releasePendingReveals();
       return;
@@ -531,3 +568,6 @@ showThemeHintOnce();
 if (pageWantsMotion()) {
   void ensureMotion().then((mod) => mod?.init());
 }
+
+// El regulador de scroll: en todas las páginas.
+void ensureRuler().then((mod) => mod?.initPageRuler());

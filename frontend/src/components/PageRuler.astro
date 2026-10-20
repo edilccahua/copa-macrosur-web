@@ -30,6 +30,15 @@ const ticks = Array.from({ length: 101 }, (_, i) => i);
   aria-label="Posición en la página"
   tabindex="0"
 >
+  <!--
+    Zona interactiva. La BANDA es de altura completa y va por encima de la
+    cabecera (como en la referencia), así que el regulador y el menú
+    forman un instrumento continuo; pero para que no se coma los clics del
+    menú, la banda entera es `pointer-events: none` y sólo esta zona —que
+    empieza bajo la cabecera— es agarrable.
+  -->
+  <div class="ruler__grab" data-ruler-grab></div>
+
   <div class="ruler__backdrop"></div>
 
   <!--
@@ -80,18 +89,32 @@ const ticks = Array.from({ length: 101 }, (_, i) => i);
     .ruler {
       display: block;
       position: fixed;
-      /* La banda empieza DEBAJO de la cabecera. Antesoccupaba también los
-         últimos 3,75 rem de la barra (z-index 40 contra 20 de la cabecera) y
-         se comía los clics del CTA "INSCRIPCIÓN" y del conmutador de tema. */
-      inset-block: var(--header-offset, 3.0625rem) 0;
+      /* BANDA DE ALTURA COMPLETA, como en la referencia: el regulador y el
+         menú son un solo instrumento y no queda un hueco entre ambos. */
+      inset-block: 0;
       right: 0;
       width: 3.75rem;
       z-index: 40;
       overflow: hidden;
-      cursor: crosshair;
       background: transparent;
+      /* La banda no intercepta ningún clic: sólo la zona de agarre, que
+         empieza bajo la cabecera, es interactiva. */
+      pointer-events: none;
       /* El fundido cruzado entre cinta y pista: nada de saltos. */
       --ruler-fade: 240ms;
+    }
+
+    /* Zona agarrable: bajo la cabecera, para no quitarle los clics al
+       menú. */
+    .ruler__grab {
+      position: absolute;
+      inset: var(--header-offset, 3.0625rem) 0 0 0;
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+
+    .ruler.is-scrubbing .ruler__grab {
+      cursor: grabbing;
     }
 
     .ruler__backdrop {
@@ -111,9 +134,10 @@ const ticks = Array.from({ length: 101 }, (_, i) => i);
     }
 
     /* COMPRESIÓN GUIADA POR CSS, no por estado de JS: así no puede quedar
-       intermitente si un `pointerenter`/`pointerleave` se pierde. Se sale de la
-       compresión al sacar el puntero o al terminar el arrastre. */
-    .ruler:hover .ruler__scale,
+       intermitente si un `pointerenter`/`pointerleave` se pierde. El hover se
+       detecta sobre la zona agarrable (la banda es `pointer-events: none`),
+       y el foco sigue estando en la banda, que es `tabindex="0"`. */
+    .ruler__grab:hover ~ .ruler__scale,
     .ruler:focus-visible .ruler__scale,
     .ruler.is-scrubbing .ruler__scale {
       height: calc(100vh - 3.75rem) !important;
@@ -225,14 +249,10 @@ const ticks = Array.from({ length: 101 }, (_, i) => i);
     }
 
     /* Aparece al pasar el puntero, no sólo al pulsar. */
-    .ruler:hover .ruler__thumb,
+    .ruler__grab:hover ~ .ruler__thumb,
     .ruler:focus-visible .ruler__thumb,
     .ruler.is-active .ruler__thumb {
       opacity: 1;
-    }
-
-    .ruler.is-scrubbing {
-      cursor: grabbing;
     }
   }
 </style>

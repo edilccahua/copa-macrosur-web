@@ -151,8 +151,25 @@ sea pegajoso tiene que quedar **debajo** de ella:
 | :--- | :--- | :--- |
 | Barra de sección (`SectionLabel`) | `var(--header-offset)` / `var(--header-offset-mobile)` | **19** (uno menos que la cabecera) |
 | Cabecera de la tabla (`StandingsTable` `thead`) | `var(--header-offset)` | 10 |
-| Regulador lateral (`PageRuler`) | `inset-block: var(--header-offset) 0` | 40 (arranca bajo la cabecera) |
+| Regulador lateral (`PageRuler`) | `inset-block: 0` (altura completa) | 40 |
 | Cajón móvil (`SiteHeader`) | `top: var(--header-offset-mobile)` | 2 (dentro de la cabecera) |
+
+El regulador lateral va **en todas las páginas** (la de clasificaciones
+incluida) y su banda es de **altura completa**, como en `copiaartcraft`:
+el regulador y el menú forman un solo instrumento y no queda un hueco entre
+la cabecera y la regleta. Para que la banda no se coma los clics del menú,
+el regulador entero es `pointer-events: none` y sólo `.ruler__grab` —que
+empieza bajo la cabecera— es agarrable.
+
+Por lo mismo la barra de scroll nativa se oculta **sólo a partir de 48em**
+(`.no-scrollbar` dentro de la media query): por debajo, la banda del
+regulador no se dibuja y sin barra nativa el usuario se queda sin
+indicación de scroll.
+
+La regleta se inicializa desde `frontend/src/scripts/page-ruler.ts`, un
+módulo **sin GSAP ni Lenis**: así puede estar en todas las páginas sin que
+`/en-vivo` ni `/admin/juez` descarguen las librerías pesadas. Si la página
+tiene Lenis, la regleta le pide el salto a `window.__kuspideLenis`.
 
 Los tokens `--header-offset` y `--header-offset-mobile` son el **alto total** de
 la cabecera (la barra **más** su hairline inferior), no sólo el alto de la
@@ -249,12 +266,99 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 ## 1. Mapa de Rutas Públicas (Astro Frontend)
 
 ### 1.1 Portada del Campeonato (`/`)
-Diseño Bento Grid modular oscuro (estilo GetArtCraft consumiendo los estilos y layout de referencia):
-- **Hero Box:** Cuenta regresiva para la próxima fecha (o indicador rojo parpadeante `EN VIVO AHORA` con enlace directo a `/en-vivo` si `Stage.status == LIVE`), más botón destacado de Pre-Inscripción.
-- **Grilla de las 4 Fechas:** 4 tarjetas Bento modulares mostrando el cartel oficial (generado con Nanobanana y alojado en Cloudflare R2), fecha, distancia (`km`), desnivel (`+m`) y estado (`Finalizada`, `Inscripciones Abiertas`, `Próximamente`).
+
+> **Rediseño del 20 de Octubre de 2026: la marca y el hero.** Antes el rótulo
+> grande del hero, la cabecera y el pie decían "KÚSPIDE", que en los pósters
+> oficiales de `races/info/` es el **organizador** (Kuspide Xtreme Sports), no
+> el campeonato. El lockup de los pósters es **LA COPA MACROSUR MTB · EDICIÓN
+> 2026 · KUSPIDE**. A partir de aquí el campeonato se llama "Copa MacroSur
+> MTB" y "Kúspide" queda como el nombre del organizador.
+
+**Identidad (fuente única: `frontend/src/data/site.ts`)**
+
+| Constante | Valor | Dónde se usa |
+| :--- | :--- | :--- |
+| `SITE_NAME` | `Copa MacroSur MTB` | `<title>` de todas las páginas y textos legales |
+| `SITE_TAGLINE` | `Edición 2026 · Kuspide Xtreme Sports` | pie de página |
+| `BRAND_WORDMARK` | `COPA MACROSUR` | rótulo grande del hero |
+| `BRAND_EDITION` | `EDICIÓN 2026` | línea superior del hero |
+| `BRAND_NAV` | `KÚSPIDE` | **marca del menú principal (cabecera)** |
+
+- La **cabecera** conserva "KÚSPIDE" a propósito: es el logo del organizador,
+  igual que en los pósters. La cabecera no es un lugar para el nombre del
+  campeonato.
+- El **pie** lleva "COPA MACROSUR MTB" y el copyright "© 2026 Copa MacroSur MTB".
+- `craftApps` (las cuatro fechas escritas a mano en `site.ts`) se **eliminó**:
+  duplicaban la BD y por eso se quedaron desfasadas (decían 55.4 km y +920 m
+  para La Joya cuando la ruta oficial son 40.85 km y +384 m). Se conserva el
+  TIPO `CraftApp`, que necesita el componente portado `AppCard.astro`.
+
+**Hero**
+
+| Elemento | Escritorio | Móvil (< 48em) |
+| :--- | :--- | :--- |
+| Eyebrow | `[ EDICIÓN 2026 ]` | igual |
+| Rótulo | `COPA MACROSUR` (una línea) | dos líneas (`COPA` / `MACROSUR`) |
+| Titular | `Circuito oficial *de MTB.*` | igual |
+| Bajada | 3 renglones | **1 renglón**: la segunda frase (cronometraje, clasificaciones, Copa de Equipos) se oculta; ya está en el pie |
+| Índice de fechas | 4 nombres cortos en una línea | igual |
+
+- El rótulo son **dos palabras**: `HeroWordmark` agrupa las letras por palabra
+  (`wordmark__word`) y el espacio va en el `column-gap`. Con un `<span>` más
+  para el espacio, el colapso de espacios en línea lo borraría y se leería
+  "COPAMACROSUR".
+- La bajada dice **Copa de Equipos**, no "Copa de Clubes": es como lo llama el
+  resto del sitio y la BD.
+
+**Banda de la próxima fecha (`hero__next`)**
+
+- El nombre que se muestra es el **real** (`Stage.name` sin el prefijo
+  "Fecha N:"), no el corto: "El Retorno a los Poblados 2", no "Poblados".
+- La distancia y el desnivel son **POR VUELTA** en la BD (specs/01 §1.4): la
+  banda multiplica por `Stage.laps` y, si hay varias vueltas, lo dice
+  ("11.83 KM × 3 VUELTAS = 35.49 KM").
+- **Móvil**: la banda se queda con lo esencial — la fecha, el nombre real, el
+  cronómetro y los botones. Se ocultan el rótulo "[ PRÓXIMA FECHA ]"
+  (`.next__label`) y la línea de datos (`.next__specs`), que a 390 px ocupaba
+  dos renglones de monoespaciada.
+- **Escritorio (≥ 68.75em)**: la fecha se apila ARRIBA del nombre, en la misma
+  columna (`grid-template-areas`). Con la fecha en su propia columna el nombre
+  real se partía en dos renglones y los datos en otros dos: cuatro renglones de
+  ruido en una línea.
+
+**Línea de tiempo (`TimelineEvents`)**
+
+- Es un arreglo **literal** (a diferencia de las páginas de fecha, que leen
+  todo de la API). Por eso sus cifras se contrastan con la BD:
+  - **Fecha 1 (La Joya Extreme): 40.85 KM / +384 M.** Decía 55.4 KM y +920 M,
+    que contradecían la BD, la ruta GPX y la propia ficha de la fecha.
+  - **Fecha 2 (Kúspide Z Xtreme III):** 11.83 KM × 3 vueltas, +840 M (280 m por
+    vuelta × 3).
+  - **Clásica Arequipa-Mollendo:** 08:00 AM y "2 Etapas en Ruta" (los valores
+    de `extra_events`; el póster no da hora ni kilómetros). Decía 07:30 AM y
+    "125+ KM", que no aparecen en ningún sitio.
+- El enlace de resultados de la Fecha 1 ya no lleva `categoria=ELI`: el
+  parámetro se quitó de la ficha de fecha y el enlace iba desalineado.
+
+**Grilla de las 4 Fechas:** 4 tarjetas Bento modulares mostrando el cartel oficial (generado con Nanobanana y alojado en Cloudflare R2), fecha, distancia (`km`), desnivel (`+m`) y estado (`Finalizada`, `Inscripciones Abiertas`, `Próximamente`).
 - **Resumen del Ranking Acumulado:** Top 5 de cada categoría individual con enlace directo a `/ranking-general`.
 - **Showcase Copa de Equipos:** Tarjeta Bento destacada con el **Team Líder del Campeonato** (logo, puntos y victorias) y podio de los 3 mejores equipos.
 - **Showcase de Premios Especiales:** Cajas destacadas para premios de marca (ej. *Premio Especial Coca*, *Rey de la Montaña*).
+
+### 1.1.1 La banda de la derecha: regulador + índice de secciones
+
+> **Añadido el 20 de Octubre de 2026.** El borde derecho lo usan DOS elementos
+> fijos: el regulador de scroll (`PageRuler`, 3.75rem) y las etiquetas del
+> índice de secciones (`PageIndex`, alineadas a 5.5rem del borde y con ~7rem de
+> ancho). Con solo 4.5rem de reserva en el `.container`, el contenido se metía
+> debajo de las etiquetas: a 1280 px, "CLASIFICACIÓN" se montaba sobre el
+> botón "Ficha de ruta" de la banda de la próxima fecha.
+
+- Las páginas con índice de secciones llevan la clase `has-pageindex` en
+  `<html>` (la pone `Showcase.astro` cuando hay `sections`).
+- Con ella, entre 48em y 96em, el `.container` reserva `12.5rem` a la
+  derecha. Por encima de 96em los 80rem del contenedor ya quedan centrados
+  con margen de sobra y reservarlo sería tirar espacio.
 
 ### 1.2 Página de Fecha Individual (`/fechas/[slug]`)
 > Ruta **dinámica en SSR**: el `slug` se resuelve contra la API en cada request. Si la fecha no existe, la respuesta es `404`; si el backend no responde, `503`. **La página no contiene ningún dato literal**: todo viene de `GET /api/v1/stages/{slug}/summary` (ver §1.4).
@@ -541,7 +645,12 @@ solo **un frame de 54 ms**; en NORMAL (137 filas), **un frame de 67 ms**. El
 resto del tiempo se mantiene a 60 fps. Si el número de filas creciera mucho, el
 `animate:flip` es lo primero que habría que acotar.
 
-#### 1.3.2 Resultados por fecha (`/fechas/[slug]/resultados`)
+#### 1.3.2 Resultados por fecha (ranking en modo FECHA)
+
+> La ruta `/fechas/[slug]/resultados` ya no existe (ver §1.3 regla 17): la
+> clasificación oficial de una carrera es el **ranking en modo FECHA**
+> (`/ranking-general?modo=fecha&tabla=PRO&fecha=<n>`), que es la misma isla
+> con el corte por fecha en lugar del acumulado.
 
 Isla Svelte 5 (`<StandingsTable client:visible />`):- **Selector de Pestaña Principal:**
   1. **Clasificación Individual:**
@@ -627,6 +736,13 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
     - `DNI`: Campo obligatorio con validación estricta (8 dígitos para DNI peruano o formato de extranjería).
     - Nombre completo, Género, Categoría, Team (autocompletado de equipos existentes o check "Corredor Libre / Sin Equipo").
   - Carga de Comprobante de Pago: Campo para adjuntar la captura/comprobante de Yape, Plin o transferencia bancaria, que se sube directamente a Cloudflare R2.
+    > **20 de Octubre de 2026: se quitó el número de cuenta inventado.** La
+    > página decía "Abonos al número oficial de la organización: 958 123 456
+    > (Yape / Plin a nombre de Kúspide MTB)". Ese número **no está en los
+    > pósters oficiales ni en la BD**: estaba escrito a mano. En una página de
+    > pago, un dato inventado es el peor tipo de dato. Ahora el texto pide
+    > confirmar la cuenta o celular que indique la organización y da los dos
+    > WhatsApp oficiales: **994 382 248** y **980 081 335**.
   - El registro se crea en `StageEntry` con `payment_status = PENDING` para revisión y aprobación con 1 clic por el administrador en el panel.
 - **Buzón de Reclamos y Sugerencias (`/reclamos`):**
   - Formulario conectado a `FeedbackTicket` para reclamos de tiempos (con referencia a dorsal y DNI), observaciones de ruta o sugerencias técnicas.

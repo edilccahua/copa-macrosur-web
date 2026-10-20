@@ -10,6 +10,7 @@
  * sesión y cambiar de página no recarga ni repite las animaciones.
  */
 import { ClientRouter } from 'astro:transitions';
+import PageRuler from '../components/PageRuler.astro';
 import '@fontsource-variable/archivo';
 import '@fontsource-variable/archivo/standard.css';
 import '@fontsource-variable/inter';
@@ -25,18 +26,33 @@ interface Props {
   title?: string;
   description?: string;
   theme?: 'light' | 'dark';
+  /**
+   * La página lleva el regulador lateral. Ya va en TODAS las páginas
+   * (el layout lo renderiza siempre); la prop se conserva para que los
+   * layouts puedan declararlo explícitamente.
+   */
   ruler?: boolean;
+  /** La página lleva el índice de secciones fijo a la derecha. */
+  pageindex?: boolean;
 }
 
 const {
-  title = 'Kúspide MTB — Campeonato Oficial 2026',
-  description = 'Plataforma oficial de cronometraje en vivo, clasificaciones y ranking acumulado del campeonato MTB.',
+  title = 'Copa MacroSur MTB — Campeonato Oficial 2026',
+  description = 'Plataforma oficial de cronometraje en vivo, clasificaciones y ranking acumulado de la Copa MacroSur MTB 2026.',
   theme,
-  ruler = false,
+  ruler = true,
+  pageindex = false,
 } = Astro.props;
 ---
 <!doctype html>
-<html lang="es" data-theme={theme} class={ruler ? 'no-scrollbar' : undefined}>
+<html
+  lang="es"
+  data-theme={theme}
+  class:list={[
+    ruler ? 'no-scrollbar' : undefined,
+    pageindex ? 'has-pageindex' : undefined
+  ]}
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -82,6 +98,14 @@ const {
   <body>
     <slot />
 
+    <!--
+      El regulador de scroll del borde derecho. Va en TODAS las páginas (la
+      de clasificaciones incluida) y es de altura completa, de modo que el
+      regulador y el menú forman un solo instrumento: no queda un hueco
+      entre la cabecera y la regleta.
+    -->
+    <PageRuler />
+
     <ClientRouter />
   </body>
 </html>
@@ -104,6 +128,22 @@ const {
     :global(.container) {
       padding-inline: 1.5rem;
       padding-right: 4.5rem;
+    }
+  }
+
+  /*
+    La banda de la derecha la usan DOS cosas fijas: el regulador (3.75rem) y
+    las etiquetas del índice de secciones, que se alinean a 5.5rem del borde y
+    se extienden hacia la izquierda (~7rem). Con solo 4.5rem de reserva el
+    contenido se metía debajo de las etiquetas: a 1280 px, "CLASIFICACIÓN" se
+    montaba sobre el botón "Ficha de ruta" de la banda de la próxima fecha.
+    Aquí se reserva la banda entera, pero SOLO cuando el contenedor no está
+    centrado con margen de sobra: por encima de 96em los 80rem del contenedor
+    ya dejan el hueco libre y reservarlo sería tirar espacio.
+  */
+  @media (min-width: 48em) and (max-width: 95.99em) {
+    :global(html.has-pageindex .container) {
+      padding-right: 12.5rem;
     }
   }
 

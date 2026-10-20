@@ -1,7 +1,7 @@
 ---
 /**
  * Showcase.astro — layout de escaparate editorial.
- * Scroll suave con Lenis, GSAP ScrollTrigger y cinta métrica PageRuler.
+ * Scroll suave con Lenis, GSAP ScrollTrigger y el índice de secciones.
  * Se utiliza EXCLUSIVAMENTE en la portada '/' y cabeceras de fechas.
  *
  * El módulo de movimiento NO se importa aquí: lo carga `site-shell.ts` con
@@ -10,7 +10,6 @@
  * navegar con el router el movimiento se rearma para la página que entra.
  */
 import Base from './Base.astro';
-import PageRuler from '../components/PageRuler.astro';
 import PageIndex from '../components/PageIndex.astro';
 import GhostWord from '../components/GhostWord.astro';
 
@@ -23,7 +22,7 @@ interface Props {
 
 const { title, description, sections, ghostWord } = Astro.props;
 ---
-<Base title={title} description={description} ruler>
+<Base title={title} description={description} ruler pageindex={Boolean(sections && sections.length > 0)}>
   <Fragment slot="head">
     <!--
       `motion-ready` le dice al CSS que esta página tiene movimiento y que el
@@ -48,7 +47,6 @@ const { title, description, sections, ghostWord } = Astro.props;
     <slot name="motion" />
     {ghostWord && <GhostWord text={ghostWord} />}
   </div>
-  <PageRuler />
   {sections && sections.length > 0 && <PageIndex sections={sections} />}
 </Base>
 
