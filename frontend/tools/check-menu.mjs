@@ -51,7 +51,7 @@ ok(
   'no hay ningún enlace al panel del juez en el panel móvil'
 );
 
-// 2. El menú está centrado
+// 2. El menú va PEGADO a la marca, como en getartcraft.com (no centrado)
 const medidas = await page.evaluate(() => {
   const links = [...document.querySelectorAll('.hdr__link')];
   const first = links[0].getBoundingClientRect();
@@ -59,13 +59,17 @@ const medidas = await page.evaluate(() => {
   const brand = document.querySelector('.hdr__brand').getBoundingClientRect();
   const right = document.querySelector('.hdr__right').getBoundingClientRect();
   return {
-    izq: Math.round(first.left - brand.right),
-    der: Math.round(right.left - last.right)
+    pegado: Math.round(first.left - brand.right),
+    huecoDerecha: Math.round(right.left - last.right)
   };
 });
 ok(
-  Math.abs(medidas.izq - medidas.der) <= 2,
-  `el menú está centrado (${medidas.izq} px a la izquierda, ${medidas.der} a la derecha)`
+  medidas.pegado <= 24,
+  `el menú arranca pegado a la marca (${medidas.pegado} px de separación)`
+);
+ok(
+  medidas.huecoDerecha > 120,
+  `el hueco grande queda a la derecha, como en la referencia (${medidas.huecoDerecha} px)`
 );
 
 // 3. El item activo por ruta
@@ -107,6 +111,61 @@ ok(tras.path === '/', `FECHAS lleva a la portada (${tras.path})`);
 ok(
   tras.scrollY > 100 && tras.calendarioY > -50 && tras.calendarioY < 120,
   `FECHAS desplaza al calendario (scrollY=${tras.scrollY}, calendario a ${tras.calendarioY}px)`
+);
+
+// 5. Móvil: cajón superpuesto, con la página actual marcada
+const movil = await browser.newPage({ viewport: { width: 390, height: 780 }, isMobile: true, hasTouch: true });
+await movil.goto(URL.replace(/\/$/, '') + '/ranking-general', { waitUntil: 'networkidle' });
+await movil.waitForTimeout(900);
+
+ok(
+  (await movil.$eval('.hdr__nav', (n) => getComputedStyle(n).display)) === 'none',
+  'en móvil el nav de escritorio está oculto'
+);
+ok(await movil.isVisible('#nav-toggle'), 'en móvil se ve el botón del menú');
+
+const antesDeAbrir = await movil.evaluate(() => ({
+  scrollY: Math.round(window.scrollY),
+  topContenido: Math.round(document.querySelector('main')?.getBoundingClientRect().top ?? 0)
+}));
+
+await movil.click('#nav-toggle');
+await movil.waitForTimeout(600);
+
+const abierto = await movil.evaluate(() => {
+  const drawer = document.getElementById('nav-panel');
+  const cs = drawer ? getComputedStyle(drawer) : null;
+  const activo = drawer?.querySelector('.hdr__drawer-link.is-active');
+  return {
+    visible: cs ? cs.visibility === 'visible' && Number(cs.opacity) > 0.9 : false,
+    posicion: cs?.position,
+    items: drawer ? [...drawer.querySelectorAll('.hdr__drawer-link')].map((a) => a.textContent.trim()) : [],
+    activo: activo?.textContent.trim() ?? null,
+    actual: document.querySelector('[data-nav-current] strong')?.textContent.trim() ?? null,
+    focoDentro: !!document.querySelector('#nav-panel')?.contains(document.activeElement),
+    topContenido: Math.round(document.querySelector('main')?.getBoundingClientRect().top ?? 0)
+  };
+});
+ok(abierto.visible, 'el cajón se abre (visible)');
+ok(abierto.posicion === 'fixed', 'el cajón es superpuesto (fixed), no empuja la página');
+ok(
+  abierto.topContenido === antesDeAbrir.topContenido,
+  'abrir el cajón NO desplaza el contenido'
+);
+ok(
+  JSON.stringify(abierto.items) ===
+    JSON.stringify(['INICIO', 'FECHAS', 'CLASIFICACIONES', 'ESPECIALES', 'PREMIOS']),
+  `el cajón tiene los destinos (${JSON.stringify(abierto.items)})`
+);
+ok(abierto.activo === 'CLASIFICACIONES', `el cajón marca la página actual (${abierto.activo})`);
+ok(abierto.actual === 'CLASIFICACIONES', `el cajón dice en qué página estamos (${abierto.actual})`);
+ok(abierto.focoDentro, 'al abrir, el foco entra en el cajón');
+
+await movil.keyboard.press('Escape');
+await movil.waitForTimeout(400);
+ok(
+  !(await movil.evaluate(() => document.getElementById('site-header')?.classList.contains('is-open'))),
+  'Escape cierra el cajón'
 );
 
 await browser.close();

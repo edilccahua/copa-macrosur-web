@@ -42,11 +42,16 @@ function matches(pathname: string, matchList: string): boolean {
  */
 export function applyActiveNav(pathname: string): void {
   const links = document.querySelectorAll<HTMLElement>('[data-nav-match]');
+  let currentLabel: string | null = null;
+
   for (const link of links) {
     const active = matches(pathname, link.dataset.navMatch ?? '');
     link.classList.toggle('is-active', active);
     if (active) {
       link.setAttribute('aria-current', 'page');
+      if (!currentLabel) {
+        currentLabel = link.dataset.navLabel ?? link.textContent?.trim() ?? null;
+      }
     } else {
       link.removeAttribute('aria-current');
     }
@@ -54,6 +59,12 @@ export function applyActiveNav(pathname: string): void {
 
   // La MARCA (logo) no se marca nunca: "KÚSPIDE" e "INICIO" llevan a la
   // misma página y el que queda activo es "INICIO".
+
+  // El cajón de móvil dice en qué página estamos.
+  const current = document.querySelector<HTMLElement>('[data-nav-current] strong');
+  if (current) {
+    current.textContent = currentLabel ?? 'PORTADA';
+  }
 }
 
 // ── Tema ─────────────────────────────────────────────────────────────────────
@@ -106,12 +117,66 @@ function restoreTheme(): void {
 
 // ── Comportamiento de la cabecera (delegado) ─────────────────────────────────
 
-function toggleMobileMenu(open: boolean): void {
+/** A partir de aquí el nav de escritorio sustituye al cajón. */
+const DESKTOP_BREAKPOINT = 900;
+
+function drawerIsOpen(): boolean {
+  return document.getElementById('site-header')?.classList.contains('is-open') ?? false;
+}
+
+/**
+ * El cajón de navegación.
+ *
+ * Es SUPERPUESTO al contenido (no lo empuja): el contenido no da ningún salto
+ * al abrirlo. Al abrirse, el foco entra en el cajón; al cerrarse, vuelve al
+ * botón. Con el teclado, el foco queda atrapado dentro mientras esté abierto.
+ */
+function setDrawer(open: boolean): void {
   const header = document.getElementById('site-header');
   const button = document.getElementById('nav-toggle');
   if (!header) return;
+  if (open === drawerIsOpen()) return;
+
   header.classList.toggle('is-open', open);
   button?.setAttribute('aria-expanded', String(open));
+
+  if (open) {
+    // El foco entra en el cajón. Se aplaza un fotograma porque el cajón
+    // acaba de pasar de `visibility: hidden` a visible: sin esperar, el
+    // navegador lo sigue considerando oculto y `focus()` no hace nada.
+    requestAnimationFrame(() => {
+      const first = document.querySelector<HTMLElement>('#nav-panel a');
+      first?.focus({ preventScroll: true });
+    });
+  } else {
+    button?.focus({ preventScroll: true });
+  }
+}
+
+/** Elementos enfocables del cajón, en orden. */
+function drawerFocusables(): HTMLElement[] {
+  return [
+    ...document.querySelectorAll<HTMLElement>('#nav-panel a[href], #nav-panel button:not([disabled])')
+  ];
+}
+
+/** Mantiene el foco dentro del cajón mientras esté abierto. */
+function trapDrawerFocus(event: KeyboardEvent): void {
+  if (event.key !== 'Tab' || !drawerIsOpen()) return;
+  const focusables = drawerFocusables();
+  if (focusables.length === 0) return;
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function initDelegatedHandlers(): void {
@@ -131,15 +196,25 @@ function initDelegatedHandlers(): void {
     const navButton = target.closest('#nav-toggle');
     if (navButton) {
       event.preventDefault();
-      const header = document.getElementById('site-header');
-      toggleMobileMenu(!(header?.classList.contains('is-open') ?? false));
+      setDrawer(!drawerIsOpen());
+      return;
+    }
+
+    // El velo cierra el cajón.
+    if (target.closest('#nav-scrim')) {
+      setDrawer(false);
       return;
     }
 
     // Clic fuera: el menú móvil se cierra.
     const header = document.getElementById('site-header');
     if (header?.classList.contains('is-open') && !target.closest('#site-header')) {
-      toggleMobileMenu(false);
+      setDrawer(false);
+    }
+
+    // Un enlace del cajón: se cierra al navegar.
+    if (target.closest('#nav-panel a')) {
+      setDrawer(false);
     }
 
     // Anclas del menú (p.ej. "FECHAS" → /#fechas): el router de Astro no
@@ -161,15 +236,36 @@ function initDelegatedHandlers(): void {
     }
   });
 
-  // Escape cierra el menú móvil.
+  // Escape cierra el cajón; Tab queda atrapado dentro mientras esté abierto.
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    const header = document.getElementById('site-header');
-    if (header?.classList.contains('is-open')) {
-      toggleMobileMenu(false);
-      document.getElementById('nav-toggle')?.focus();
+    if (event.key === 'Escape') {
+      if (drawerIsOpen()) {
+        event.preventDefault();
+        setDrawer(false);
+      }
+      return;
+    }
+    trapDrawerFocus(event);
+  });
+
+  // Al pasar a escritorio el cajón se cierra (el nav hace ese papel).
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= DESKTOP_BREAKPOINT && drawerIsOpen()) {
+      setDrawer(false);
     }
   });
+
+  // El velo se traga la rueda: con el cajón abierto la página no se desplaza
+  // por detrás. (El scroll propio del cajón sí funciona.)
+  document.addEventListener(
+    'wheel',
+    (event) => {
+      if (drawerIsOpen() && !(event.target as Element | null)?.closest('#nav-panel')) {
+        event.preventDefault();
+      }
+    },
+    { passive: false }
+  );
 }
 
 /**
@@ -297,11 +393,16 @@ function initRouter(): void {
   });
 
   // Antes del intercambio se corrige el item activo: la cabecera persiste y
-  // su HTML no se vuelve a pintar.
+  // su HTML no se vuelve a pintar. El cajón se cierra: si no, quedaría
+  // abierto sobre la página nueva.
   document.addEventListener('astro:before-swap', (event) => {
     const to = (event as Event & { to?: URL }).to;
     const pathname = to?.pathname ?? window.location.pathname;
     applyActiveNav(pathname);
+    if (drawerIsOpen()) {
+      document.getElementById('site-header')?.classList.remove('is-open');
+      document.getElementById('nav-toggle')?.setAttribute('aria-expanded', 'false');
+    }
   });
 
   // Tras el intercambio: el `<html>` es nuevo, así que se repone el tema y

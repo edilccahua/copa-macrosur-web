@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     DATABASE_URL: str = "sqlite+aiosqlite:///./kuspide_mtb.db"
     ADMIN_API_KEY: str = "***REMOVED-ADMIN-API-KEY***"
+
+    # `development` habilita cualquier puerto de localhost en CORS.
+    # `production` lo desactiva: sólo valen los orígenes de la lista.
+    ENVIRONMENT: str = "development"
+
     # CORS: se puede sobreescribir en `.env` con un array JSON.
     # La lista incluye varios puertos de desarrollo porque Astro toma el
     # siguiente libre si el 4321 está ocupado: con una lista fija, el sitio
@@ -22,7 +27,14 @@ class Settings(BaseSettings):
         "http://127.0.0.1:4323",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://kuspideweb.com",
+        "https://www.kuspideweb.com",
     ]
+
+    # En desarrollo se acepta CUALQUIER puerto de localhost: así, si el
+    # servidor del front cambia de puerto, el sitio no se rompe en silencio.
+    # En producción queda desactivado.
+    CORS_ORIGIN_REGEX: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
     
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
