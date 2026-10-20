@@ -1,5 +1,9 @@
 # Spec 00: Esquema de Dominio y Reglas de Campeonato (PostgreSQL + SQLModel)
 
+> **Estado:** COMPLETADO ✅  
+> **Fecha de Verificación:** 19 de Octubre de 2026  
+> **Evidencia:** 15 entidades SQLModel en `backend/app/models/entities.py`, migración Alembic `head` (`b5d638d28e84` y `9f1a2b3c4d5e`), seed con 220 ciclistas, 230 inscripciones y reglas de negocio validadas al 100%.
+
 ## 1. Entidades Principales y Relaciones (ER)
 
 ### 1.1 `Team` (Clubes / Equipos de Ciclismo)
@@ -43,6 +47,8 @@ Representa a la persona física a lo largo de todo el campeonato (sin login obli
 - `route_geojson`: JSONB (Polilínea y perfil de elevación precalculado con `gpxpy` para pintar el mapa rápido sin recalcular)
 - `distance_km`: Float
 - `elevation_gain_m`: Integer
+- `laps`: Integer (Default `1`). Vueltas del circuito. En circuitos por vueltas (ej. *Z Xtreme*) `distance_km` y `elevation_gain_m` son **POR VUELTA** y `laps` es el máximo (ej. 11.83 km/vuelta × 3 vueltas). En fechas de trayecto lineal `laps = 1`.
+- `strava_route_url`: String (Nullable — enlace público a la ruta de Strava de la fecha)
 - `gallery_r2_prefix`: String (Carpeta de fotos de la fecha en R2)
 - `judge_pin`: String (Código o token de acceso rápido para los jueces de la fecha, ej. `***REMOVED***`)
 
@@ -80,6 +86,8 @@ Une a un `Rider` con una `Stage` específica y su placa asignada en esa carrera.
 - `category_rank`: Integer (Nullable — Puesto en su categoría en esta fecha)
 - `overall_rank`: Integer (Nullable — Puesto en la general absoluta de esta fecha)
 - `points_earned`: Integer (Default 0 — Puntos individuales ganados para el campeonato en esta fecha)
+- `laps`: Integer (Default 1 — vueltas efectivamente completadas en fechas de circuito; p.ej. 3 en categorías fuertes, 2 en turismo/damas de *Z Xtreme*)
+- **Restricción `UNIQUE(stage_id, bib_number)`:** el dorsal es único por fecha. La identidad del ciclista se garantiza por `Rider.dni`; si un mismo ciclista aparece con dos dorsales en la misma fecha (dato sucio de origen) se fusiona conservando el **mejor tiempo** (ver `specs/01 §1.5`).
 
 ### 1.8 `TimingEvent` (Marcaciones en Vivo del Juez)
 Cada marcación del juez en su celular genera un registro aquí.

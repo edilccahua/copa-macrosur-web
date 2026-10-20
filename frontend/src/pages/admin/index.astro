@@ -31,10 +31,10 @@ import SiteFooter from '../../components/SiteFooter.astro';
           <div class="form-group">
             <label class="font-mono">Etapa de Destino:</label>
             <select name="stage_id" class="admin-select font-mono">
-              <option value="2">Fecha 2: Vuelta a los Poblados</option>
+              <option value="3">Fecha 3: El Retorno a los Poblados 2</option>
               <option value="1">Fecha 1: La Joya Extreme</option>
-              <option value="3">Fecha 3: Rally Chachani</option>
-              <option value="4">Fecha 4: Desafío del Misti</option>
+              <option value="2">Fecha 2: Kúspide Z Xtreme III</option>
+              <option value="4">Fecha 4: Quequeña Xtreme III</option>
             </select>
           </div>
 
@@ -62,8 +62,10 @@ import SiteFooter from '../../components/SiteFooter.astro';
           <div class="form-group">
             <label class="font-mono">Etapa:</label>
             <select name="stage_id" class="admin-select font-mono">
-              <option value="2">Fecha 2: Vuelta a los Poblados</option>
+              <option value="3">Fecha 3: El Retorno a los Poblados 2</option>
               <option value="1">Fecha 1: La Joya Extreme</option>
+              <option value="2">Fecha 2: Kúspide Z Xtreme III</option>
+              <option value="4">Fecha 4: Quequeña Xtreme III</option>
             </select>
           </div>
 
@@ -83,6 +85,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
 </Base>
 
 <script>
+  import { API_V1 } from '../../lib/api';
   const ADMIN_KEY = '***REMOVED-ADMIN-API-KEY***';
 
   // Cargar pagos pendientes
@@ -90,7 +93,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
     const listEl = document.getElementById('payments-list');
     if (!listEl) return;
     try {
-      const res = await fetch('http://localhost:8000/api/v1/admin/pending-payments', {
+      const res = await fetch(`${API_V1}/admin/pending-payments`, {
         headers: { 'X-Admin-Key': ADMIN_KEY }
       });
       if (res.ok) {
@@ -117,7 +120,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
 
   (window as any).approvePayment = async (entryId: number) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/admin/entries/${entryId}/approve-payment`, {
+      const res = await fetch(`${API_V1}/admin/entries/${entryId}/approve-payment`, {
         method: 'POST',
         headers: { 'X-Admin-Key': ADMIN_KEY }
       });
@@ -142,19 +145,19 @@ import SiteFooter from '../../components/SiteFooter.astro';
     const isLegacy = fd.get('is_legacy') ? 'true' : 'false';
 
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/stages/${stageId}/import-excel?is_legacy=${isLegacy}`, {
+      const res = await fetch(`${API_V1}/stages/${stageId}/import-excel?is_legacy=${isLegacy}`, {
         method: 'POST',
         headers: { 'X-Admin-Key': ADMIN_KEY },
         body: fd
       });
       const data = await res.json();
       if (res.ok) {
-        msg.innerText = `✅ Ingesta exitosa: ${data.imported_riders} ciclistas procesados.`;
+        msg.innerText = `[OK] Ingesta exitosa: ${data.imported_riders} ciclistas procesados.`;
       } else {
-        msg.innerText = `❌ Error: ${JSON.stringify(data.detail)}`;
+        msg.innerText = `[ERROR] ${JSON.stringify(data.detail)}`;
       }
     } catch (err) {
-      msg.innerText = '❌ Error de red con el servidor.';
+      msg.innerText = '[ERROR] Error de red con el servidor.';
     }
   });
 
@@ -168,19 +171,19 @@ import SiteFooter from '../../components/SiteFooter.astro';
     const stageId = fd.get('stage_id');
 
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/stages/${stageId}/upload-gpx`, {
+      const res = await fetch(`${API_V1}/stages/${stageId}/upload-gpx`, {
         method: 'POST',
         headers: { 'X-Admin-Key': ADMIN_KEY },
         body: fd
       });
       const data = await res.json();
       if (res.ok) {
-        msg.innerText = `✅ GPX cargado: ${data.distance_km} km / +${data.elevation_gain_m} m.`;
+        msg.innerText = `[OK] GPX cargado: ${data.distance_km} km / +${data.elevation_gain_m} m.`;
       } else {
-        msg.innerText = '❌ Error al subir GPX.';
+        msg.innerText = '[ERROR] Error al subir GPX.';
       }
     } catch (err) {
-      msg.innerText = '❌ Error de conexión.';
+      msg.innerText = '[ERROR] Error de conexión.';
     }
   });
 </script>
@@ -215,7 +218,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
   .admin-desc {
     font-size: 0.9375rem;
     color: var(--muted);
-    max-width: 680px;
+    max-width: 42.5rem;
     margin: 0;
   }
 
@@ -347,7 +350,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
     cursor: pointer;
   }
 
-  @media (min-width: 900px) {
+  @media (min-width: 56.25em) {
     .admin-grid {
       grid-template-columns: repeat(3, 1fr);
     }

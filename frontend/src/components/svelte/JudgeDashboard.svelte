@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { API_V1, BASE_URL } from '../../lib/api';
   import {
     savePendingEvent,
     getUnsyncedEvents,
@@ -148,7 +149,7 @@
         }))
       };
 
-      const res = await fetch('http://localhost:8000/api/v1/timing/batch-sync', {
+      const res = await fetch(`${BASE_URL}/api/v1/timing/batch-sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,7 +208,7 @@
 
   onMount(() => {
     // 1. Calibrar reloj con el servidor
-    fetch('http://localhost:8000/api/v1/timing/time-sync')
+    fetch(`${API_V1}/timing/time-sync`)
       .then((r) => r.json())
       .then((d) => {
         if (d.server_time_ms) {
@@ -246,10 +247,10 @@
   <div class="judge-header">
     <div class="badge-status">
       <span class="status-indicator" class:online={isOnline}></span>
-      <span>{isOnline ? 'CONECTADO 4G' : 'MODO OFFLINE'}</span>
+      <span>{isOnline ? 'ENLACE ONLINE ACTIVO' : 'MODO OFFLINE'}</span>
     </div>
     {#if wakeLockActive}
-      <span class="wake-tag">PANTALLA ACTIVA ☀️</span>
+      <span class="wake-tag font-mono">[WAKE-LOCK ACTIVO]</span>
     {/if}
     <div class="queue-status font-mono">
       Pendientes: <strong>{unsyncedCount}</strong>
@@ -258,7 +259,7 @@
 
   <!-- Teclado Numérico Directo -->
   <div class="pos-screen">
-    <div class="screen-label">DORSAL A MARCAR EN META</div>
+    <div class="screen-label font-mono">[ DORSAL A REGISTRAR EN META ]</div>
     <div class="screen-input font-mono">{bibInput || '---'}</div>
   </div>
 
@@ -270,20 +271,20 @@
     {/each}
   </div>
 
-  <button class="btn-register-primary" onclick={submitSingleTap} disabled={!bibInput}>
+  <button class="btn-register-primary font-mono" onclick={submitSingleTap} disabled={!bibInput}>
     REGISTRAR CRUCE DE META #{bibInput || '?'}
   </button>
 
   <!-- Modo Ráfaga para Sprint Masivo -->
   <div class="burst-section">
-    <div class="burst-title">LLEGADA MASIVA / SPRINT</div>
-    <button class="btn-burst" onclick={triggerBurstTap}>
-      ⚡ [ MARCAR PASO ] (CONGELAR TIEMPO)
+    <div class="burst-title font-mono">[ LLEGADA MASIVA // MODO SPRINT ]</div>
+    <button class="btn-burst font-mono" onclick={triggerBurstTap}>
+      [ CAPTURAR SPLIT // CONGELAR TIEMPO ]
     </button>
 
     {#if burstQueue.length > 0}
       <div class="burst-list">
-        <div class="burst-list-label">Tiempos congelados por asignar dorsal:</div>
+        <div class="burst-list-label font-mono">Tiempos congelados por asignar dorsal:</div>
         {#each burstQueue as item (item.id)}
           <div class="burst-card">
             <span class="burst-time font-mono">{item.formattedTime}</span>
@@ -308,13 +309,13 @@
 
   <!-- Historial de Últimas Marcaciones -->
   <div class="recent-events-box">
-    <div class="recent-title">Últimas 10 marcaciones en este dispositivo</div>
+    <div class="recent-title font-mono">Últimas 10 marcaciones en este dispositivo</div>
     {#each recentEvents as ev (ev.id)}
       <div class="recent-row">
         <span class="font-mono bib">#{ev.bib_number}</span>
         <span class="font-mono time">{formatTime(ev.recorded_at_ms)}</span>
-        <span class="tag-synced" class:synced={ev.synced}>
-          {ev.synced ? 'Sincronizado' : 'Pendiente'}
+        <span class="tag-synced font-mono" class:synced={ev.synced}>
+          {ev.synced ? '[Sincronizado]' : '[Pendiente]'}
         </span>
       </div>
     {/each}
@@ -325,17 +326,17 @@
 {#if conflictModal.visible}
   <div class="modal-backdrop">
     <div class="modal-card">
-      <div class="modal-title">⚠️ Aviso de Doble Toque en Meta</div>
+      <div class="modal-title font-mono">[ALERTA 409 // REGISTRO DUPLICADO EN META]</div>
       <p class="modal-text">
         El dorsal #{conflictModal.pendingEvent?.bib_number} ya tenía registrado un tiempo en meta:
         <strong>{conflictModal.existingTime}</strong>.
       </p>
       <p class="modal-text">¿Deseas reemplazar el tiempo oficial con esta nueva marcación?</p>
       <div class="modal-actions">
-        <button class="btn-modal-cancel" onclick={() => resolveConflict(false)}>
+        <button class="btn-modal-cancel font-mono" onclick={() => resolveConflict(false)}>
           Conservar tiempo anterior
         </button>
-        <button class="btn-modal-replace" onclick={() => resolveConflict(true)}>
+        <button class="btn-modal-replace font-mono" onclick={() => resolveConflict(true)}>
           Reemplazar tiempo
         </button>
       </div>
@@ -345,7 +346,7 @@
 
 <style>
   .judge-container {
-    max-width: 480px;
+    max-width: 30rem;
     margin: 0 auto;
     padding: 1rem;
     background: var(--bg, #fbfbfd);
@@ -371,8 +372,8 @@
   }
 
   .status-indicator {
-    width: 8px;
-    height: 8px;
+    width: 0.5rem;
+    height: 0.5rem;
     background: #ef4444;
   }
 
@@ -416,7 +417,7 @@
   }
 
   .key-btn {
-    height: 64px;
+    height: 4rem;
     background: var(--bg-raised, #ffffff);
     border: var(--hairline, 1px) solid var(--line, rgba(16, 16, 20, 0.16));
     font-size: 1.5rem;
@@ -446,7 +447,8 @@
   }
 
   .btn-register-primary:disabled {
-    background: #9ca3af;
+    background: var(--muted);
+    opacity: 0.35;
     cursor: not-allowed;
   }
 
@@ -469,7 +471,7 @@
     width: 100%;
     padding: 1rem;
     background: var(--invert-bg, #101014);
-    color: #ffffff;
+    color: var(--invert-fg, #ffffff);
     border: none;
     font-size: 0.8125rem;
     font-weight: 800;
@@ -494,7 +496,7 @@
   }
 
   .burst-input {
-    width: 80px;
+    width: 5rem;
     padding: 0.35rem 0.5rem;
     border: var(--hairline, 1px) solid var(--line, rgba(16, 16, 20, 0.16));
     font-size: 0.875rem;
@@ -545,7 +547,7 @@
   .modal-card {
     background: var(--bg-raised, #ffffff);
     padding: 1.5rem;
-    max-width: 400px;
+    max-width: 25rem;
     width: 100%;
     border: 2px solid #ef4444;
   }

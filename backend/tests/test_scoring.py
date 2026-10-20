@@ -9,7 +9,8 @@ from backend.app.models.entities import (
 )
 from backend.app.services.scoring import (
     calculate_points_for_rank, recalculate_stage_ranks,
-    recalculate_championship_standings, recalculate_team_standings
+    recalculate_championship_standings, recalculate_team_standings,
+    merge_duplicate_entries
 )
 
 
@@ -112,3 +113,33 @@ async def test_recalculate_team_standings_olympic(async_session: AsyncSession):
     assert ts_b.current_rank == 2
     assert ts_b.total_points == 9
     assert ts_b.second_places_count == 1
+
+
+@pytest.mark.asyncio
+async def test_merge_duplicate_entries_keeps_best_time(async_session: AsyncSession):
+    cat = Category(name="Master D", short_code="MSD")
+    stage = Stage(stage_number=2, name="Fecha 2", slug="f2", date=datetime.date(2026, 6, 1))
+    async_session.add_all([cat, stage])
+    await async_session.commit()
+
+    rider = Rider(dni="99999999", full_name="GUSTAVO OVIEDO", slug="gustavo-oviedo-9999")
+    async_session.add(rider)
+    await async_session.commit()
+
+    # Mismo rider listado dos veces (dorsal 108 con tiempo, dorsal 241 sin tiempo)
+    e_best = StageEntry(stage_id=stage.id, rider_id=rider.id, category_id=cat.id, bib_number=108,
+                        finish_elapsed_ms=4277000, race_status=RaceStatusEnum.FINISHED)
+    e_dup = StageEntry(stage_id=stage.id, rider_id=rider.id, category_id=cat.id, bib_number=241,
+                       finish_elapsed_ms=None, race_status=RaceStatusEnum.REGISTERED)
+    async_session.add_all([e_best, e_dup])
+    await async_session.commit()
+
+    merged = await merge_duplicate_entries(async_session, stage.id)
+    assert merged == 1
+
+    entries = (await async_session.exec(
+        select(StageEntry).where(StageEntry.stage_id == stage.id)
+    )).all()
+    assert len(entries) == 1
+    assert entries[0].bib_number == 108
+    assert entries[0].finish_elapsed_ms == 4277000

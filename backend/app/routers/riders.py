@@ -13,12 +13,13 @@ router = APIRouter(prefix="/riders", tags=["Riders"])
 @router.get("")
 async def search_riders(
     q: Optional[str] = Query(None, description="Búsqueda por nombre o DNI"),
+    limit: int = Query(50, ge=1, le=1000, description="Máximo de resultados"),
     session: AsyncSession = Depends(get_session)
 ):
     stmt = select(Rider)
     if q:
         stmt = stmt.where(Rider.full_name.ilike(f"%{q}%") | Rider.dni.ilike(f"%{q}%"))
-    stmt = stmt.limit(50)
+    stmt = stmt.limit(limit)
     riders = (await session.exec(stmt)).all()
 
     output = []

@@ -1,0 +1,728 @@
+---
+/**
+ * TimelineEvents.astro — Sección de eventos interactiva con timeline y scroll animado.
+ * Arquitectura bifacial optimizada:
+ * - Desktop (>= 900px): 2 Columnas reales traslapadas (izq: 1, 3, 5 / der: 2, 4, 6 con offset)
+ *   y Eje central con chips de fecha técnicos (17-MAY, 26-JUL, etc.) que se encienden al scroll.
+ * - Móvil (< 900px): 1 Columna corrida apilada cronológicamente de la 1 a la 6.
+ * - Sin selector de pestañas, con excelente relación de portada 16:10 y cero espacios vacíos.
+ */
+import EventCard from './EventCard.astro';
+
+const ALL_EVENTS = [
+  {
+    id: 'la-joya-extreme',
+    number: '01',
+    badge: '01',
+    kicker: 'COPA MACROSUR MTB · ETAPA 01',
+    titlePrefix: 'La Joya',
+    titleHighlight: 'Extreme',
+    date: '17 MAY 2026',
+    dateShort: '17-MAY',
+    location: 'Vía de Evitamiento, La Joya',
+    startTime: '08:00 AM',
+    status: 'Finalizada',
+    statusKey: 'finished' as const,
+    distance: '55.4 KM',
+    elevation: '+920 M',
+    description: '',
+    poster: '/images/posters/f1-la-joya-extreme-card.webp',
+    pageHref: '/fechas/la-joya-extreme',
+    directHref: '/fechas/la-joya-extreme/resultados',
+    directCta: 'Resultados oficiales',
+    type: 'mtb' as const,
+    color: '#f59e0b',
+    colorInk: '#d97706',
+    colorGlow: 'rgba(245, 158, 11, 0.45)',
+    tagBg: 'rgba(245, 158, 11, 0.12)',
+  },
+  {
+    id: 'vuelta-talamolle',
+    number: 'ESP',
+    badge: 'RUTA',
+    kicker: 'CLÁSICA DE RUTA · ESPECIAL',
+    titlePrefix: 'La Vuelta a',
+    titleHighlight: 'Talamolle 2026',
+    date: '26 JUL 2026',
+    dateShort: '26-JUL',
+    location: 'Plaza de Mollebaya',
+    startTime: '08:00 AM',
+    status: 'Edición 2026',
+    statusKey: 'special' as const,
+    distance: '63 KM / 43 KM',
+    elevation: 'Asfalto Ondulado',
+    description: '',
+    poster: '/images/posters/extra-vuelta-talamolle-card.webp',
+    pageHref: '/eventos-especiales#vuelta-a-talamolle-2026',
+    directHref: '/eventos-especiales#vuelta-a-talamolle-2026',
+    directCta: 'Ficha técnica e informes',
+    type: 'road' as const,
+    color: '#06b6d4',
+    colorInk: '#0891b2',
+    colorGlow: 'rgba(6, 182, 212, 0.45)',
+    tagBg: 'rgba(6, 182, 212, 0.12)',
+  },
+  {
+    id: 'z-xtreme-2026',
+    number: '02',
+    badge: '02',
+    kicker: 'COPA MACROSUR MTB · ETAPA 02',
+    titlePrefix: 'Kúspide',
+    titleHighlight: 'Z Xtreme III',
+    date: '23 AGO 2026',
+    dateShort: '23-AGO',
+    location: 'Circuito La Z, Arequipa',
+    startTime: '08:00 AM',
+    status: 'Finalizada',
+    statusKey: 'finished' as const,
+    distance: '11.8 KM × 3 VUELTAS',
+    elevation: '+840 M',
+    description: '',
+    poster: '/images/posters/f2-z-xtreme-card.webp',
+    pageHref: '/fechas/z-xtreme-2026',
+    directHref: '/fechas/z-xtreme-2026/resultados',
+    directCta: 'Resultados oficiales',
+    type: 'mtb' as const,
+    color: '#f97316',
+    colorInk: '#ea580c',
+    colorGlow: 'rgba(249, 115, 22, 0.45)',
+    tagBg: 'rgba(249, 115, 22, 0.12)',
+  },
+  {
+    id: 'vuelta-a-los-poblados',
+    number: '03',
+    badge: '03',
+    kicker: 'COPA MACROSUR MTB · ETAPA 03',
+    titlePrefix: 'El Retorno a',
+    titleHighlight: 'los Poblados 2',
+    date: '25 OCT 2026',
+    dateShort: '25-OCT',
+    location: 'Plaza de Chiguata',
+    startTime: '08:00 AM',
+    status: 'Inscripciones Abiertas',
+    statusKey: 'open' as const,
+    distance: '47.2 KM',
+    elevation: '+761 M',
+    description: '',
+    poster: '/images/posters/f3-retorno-poblados-card.webp',
+    pageHref: '/fechas/vuelta-a-los-poblados',
+    directHref: '/inscripciones',
+    directCta: 'Inscribirme ahora',
+    type: 'mtb' as const,
+    color: '#10b981',
+    colorInk: '#059669',
+    colorGlow: 'rgba(16, 185, 129, 0.55)',
+    tagBg: 'rgba(16, 185, 129, 0.15)',
+  },
+  {
+    id: 'clasica-mollendo',
+    number: 'ESP',
+    badge: 'RUTA',
+    kicker: 'CLÁSICA DE RUTA · 72ª EDICIÓN',
+    titlePrefix: 'Clásica Arequipa',
+    titleHighlight: 'Mollendo 72ª',
+    date: '07 - 08 NOV 2026',
+    dateShort: '07-NOV',
+    location: 'Arequipa hacia el Puerto',
+    startTime: '07:30 AM',
+    status: 'Próximamente',
+    statusKey: 'upcoming' as const,
+    distance: '125+ KM (2 Etapas)',
+    elevation: 'Sierra hacia Costa',
+    description: '',
+    poster: '/images/posters/extra-clasica-mollendo-card.webp',
+    pageHref: '/eventos-especiales#clasica-arequipa-mollendo-72',
+    directHref: '/eventos-especiales#clasica-arequipa-mollendo-72',
+    directCta: 'Detalles de la clásica',
+    type: 'road' as const,
+    color: '#2563eb',
+    colorInk: '#1d4ed8',
+    colorGlow: 'rgba(37, 99, 235, 0.45)',
+    tagBg: 'rgba(37, 99, 235, 0.12)',
+  },
+  {
+    id: 'quequena-xtreme',
+    number: '04',
+    badge: '04',
+    kicker: 'COPA MACROSUR MTB · GRAN FINAL',
+    titlePrefix: 'Quequeña',
+    titleHighlight: 'Xtreme III',
+    date: '13 DIC 2026',
+    dateShort: '13-DIC',
+    location: 'Plaza Principal de Quequeña',
+    startTime: '08:00 AM',
+    status: 'Gran Final 2026',
+    statusKey: 'upcoming' as const,
+    distance: '45.0 KM',
+    elevation: '+950 M',
+    description: '',
+    poster: '/images/posters/f4-quequena-xtreme-card.webp',
+    pageHref: '/fechas/quequena-xtreme',
+    directHref: '/fechas/quequena-xtreme',
+    directCta: 'Detalles de ruta final',
+    type: 'mtb' as const,
+    color: '#d946ef',
+    colorInk: '#c026d3',
+    colorGlow: 'rgba(217, 70, 239, 0.45)',
+    tagBg: 'rgba(217, 70, 239, 0.12)',
+  },
+];
+
+// División en 2 columnas para Desktop
+const LEFT_EVENTS = [ALL_EVENTS[0], ALL_EVENTS[2], ALL_EVENTS[4]]; // Fechas 1, 3, 5
+const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2, 4, 6
+---
+
+<div class="timeline-container" id="eventsTimelineContainer">
+  <!-- ════════════════════════════════════════════════════════════════════════
+       1. VISTA DESKTOP (>= 900px): 2 Columnas Físicas Traslapadas + Eje Central
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div class="timeline-desktop" id="timelineDesktop">
+    <!-- Columna Izquierda: Fechas 1, 3, 5 -->
+    <div class="timeline-col timeline-col--left">
+      {
+        LEFT_EVENTS.map((event, i) => {
+          const globalIdx = i * 2; // 0, 2, 4
+          return (
+            <div
+              class="timeline-desktop-item timeline-desktop-item--left"
+              data-global-index={globalIdx}
+              id={`desktop-card-${globalIdx}`}
+              style={`--item-color: ${event.color};`}
+            >
+              <EventCard event={event} side="left" />
+            </div>
+          );
+        })
+      }
+    </div>
+
+    <!-- Eje Central con Riel, Marcador Viajero y Chips de Fecha Técnicos -->
+    <div class="timeline-spine" id="timelineSpine">
+      <div class="timeline__line" aria-hidden="true"></div>
+      <div class="timeline__trail" id="desktopTrail" aria-hidden="true"></div>
+      <div class="timeline__marker" id="desktopMarker" aria-hidden="true"></div>
+
+      <!-- Los 6 Nodos de Fecha sobre la línea central -->
+      {
+        ALL_EVENTS.map((event, idx) => {
+          const side = idx % 2 === 0 ? 'left' : 'right';
+          return (
+            <div
+              class={`timeline-spine-node timeline-spine-node--${side}`}
+              data-spine-index={idx}
+              id={`spine-node-${idx}`}
+              style={`--node-color: ${event.color}; --node-glow: ${event.colorGlow};`}
+            >
+              <div class="timeline-spine-chip">
+                <span class="timeline-spine-chip__dot"></span>
+                <span class="timeline-spine-chip__text">{event.dateShort}</span>
+              </div>
+              <span class={`timeline-spine-hairline timeline-spine-hairline--${side}`}></span>
+            </div>
+          );
+        })
+      }
+    </div>
+
+    <!-- Columna Derecha: Fechas 2, 4, 6 (con desfase inicial para traslape) -->
+    <div class="timeline-col timeline-col--right">
+      {
+        RIGHT_EVENTS.map((event, i) => {
+          const globalIdx = i * 2 + 1; // 1, 3, 5
+          return (
+            <div
+              class="timeline-desktop-item timeline-desktop-item--right"
+              data-global-index={globalIdx}
+              id={`desktop-card-${globalIdx}`}
+              style={`--item-color: ${event.color};`}
+            >
+              <EventCard event={event} side="right" />
+            </div>
+          );
+        })
+      }
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       2. VISTA MÓVIL (< 900px): 1 Columna Corrida Apilada Cronológicamente
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div class="timeline-mobile" id="timelineMobile">
+    <div class="timeline__line" aria-hidden="true"></div>
+    <div class="timeline__trail" id="mobileTrail" aria-hidden="true"></div>
+    <div class="timeline__marker" id="mobileMarker" aria-hidden="true"></div>
+
+    <div class="timeline-mobile__list">
+      {
+        ALL_EVENTS.map((event, idx) => {
+          return (
+            <div
+              class="timeline-mobile-item"
+              data-mobile-index={idx}
+              style={`--node-color: ${event.color}; --node-glow: ${event.colorGlow};`}
+            >
+              <!-- Nodo de Fecha Móvil sobre la línea lateral -->
+              <div class="timeline-mobile-node">
+                <span class="timeline-mobile-chip">{event.dateShort}</span>
+              </div>
+
+              <!-- Conector hacia la tarjeta -->
+              <div class="timeline-mobile-connector"></div>
+
+              <!-- Tarjeta a ancho completo -->
+              <div class="timeline-mobile-content">
+                <EventCard event={event} side="right" />
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  </div>
+</div>
+
+<style>
+  .timeline-container {
+    position: relative;
+    width: 100%;
+    margin-block: 2rem 4rem;
+  }
+
+  /* Riel continuo base */
+  .timeline__line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--line);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Estela luminosa que crece con el scroll */
+  .timeline__trail {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 0;
+    background: linear-gradient(180deg, #f59e0b 0%, #10b981 40%, #06b6d4 70%, #8b5cf6 100%);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    pointer-events: none;
+    z-index: 2;
+    transition: height 0.05s linear;
+  }
+
+  /* Marcador viajero con scroll */
+  .timeline__marker {
+    position: absolute;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border: 2px solid #10b981;
+    border-radius: 0;
+    transform: translate(-50%, 0) rotate(45deg);
+    box-shadow:
+      0 0 14px rgba(16, 185, 129, 0.9),
+      0 0 0 3px rgba(16, 185, 129, 0.25);
+    pointer-events: none;
+    z-index: 6;
+    will-change: transform;
+    transition: transform 0.06s linear;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     ESTILOS DESKTOP (>= 900px)
+     ═════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 900px) {
+    .timeline-mobile {
+      display: none !important;
+    }
+
+    .timeline-desktop {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr);
+      align-items: start;
+      position: relative;
+      width: 100%;
+    }
+
+    /* Columnas izquierda y derecha */
+    .timeline-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3.5rem;
+      position: relative;
+    }
+
+    .timeline-col--left {
+      align-items: flex-end;
+    }
+
+    .timeline-col--right {
+      align-items: flex-start;
+      /* Desfase de traslape: la columna derecha empieza a mitad de la primera tarjeta izquierda */
+      padding-top: 135px;
+    }
+
+    .timeline-desktop-item {
+      width: 100%;
+      max-width: 450px;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Eje Central Spine */
+    .timeline-spine {
+      position: relative;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .timeline-spine .timeline__line,
+    .timeline-spine .timeline__trail {
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .timeline-spine .timeline__marker {
+      left: 50%;
+    }
+
+    /* Nodo de Fecha Técnico sobre el eje central */
+    .timeline-spine-node {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, 0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      transition: top 0.1s linear;
+    }
+
+    .timeline-spine-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.55rem;
+      background: var(--bg);
+      border: var(--hairline) solid var(--line-strong);
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      border-radius: 0;
+      transition:
+        border-color 0.3s ease,
+        color 0.3s ease,
+        background 0.3s ease,
+        box-shadow 0.3s ease;
+    }
+
+    .timeline-spine-chip__dot {
+      width: 5px;
+      height: 5px;
+      background: var(--muted);
+      border-radius: 0;
+      transition: background 0.3s ease;
+    }
+
+    /* Conectores hairlines entre el chip de fecha y la tarjeta */
+    .timeline-spine-hairline {
+      position: absolute;
+      height: 1px;
+      background: var(--line);
+      pointer-events: none;
+      z-index: 3;
+      transition: background 0.3s ease;
+    }
+
+    .timeline-spine-hairline--left {
+      right: 100%;
+      width: calc((110px - 70px) / 2 + 10px);
+    }
+
+    .timeline-spine-hairline--right {
+      left: 100%;
+      width: calc((110px - 70px) / 2 + 10px);
+    }
+
+    /* Estado activo al pasar el scroll (.passed) */
+    .timeline-spine-node.passed .timeline-spine-chip {
+      border-color: var(--node-color);
+      color: var(--node-color);
+      background: color-mix(in srgb, var(--node-color) 8%, var(--bg));
+      box-shadow: 0 0 12px var(--node-glow);
+    }
+
+    .timeline-spine-node.passed .timeline-spine-chip__dot {
+      background: var(--node-color);
+    }
+
+    .timeline-spine-node.passed .timeline-spine-hairline {
+      background: color-mix(in srgb, var(--node-color) 60%, var(--line));
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     ESTILOS MÓVIL (< 900px): 1 Columna Corrida Apilada
+     ═════════════════════════════════════════════════════════════════════ */
+  @media (max-width: 899px) {
+    .timeline-desktop {
+      display: none !important;
+    }
+
+    .timeline-mobile {
+      position: relative;
+      width: 100%;
+      padding-top: 0.5rem;
+    }
+
+    .timeline-mobile .timeline__line,
+    .timeline-mobile .timeline__trail {
+      left: 1rem;
+      transform: translateX(-50%);
+    }
+
+    .timeline-mobile .timeline__marker {
+      left: 1rem;
+    }
+
+    .timeline-mobile__list {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      width: 100%;
+      position: relative;
+      z-index: 3;
+    }
+
+    .timeline-mobile-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      padding-left: 2.75rem;
+    }
+
+    /* Nodo de fecha en móvil */
+    .timeline-mobile-node {
+      position: absolute;
+      left: 1rem;
+      top: 1.15rem;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+    }
+
+    .timeline-mobile-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.2rem 0.45rem;
+      background: var(--bg);
+      border: var(--hairline) solid var(--line-strong);
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      border-radius: 0;
+      transition: border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .timeline-mobile-connector {
+      position: absolute;
+      left: 1rem;
+      top: 1.15rem;
+      width: 1.75rem;
+      height: 1px;
+      background: var(--line);
+      pointer-events: none;
+    }
+
+    .timeline-mobile-content {
+      width: 100%;
+    }
+
+    /* Estado activo en móvil */
+    .timeline-mobile-item.passed .timeline-mobile-chip {
+      border-color: var(--node-color);
+      color: var(--node-color);
+      box-shadow: 0 0 10px var(--node-glow);
+    }
+
+    .timeline-mobile-item.passed .timeline-mobile-connector {
+      background: color-mix(in srgb, var(--node-color) 60%, var(--line));
+    }
+  }
+</style>
+
+<script>
+  /**
+   * Controlador de animación sincronizada al scroll:
+   * Posiciona los chips de fecha dinámicamente según la altura de las tarjetas
+   * y avanza el marcador luminoso iluminando cada hito en desktop y móvil.
+   */
+  function initEventsTimeline() {
+    const isDesktop = window.innerWidth >= 900;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (isDesktop) {
+      initDesktopTimeline(reduceMotion);
+    } else {
+      initMobileTimeline(reduceMotion);
+    }
+  }
+
+  function initDesktopTimeline(reduceMotion: boolean) {
+    const desktopContainer = document.getElementById('timelineDesktop');
+    const spine = document.getElementById('timelineSpine');
+    const trail = document.getElementById('desktopTrail');
+    const marker = document.getElementById('desktopMarker');
+    if (!desktopContainer || !spine || !trail || !marker) return;
+
+    const cards: HTMLElement[] = [];
+    const spineNodes: HTMLElement[] = [];
+
+    for (let i = 0; i < 6; i++) {
+      const card = document.getElementById(`desktop-card-${i}`);
+      const node = document.getElementById(`spine-node-${i}`);
+      if (card && node) {
+        cards.push(card);
+        spineNodes.push(node);
+      }
+    }
+
+    function alignSpineNodes() {
+      const spineRect = spine!.getBoundingClientRect();
+      spineNodes.forEach((node, i) => {
+        const card = cards[i];
+        if (!card) return;
+        const cardRect = card.getBoundingClientRect();
+        // Alinear la fecha con la cabecera de la tarjeta
+        const relTop = cardRect.top - spineRect.top + 20;
+        node.style.top = `${relTop.toFixed(1)}px`;
+      });
+    }
+
+    let ticking = false;
+
+    function update() {
+      ticking = false;
+      const rect = spine!.getBoundingClientRect();
+      const inset = 16;
+      const total = rect.height - inset * 2;
+      if (total <= 0) return;
+
+      const focal = window.innerHeight * 0.42;
+      let p = (focal - rect.top - inset) / total;
+      p = Math.max(0, Math.min(1, p));
+
+      const pos = inset + p * total;
+      marker!.style.transform = `translate(-50%, ${pos.toFixed(1)}px) rotate(45deg)`;
+      trail!.style.height = `${Math.max(0, pos - inset).toFixed(1)}px`;
+
+      spineNodes.forEach((node, i) => {
+        const card = cards[i];
+        const nodeY = parseFloat(node.style.top || '0');
+        const passed = pos >= nodeY - 6;
+        node.classList.toggle('passed', passed);
+        card?.classList.toggle('passed', passed);
+      });
+    }
+
+    if (reduceMotion) {
+      alignSpineNodes();
+      trail.style.height = '100%';
+      marker.style.display = 'none';
+      spineNodes.forEach((n) => n.classList.add('passed'));
+      cards.forEach((c) => c.classList.add('passed'));
+      return;
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    }
+
+    alignSpineNodes();
+    update();
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => {
+      alignSpineNodes();
+      onScroll();
+    });
+
+    const lenis = (window as any).lenis;
+    if (lenis && typeof lenis.on === 'function') {
+      lenis.on('scroll', onScroll);
+    }
+  }
+
+  function initMobileTimeline(reduceMotion: boolean) {
+    const mobileContainer = document.getElementById('timelineMobile');
+    const trail = document.getElementById('mobileTrail');
+    const marker = document.getElementById('mobileMarker');
+    if (!mobileContainer || !trail || !marker) return;
+
+    const items = Array.from(mobileContainer.querySelectorAll<HTMLElement>('.timeline-mobile-item'));
+    let ticking = false;
+
+    if (reduceMotion) {
+      trail.style.height = '100%';
+      marker.style.display = 'none';
+      items.forEach((it) => it.classList.add('passed'));
+      return;
+    }
+
+    function update() {
+      ticking = false;
+      const rect = mobileContainer!.getBoundingClientRect();
+      const inset = 12;
+      const total = rect.height - inset * 2;
+      if (total <= 0) return;
+
+      const focal = window.innerHeight * 0.42;
+      let p = (focal - rect.top - inset) / total;
+      p = Math.max(0, Math.min(1, p));
+
+      const pos = inset + p * total;
+      marker!.style.transform = `translate(-50%, ${pos.toFixed(1)}px) rotate(45deg)`;
+      trail!.style.height = `${Math.max(0, pos - inset).toFixed(1)}px`;
+
+      items.forEach((it) => {
+        const node = it.querySelector<HTMLElement>('.timeline-mobile-node');
+        if (!node) return;
+        const nodeY = node.getBoundingClientRect().top - rect.top;
+        it.classList.toggle('passed', pos >= nodeY - 6);
+      });
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    }
+
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initEventsTimeline);
+  } else {
+    initEventsTimeline();
+  }
+
+  document.addEventListener('astro:page-load', initEventsTimeline);
+</script>

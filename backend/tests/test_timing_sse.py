@@ -74,3 +74,20 @@ async def test_timing_sync_and_events(client: AsyncClient, async_session: AsyncS
     res_force = await client.post("/api/v1/timing/events", json=payload_conflict, headers=headers)
     assert res_force.status_code == 200
     assert res_force.json()["elapsed_ms"] == 3700000
+
+
+@pytest.mark.asyncio
+async def test_live_summary_and_auth(client: AsyncClient, async_session: AsyncSession):
+    # Sin X-Judge-Pin -> 401
+    res_no_auth = await client.post("/api/v1/timing/events", json={})
+    assert res_no_auth.status_code == 401
+
+    # Etapa para live-summary
+    stage = Stage(stage_number=99, name="Fecha Test", slug="f-test", date=datetime.date(2026, 3, 15), judge_pin="PIN-REAL")
+    async_session.add(stage)
+    await async_session.commit()
+
+    res_live = await client.get(f"/api/v1/stages/{stage.id}/live-summary")
+    assert res_live.status_code == 200
+    assert "leaderboard" in res_live.json()
+    assert res_live.json()["stage_name"] == "Fecha Test"

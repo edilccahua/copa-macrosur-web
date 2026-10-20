@@ -2,31 +2,53 @@
 import Base from '../../../layouts/Base.astro';
 import SiteHeader from '../../../components/SiteHeader.astro';
 import SiteFooter from '../../../components/SiteFooter.astro';
+import { API_V1 } from '../../../lib/api';
 
-export async function getStaticPaths() {
-  return [
-    { params: { slug: 'la-joya-extreme' } },
-    { params: { slug: 'vuelta-a-los-poblados' } },
-    { params: { slug: 'rally-chachani' } },
-    { params: { slug: 'desafio-del-misti' } }
-  ];
-}
-
+// SSR: la ruta es dinámica y se resuelve contra la API en cada request.
+// Antes era prerenderizada con `getStaticPaths` + `fetch` de build-time, lo que
+// horneaba la página VACÍA (sin ningún aviso) si el backend no estaba arriba
+// durante `npm run build`. Ver specs/03 §2.
 const { slug } = Astro.params;
 
 let stageData: any = null;
+let notFound = false;
 try {
-  const res = await fetch(`http://localhost:8000/api/v1/stages/${slug}/results`);
-  if (res.ok) stageData = await res.json();
-} catch (e) {}
+  const res = await fetch(`${API_V1}/stages/${slug}/results`);
+  if (res.status === 404) {
+    notFound = true;
+    Astro.response.status = 404;
+  } else if (res.ok) {
+    stageData = await res.json();
+  }
+} catch (e) {
+  Astro.response.status = 503;
+}
 
 const stageName = stageData?.stage?.name || 'Resultados de Etapa';
-const categories = stageData?.categories || {};
+const stageId = stageData?.stage?.id;
+// Ordenar: finalistas por puesto, no finalistas (sin tiempo) al final
+const categories: Record<string, any[]> = {};
+for (const [catName, riders] of Object.entries(stageData?.categories || {})) {
+  categories[catName] = (riders as any[]).slice().sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
+}
 ---
 <Base title={`Resultados Oficiales: ${stageName} — Kúspide MTB`}>
   <SiteHeader />
 
   <main class="container page-content">
+    {
+      notFound ? (
+        <div class="header-box">
+          <h1 class="page-title">FECHA NO ENCONTRADA</h1>
+          <p class="page-desc">
+            No existe una fecha con el identificador <span class="font-mono">{slug}</span>.
+          </p>
+          <div class="actions-bar">
+            <a href="/fechas" class="btn btn--ghost font-mono">← VOLVER AL CALENDARIO</a>
+          </div>
+        </div>
+      ) : (
+        <>
     <div class="header-box">
       <div class="breadcrumb font-mono">
         <a href={`/fechas/${slug}`}>← VOLVER A LA FICHA DE LA FECHA</a>
@@ -37,9 +59,13 @@ const categories = stageData?.categories || {};
       </p>
 
       <div class="actions-bar">
-        <a href={`http://localhost:8000/api/v1/stages/1/export-excel`} class="btn-excel font-mono">
-          📊 DESCARGAR LIBRO EXCEL OFICIAL (.XLSX)
-        </a>
+        {
+          stageId && (
+            <a href={`${API_V1}/stages/${stageId}/export-excel`} class="btn btn--solid font-mono">
+              EXPORTAR PLANILLA OFICIAL [.XLSX] ↓
+            </a>
+          )
+        }
       </div>
     </div>
 
@@ -87,6 +113,9 @@ const categories = stageData?.categories || {};
         ))
       }
     </div>
+        </>
+      )
+    }
   </main>
 
   <SiteFooter />
@@ -112,13 +141,18 @@ const categories = stageData?.categories || {};
 
   .page-title {
     font-family: var(--font-display, var(--font-sans));
-    font-size: 2.25rem;
-    font-weight: 800;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    color: var(--ink-strong);
+    text-wrap: balance;
     margin: 1rem 0;
   }
 
   .page-desc {
-    max-width: 720px;
+    max-width: 45rem;
     font-size: 0.9375rem;
     color: var(--muted);
     line-height: 1.6;
@@ -164,7 +198,10 @@ const categories = stageData?.categories || {};
   .cat-title {
     font-family: var(--font-display, var(--font-sans));
     font-size: 1.125rem;
-    font-weight: 800;
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.02em;
+    color: var(--ink-strong);
     margin: 0;
   }
 
@@ -201,12 +238,12 @@ const categories = stageData?.categories || {};
   }
 
   .col-rank {
-    width: 60px;
+    width: 3.75rem;
     font-weight: 800;
   }
 
   .col-bib {
-    width: 70px;
+    width: 4.375rem;
   }
 
   .bib-tag {
@@ -224,11 +261,11 @@ const categories = stageData?.categories || {};
   }
 
   .col-time {
-    width: 120px;
+    width: 7.5rem;
   }
 
   .col-pts {
-    width: 90px;
+    width: 5.625rem;
     text-align: right;
   }
 

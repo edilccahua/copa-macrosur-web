@@ -131,6 +131,66 @@
   }
 }
 
+/* --- Semántica de estado (no dependen del color del grupo activo) -----------
+   El Δ de una clasificación es información de RANKING, no de estilo: subir es
+   verde y bajar es rojo en cualquier tema y en cualquier pestaña. Por eso viven
+   aquí y no en el componente. */
+:root {
+  --status-up: #16a34a;
+  --status-down: #ef4444;
+  --status-flat: #10101473;
+  /* Podio: las tres medallas van sobre una insignia SÓLIDA, así que los tonos
+     tienen que ser lo bastante claros para llevar texto oscuro encima. */
+  --podium-1: #d9a62e;
+  --podium-2: #aab2bd;
+  --podium-3: #c07f47;
+  --podium-fg: #101014;
+}
+
+:root[data-theme='dark'] {
+  --status-up: #22c55e;
+  --status-down: #ef4444;
+  --status-flat: #f2f1ee73;
+  --podium-1: #e0b64a;
+  --podium-2: #aeb6c2;
+  --podium-3: #c08552;
+  --podium-fg: #101014;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --status-up: #22c55e;
+    --status-down: #ef4444;
+    --status-flat: #f2f1ee73;
+    --podium-1: #e0b64a;
+    --podium-2: #aeb6c2;
+    --podium-3: #c08552;
+    --podium-fg: #101014;
+  }
+}
+
+/* --- Identidad cromática del campeonato ------------------------------------
+   Un SOLO color por vista: el del grupo de categorías activo. Es la regla del
+   sistema (fondo monocromo + un único acento) y evita convertir la tabla en un
+   arcoíris de once tonos. Los tokens viven en `.scope-*`; cada clase define el
+   color vivo `--scope` y su variante legible `--scope-ink`. */
+.scope-pro { --scope: #2f7bf5; --scope-ink: #1a5bc4; }
+.scope-normal { --scope: #7bb51c; --scope-ink: #457008; }
+.scope-ebike { --scope: #f26b1d; --scope-ink: #ad4306; }
+.scope-team { --scope: #e0368f; --scope-ink: #b0206c; }
+
+:root[data-theme='dark'] .scope-pro { --scope-ink: #7fb0ff; }
+:root[data-theme='dark'] .scope-normal { --scope-ink: #a6e04a; }
+:root[data-theme='dark'] .scope-ebike { --scope-ink: #ff9657; }
+:root[data-theme='dark'] .scope-team { --scope-ink: #ff7ab8; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .scope-pro { --scope-ink: #7fb0ff; }
+  :root:not([data-theme='light']) .scope-normal { --scope-ink: #a6e04a; }
+  :root:not([data-theme='light']) .scope-ebike { --scope-ink: #ff9657; }
+  :root:not([data-theme='light']) .scope-team { --scope-ink: #ff7ab8; }
+}
+
 /* --- Acento por tarjeta: las 13 apps del origen ---------------------------
    Mecanismo IDÉNTICO al del origen: una clase por app que define --app y
    --app-ink; los consumidores usan var(--app) / var(--app-ink).
@@ -212,7 +272,7 @@
      - la columna de contenido arranca en x=81 y mide 1278px en un viewport de
        1440 (sondeo de sus barras de sección pegajosas);
      - la barra de navegación mide 49px de alto y las barras de sección se
-       pegan a `top: 48px`. */
+       pegan a `top: 3rem`. */
   --container-page: 79.875rem;
   --nav-height: 3rem;
   --nav-height-mobile: 4rem;

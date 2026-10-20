@@ -80,14 +80,40 @@ class StageRead(BaseModel):
     id: int
     stage_number: int
     name: str
+    short_name: Optional[str] = None
+    title: Optional[str] = None
     slug: str
     date: str
     status: StageStatusEnum
+    start_location: Optional[str] = None
+    start_time: Optional[str] = None
     poster_url: Optional[str] = None
     gpx_file_url: Optional[str] = None
     distance_km: float
     elevation_gain_m: int
     route_geojson: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Extra Events Schemas
+class ExtraEventRead(BaseModel):
+    id: int
+    name: str
+    short_name: Optional[str] = None
+    slug: str
+    event_type: str
+    edition: Optional[str] = None
+    dates_text: str
+    start_location: Optional[str] = None
+    start_time: Optional[str] = None
+    distance_text: Optional[str] = None
+    description: Optional[str] = None
+    poster_url: Optional[str] = None
+    whatsapp_contact: Optional[str] = None
+    registration_fee_text: Optional[str] = None
+    status: str
+    is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
 

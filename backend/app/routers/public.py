@@ -6,14 +6,52 @@ from sqlmodel import select
 from backend.app.core.db import get_session
 from backend.app.models.entities import (
     Rider, Team, Category, Stage, StageEntry, ChampionshipStanding,
-    TeamChampionshipStanding, FeedbackTicket, PaymentStatusEnum, RaceStatusEnum
+    TeamChampionshipStanding, FeedbackTicket, PaymentStatusEnum, RaceStatusEnum, ExtraEvent
 )
-from backend.app.models.schemas import PreRegistrationCreate, FeedbackTicketCreate
+from backend.app.models.schemas import PreRegistrationCreate, FeedbackTicketCreate, ExtraEventRead
 from backend.app.services.excel_service import slugify, resolve_or_create_team
 from backend.app.services.pdf_service import format_ms_to_time
+from backend.app.services.standings_service import (
+    compute_standings, compute_team_standings, standings_context,
+)
 
 router = APIRouter(prefix="/public", tags=["Public Portal"])
 
+
+@router.get("/standings")
+async def get_standings(
+    stage: Optional[int] = Query(None, description="Id de la fecha; None = última disputada"),
+    scope: str = Query("COMBINED", description="COMBINED | PRO | NORMAL | E-MTB"),
+    category_id: Optional[int] = Query(None, description="Acota a una categoría concreta"),
+    kind: str = Query("individual", description="individual | teams"),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Ranking acumulado "a la fecha" (patrón Tour de Francia).
+
+    `scope` define el ámbito de categorías pooled (COMBINED = PRO + NORMAL);
+    `category_id` acota a una categoría y anula el ámbito. `kind=teams` devuelve
+    la Copa de Equipos con la misma fecha de corte.
+    """
+    # Se resuelve primero la fecha efectiva (la última disputada si no se indica):
+    # la DELTA necesita un corte concreto para compararlo con la fecha anterior.
+    context = await standings_context(session, stage_limit=stage)
+    target_stage = context["selected_stage_id"]
+
+    if kind == "teams":
+        rows = await compute_team_standings(session, stage_limit=target_stage)
+    else:
+        rows = await compute_standings(
+            session, stage_limit=target_stage, scope=scope, category_id=category_id
+        )
+
+    return {
+        "kind": kind,
+        "scope": scope if kind == "individual" else None,
+        "category_id": category_id,
+        "rows": rows,
+        "context": context,
+    }
 
 @router.get("/standings/individual")
 async def get_individual_standings(
@@ -162,3 +200,14 @@ async def create_feedback_ticket(
     session.add(ticket)
     await session.commit()
     return {"status": "success", "ticket_id": ticket.id}
+
+
+@router.get("/extra-events", response_model=List[ExtraEventRead])
+async def list_extra_events(session: AsyncSession = Depends(get_session)):
+    """
+    Retorna los eventos especiales y carreras de ruta no puntuables del campeonato.
+    """
+    stmt = select(ExtraEvent).where(ExtraEvent.is_active == True)
+    events = (await session.exec(stmt)).all()
+    return events
+
