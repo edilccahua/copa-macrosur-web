@@ -165,11 +165,15 @@ const celdas = await page.$$eval('.cell', (els) =>
       etiqueta: el.querySelector('.cell__label')?.textContent?.trim() ?? null,
       cuerpo: el.querySelector('.cell__body')?.textContent?.trim() ?? null,
       monto: el.querySelector('.cell__amount')?.textContent?.trim() ?? null,
-      podio: [...el.querySelectorAll('.cell__podium-row')].map((r) => ({
+      podio: [...el.querySelectorAll('.cell__step')].map((r) => ({
         medalla: r.querySelector('.medal') ? 'ok' : null,
-        puesto: r.querySelector('.cell__podium-pos')?.textContent?.trim() ?? null,
-        cifra: r.querySelector('.cell__podium-amount')?.textContent?.trim() ?? null,
+        cifra: r.querySelector('.cell__step-value')?.textContent?.trim() ?? null,
+        alto: r.querySelector('.cell__step-block')
+          ? Math.round(r.querySelector('.cell__step-block').getBoundingClientRect().height)
+          : 0,
       })),
+      sticker: el.querySelector('.cell__sticker')?.textContent?.trim() ?? null,
+      puestoEnTexto: el.querySelector('.cell__podium-pos')?.textContent?.trim() ?? null,
       estado: el.querySelector('.cell__state')?.textContent?.trim() ?? null,
       ganador: el.querySelector('.cell__value')?.textContent?.trim() ?? null,
       detalle: el.querySelector('.cell__detail')?.textContent?.trim() ?? null,
@@ -210,15 +214,41 @@ ok(
   conEscala.every((c) => c.podio.every((r) => r.medalla === 'ok')),
   '/premios: cada peldaño lleva su medalla'
 );
+// El podio: tercero, primero y segundo (el primero en el centro y el más
+// alto), con la cifra ENCIMA de su peldaño.
+const cifras = (c) => c.podio.map((r) => Number((r.cifra ?? '').replace(/\D/g, '')));
 ok(
-  conEscala.every((c) => c.podio.map((r) => r.puesto).join('') === '1º2º3º'),
-  '/premios: los peldaños van 1º 2º 3º'
+  conEscala.every((c) => {
+    const v = cifras(c);
+    return v[0] < v[1] && v[0] < v[2] && v[1] > v[2];
+  }),
+  `/premios: el podio va 3º 1º 2º con su cifra (${conEscala.map((c) => c.podio.map((r) => r.cifra).join(' · ')).join(' | ')})`
 );
 ok(
-  conEscala.every((c) => c.podio.map((r) => r.cifra).join(' ') === 'USD 300 USD 200 USD 100' ||
-    c.podio.map((r) => r.cifra).join(' ') === 'USD 100 USD 50 USD 30'),
-  `/premios: el podio dice qué puesto cobra cada cifra (${conEscala[0]?.podio.map((r) => r.cifra).join(' · ')})`
+  conEscala.every((c) => c.podio[1].alto > c.podio[2].alto && c.podio[2].alto > c.podio[0].alto),
+  'premios: el primer peldaño es el más alto y el tercero el más bajo'
 );
+// La medalla ya lleva el puesto calado: el "1º" en texto sobra.
+ok(
+  celdas.every((c) => !c.puestoEnTexto),
+  '/premios: no se repite el puesto en texto (la medalla ya lo lleva)'
+);
+
+// ── 6b-bis · El premio ÚNICO va como sticker ───────────────────────────────
+const conSticker = celdas.filter((c) => c.sticker);
+ok(
+  conSticker.length === 5,
+  `/premios: cinco premios únicos con sticker (${conSticker.length})`
+);
+ok(
+  conSticker.every((c) => /^USD \d+$/.test(c.sticker ?? '')),
+  `/premios: el sticker lleva la cifra (${conSticker.map((c) => c.sticker).join(' · ')})`
+);
+ok(
+  conEscala.every((c) => !c.sticker),
+  '/premios: las escalas con tres peldaños NO llevan sticker'
+);
+
 // La tira plana "USD 300 / 200 / 100" NO debe aparecer en la tabla.
 ok(
   !celdas.some((c) => /\d\s*\/\s*\d\s*\/\s*\d/.test(c.monto ?? '')),

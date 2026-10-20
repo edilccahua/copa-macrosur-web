@@ -77,6 +77,14 @@ const {
 } = Astro.props;
 
 /**
+ * Los peldaños del podio, en el orden en que se ven: tercero, primero y
+ * segundo. El primero en el centro y el más alto, como en un podio real.
+ */
+const escalones = podium ? [podium[2], podium[0], podium[1]] : [];
+
+const medallero = { 1: 34, 2: 28, 3: 28 } as const;
+
+/**
  * Las clases `scope-*` traen `--scope-ink` (el color legible del ámbito, con
  * su variante por tema). El oro no usa scope: cae al oro de la copa.
  */
@@ -102,7 +110,15 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
   </header>
 
   <div class="cell__main">
-    {title && <h3 class="cell__title">{title}</h3>}
+    <div class="cell__titleRow">
+      {title && <h3 class="cell__title">{title}</h3>}
+      {/*
+        El premio único va como un STICKER en la esquina: una sola cifra no
+        necesita un podio, necesita una pegatina. Con dos o tres peldaños
+        (abajo) la cifra se dibuja sobre su escalón.
+      */}
+      {amount && !podium && <span class="cell__sticker font-mono">{amount}</span>}
+    </div>
     {body && <p class="cell__body">{body}</p>}
     {notes.length > 0 && <p class="cell__notes font-mono">{notes.join(' · ')}</p>}
   </div>
@@ -111,19 +127,17 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     (podium || amount || state || value || detail) && (
       <div class="cell__data">
         {podium && (
-          <ol class="cell__podium">
-            {podium.map((step) => (
-              <li class="cell__podium-row">
-                <MedalIcon rank={step.position} size={18} class="cell__medal" />
-                <span class="cell__podium-pos font-mono">{step.position}º</span>
-                <span class="cell__podium-amount font-mono">
-                  USD {step.amountUsd}
+          <div class="cell__podium">
+            {escalones.map((step) => (
+              <div class={`cell__step cell__step--${step.position}`}>
+                <span class="cell__step-value font-mono">USD {step.amountUsd}</span>
+                <span class="cell__step-block">
+                  <MedalIcon rank={step.position} size={medallero[step.position]} />
                 </span>
-              </li>
+              </div>
             ))}
-          </ol>
+          </div>
         )}
-        {amount && <p class="cell__amount font-mono">{amount}</p>}
         {state && <p class="cell__state font-mono">{state}</p>}
         {value && <p class="cell__value font-mono">{value}</p>}
         {detail && <p class="cell__detail font-mono">{detail}</p>}
@@ -198,6 +212,13 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     color: var(--faint);
   }
 
+  .cell__titleRow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
   .cell__title {
     margin: 0;
     font-family: var(--font-display);
@@ -207,6 +228,19 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     line-height: 1.1;
     letter-spacing: -0.02em;
     color: var(--ink-strong);
+  }
+
+  /* El sticker del premio único: la cifra, en una pegatina. */
+  .cell__sticker {
+    flex: 0 0 auto;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    color: var(--bg);
+    background: var(--cell-accent);
+    transform: rotate(-2.5deg);
   }
 
   .cell__body {
@@ -227,42 +261,51 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     color: var(--faint);
   }
 
-  /* ── El podio: los tres peldaños con su medalla ─────────────────────────
-     Es la misma lectura que usa `PodiumPanel` en las clasificaciones: la
-     medalla, el puesto y la cifra. La cifra va a la derecha de la fila, así
-     que la fila ocupa el ancho de la celda y no deja un hueco. */
+  /* ── El podio ───────────────────────────────────────────────────────────
+     Tres peldaños con su medalla, y la cifra ENCIMA de cada peldaño: el
+     primero en el centro y el más alto, como en un podio de verdad. La
+     medalla ya lleva el puesto calado al vacío, así que no se repite el
+     "1º" en texto. */
   .cell__podium {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .cell__podium-row {
     display: grid;
-    grid-template-columns: 1.125rem 1.5rem minmax(0, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    align-items: end;
+    gap: 0.5rem;
+  }
+
+  .cell__step {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.625rem;
-    padding-block: 0.5rem;
-    border-bottom: var(--hairline) solid var(--line);
+    gap: 0.5rem;
   }
 
-  .cell__medal {
-    justify-self: start;
-  }
-
-  .cell__podium-pos {
-    font-size: 0.6875rem;
-    letter-spacing: 0.08em;
-    color: var(--faint);
-  }
-
-  .cell__podium-amount {
-    justify-self: end;
-    font-size: var(--text-base);
+  .cell__step-value {
+    font-size: var(--text-sm);
     font-weight: var(--font-weight-bold);
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.01em;
     color: var(--cell-accent);
+  }
+
+  .cell__step-block {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .cell__step--1 .cell__step-block {
+    height: 6rem;
+  }
+
+  .cell__step--2 .cell__step-block {
+    height: 4.5rem;
+  }
+
+  .cell__step--3 .cell__step-block {
+    height: 3.375rem;
   }
 
   .cell__data {
@@ -286,6 +329,14 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--faint);
+  }
+
+  /* Tras el podio, el estado va en su propia banda: si no, se lee como
+     parte del peldaño. */
+  .cell__podium + .cell__state {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: var(--hairline) solid var(--line);
   }
 
   .cell__value {
