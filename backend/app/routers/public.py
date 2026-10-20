@@ -194,18 +194,22 @@ async def get_claro_remontada(session: AsyncSession = Depends(get_session)):
 
 @router.get("/prizes", response_model=List[PrizeTierRead])
 async def get_prize_tiers(session: AsyncSession = Depends(get_session)):
-    """La escala de premios, en dólares, por categoría y por ámbito.
+    """La escala de premios, en dólares, por ámbito y agrupación.
 
     Dos ámbitos: `FECHA` (el podio de cada carrera) y `ACUMULADO` (el podio
-    final del campeonato). El premio es por categoría: el 1º de cada una de
-    las 11 categorías cobra lo que dice su fila.
+    final del campeonato). `group_key` dice a qué agrupación pertenece cada
+    fila del acumulado: `PRO`, `NORMAL` o `EQUIPOS`. El premio por fecha
+    (`group_key` nulo) lo cobra cada una de las 11 categorías.
     """
     tiers = (
-        await session.exec(select(PrizeTier).order_by(PrizeTier.scope, PrizeTier.position))
+        await session.exec(
+            select(PrizeTier).order_by(PrizeTier.scope, PrizeTier.group_key, PrizeTier.position)
+        )
     ).all()
     return [
         PrizeTierRead(
             scope=tier.scope,
+            group_key=tier.group_key,
             position=tier.position,
             amount_usd=tier.amount_usd,
             label=tier.label,

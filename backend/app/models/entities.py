@@ -412,14 +412,21 @@ class ExtraEvent(SQLModel, table=True):
 
 # 17. PrizeTier (escala de premios en dólares, por categoría y por ámbito)
 class PrizeTier(SQLModel, table=True):
-    """Premio en dólares para un puesto de una categoría.
+    """Premio en dólares para un puesto.
 
     Hay dos ámbitos, porque hay dos clasificaciones:
-      · `FECHA`     — el podio de CADA fecha: 1º 70 USD, 2º 50, 3º 30.
+      · `FECHA`     — el podio de CADA fecha: 1º 100 USD, 2º 50, 3º 30.
       · `ACUMULADO` — el podio final del campeonato: 1º 300 USD, 2º 200, 3º 100.
 
-    El premio es POR CATEGORÍA: el 1º de cada una de las 11 categorías cobra
-    lo que dice su fila.
+    `group_key` dice a qué agrupación pertenece la fila y desambigua el
+    acumulado, que se paga a varios podiums distintos:
+
+      · `None`      → el premio por fecha: cada una de las 11 categorías cobra
+        lo que dice su fila.
+      · `PRO`       → el podio del acumulado PRO.
+      · `NORMAL`    → el podio del acumulado NORMAL.
+      · `EQUIPOS`   → el podio de la Copa de Equipos acumulada
+        (1º 500 USD, 2º 400, 3º 300).
 
     Montos decididos por el organizador el 20 de Octubre de 2026; en dólares
     porque es como se pagan.
@@ -429,6 +436,7 @@ class PrizeTier(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     scope: str = Field(index=True)
+    group_key: Optional[str] = Field(default=None, index=True)
     position: int
     amount_usd: int
     label: str

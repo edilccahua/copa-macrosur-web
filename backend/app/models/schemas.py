@@ -358,9 +358,10 @@ class AwardSummaryRead(BaseModel):
 
 
 class PrizeTierRead(BaseModel):
-    """Un peldaño de la escala de premios: un puesto de una categoría."""
+    """Un peldaño de la escala de premios: un puesto de un ámbito."""
 
     scope: str
+    group_key: Optional[str] = None
     position: int
     amount_usd: int
     label: str

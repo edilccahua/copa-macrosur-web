@@ -204,7 +204,7 @@ async def test_stats_expose_the_official_figures_of_the_pdf(async_session):
 
 @pytest.mark.asyncio
 async def test_prize_tiers_are_in_the_database(async_session):
-    """La escala de premios: por fecha 70/50/30 y acumulada 300/200/100."""
+    """La escala de premios: por fecha 100/50/30 y acumulada por agrupación."""
     from backend.app.seed import seed_prize_tiers
 
     await seed_prize_tiers(async_session)
@@ -213,12 +213,19 @@ async def test_prize_tiers_are_in_the_database(async_session):
     for tier in tiers:
         by_scope.setdefault(tier.scope, []).append(tier)
 
-    assert sorted(t.amount_usd for t in by_scope["FECHA"]) == [30, 50, 70]
-    assert sorted(t.amount_usd for t in by_scope["ACUMULADO"]) == [100, 200, 300]
+    assert sorted(t.amount_usd for t in by_scope["FECHA"]) == [30, 50, 100]
     assert all(t.currency == "USD" for t in tiers)
     # El premio es por categoría: hay un peldaño para cada puesto de 1 a 3.
-    for scope in ("FECHA", "ACUMULADO"):
-        assert sorted(t.position for t in by_scope[scope]) == [1, 2, 3]
+    assert sorted(t.position for t in by_scope["FECHA"]) == [1, 2, 3]
+    # El acumulado es POR AGRUPACIÓN: PRO, NORMAL y EQUIPOS.
+    acumulados = [t for t in tiers if t.scope == "ACUMULADO"]
+    assert sorted(t.position for t in acumulados) == [1, 1, 1, 2, 2, 2, 3, 3, 3]
+    assert {t.group_key for t in acumulados} == {"PRO", "NORMAL", "EQUIPOS"}
+    for group, montos in (("PRO", [300, 200, 100]), ("NORMAL", [300, 200, 100]), ("EQUIPOS", [500, 400, 300])):
+        fila = sorted(
+            (t for t in acumulados if t.group_key == group), key=lambda t: t.position
+        )
+        assert [t.amount_usd for t in fila] == montos
 
 
 @pytest.mark.asyncio
@@ -232,8 +239,10 @@ async def test_prizes_endpoint_returns_the_scale(async_session, client):
     res = await client.get("/api/v1/public/prizes")
     assert res.status_code == 200, res.text
     body = res.json()
-    assert len(body) == 6
+    assert len(body) == 12
     fecha = {t["position"]: t["amount_usd"] for t in body if t["scope"] == "FECHA"}
-    acumulado = {t["position"]: t["amount_usd"] for t in body if t["scope"] == "ACUMULADO"}
-    assert fecha == {1: 70, 2: 50, 3: 30}
-    assert acumulado == {1: 300, 2: 200, 3: 100}
+    assert fecha == {1: 100, 2: 50, 3: 30}
+    equipos = {
+        t["position"]: t["amount_usd"] for t in body if t.get("group_key") == "EQUIPOS"
+    }
+    assert equipos == {1: 500, 2: 400, 3: 300}
