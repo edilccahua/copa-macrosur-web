@@ -32,6 +32,8 @@ from backend.app.models.entities import (
     Stage,
     StageEntry,
     StageStatusEnum,
+    StravaEffort,
+    StravaSegment,
     Team,
 )
 
@@ -65,7 +67,7 @@ async def _sembrar_campeonato(
         categorias[codigo] = categoria
 
     equipos = []
-    for nombre in ("TEAM ALFA", "TEAM BETA"):
+    for nombre in ("TEAM ALFA", "TEAM BETA", "TEAM GAMMA"):
         equipo = Team(name=nombre, slug=nombre.lower().replace(" ", "-"))
         session.add(equipo)
         await session.flush()
@@ -85,6 +87,23 @@ async def _sembrar_campeonato(
         elevation_gain_m=384,
         laps=1,
         judge_pin=PIN_JUEZ,
+        # La geometría pesa ~58 KB y NINGUNA página la consume: el agregado
+        # de la portada no debe arrastrarla.
+        route_geojson={
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [-71.0, -16.0, 1000.0, 0.0],
+                            [-71.1, -16.0, 1100.0, 5.0],
+                        ],
+                    },
+                }
+            ],
+        },
     )
     session.add(stage)
     await session.flush()
@@ -129,6 +148,53 @@ async def _sembrar_campeonato(
 def _claves_publicas() -> list[str]:
     """Las claves vivas de la caché que el público puede leer."""
     return [key for key in cache.keys() if key.startswith(PREFIJOS_PUBLICOS)]
+
+
+async def _sembrar_titulos_de_montana(
+    session: AsyncSession, stage: Stage, *, prefijo: str = ""
+) -> None:
+    """Segmentos de Strava con intentos de varón y mujer.
+
+    De ahí salen los cuatro títulos de montaña de la fecha: el KOM y el QOM
+    comparten la subida más empinada; los Kamikaze, la bajada más pronunciada.
+    """
+    for seg_id, nombre, distancia, pendiente, intentos in [
+        (
+            "1",
+            "SUBIDA EMPINADA",
+            1000.0,
+            9.0,
+            [("ESCALADOR M", 300, "M"), ("ESCALADORA F", 360, "F")],
+        ),
+        (
+            "2",
+            "BAJADA EMPINADA",
+            1000.0,
+            -8.0,
+            [("KAMIKAZE M", 200, "M"), ("KAMIKAZE F", 260, "F")],
+        ),
+    ]:
+        segment = StravaSegment(
+            stage_id=stage.id,
+            strava_segment_id=f"{seg_id}{prefijo}",
+            name=nombre,
+            distance_m=distancia,
+            average_grade=pendiente,
+        )
+        session.add(segment)
+        await session.flush()
+        for atleta, segundos, genero in intentos:
+            session.add(
+                StravaEffort(
+                    segment_id=segment.id,
+                    athlete_name_raw=f"{atleta}{prefijo}",
+                    elapsed_time_sec=segundos,
+                    measured_on=stage.date.isoformat(),
+                    athlete_gender=genero,
+                    is_kom_qom=0,
+                )
+            )
+    await session.commit()
 
 
 # --------------------------------------------------------------------------
@@ -245,3 +311,169 @@ async def test_abrir_la_transmision_invalida_la_cache_publica(
     assert res.status_code == 200, res.text
 
     assert _claves_publicas() == [], "abrir la transmisión no invalidó la caché"
+
+
+# --------------------------------------------------------------------------
+# Tarea 6 — la portada se lee con UNA sola llamada
+# --------------------------------------------------------------------------
+
+
+async def test_home_aggregate_una_sola_llamada(client, async_session: AsyncSession):
+    """`GET /public/home` devuelve las siete claves de la portada.
+
+    Antes la portada hacía siete peticiones (dos clasificaciones, la de
+    equipos, el calendario, el estado en vivo, los títulos de montaña y el
+    premio CLARO) desde el SSR de Cloudflare, que no cachea el HTML.
+    """
+    await _sembrar_campeonato(async_session)
+
+    res = await client.get("/api/v1/public/home")
+    assert res.status_code == 200, res.text
+    data = res.json()
+    for key in ("stages", "live_status", "pro_podium", "normal_podium",
+                "teams_podium", "remontada", "mountain_titles"):
+        assert key in data, f"falta la clave {key}"
+    assert "judge_pin" not in res.text
+    assert "route_geojson" not in res.text
+    assert len(data["pro_podium"]) <= 3
+
+
+async def test_home_no_trae_la_credencial_del_juez_ni_la_geometria(
+    client, async_session: AsyncSession
+):
+    """Ni el PIN del juez ni la traza de la ruta viajan en el agregado.
+
+    El PIN es una credencial (con él se mandan marcaciones falsas) y la
+    geometría pesa ~58 KB por fecha: ninguna de las dos cosas tiene nada que
+    ver con la portada (specs/00 §1.4).
+    """
+    await _sembrar_campeonato(async_session)
+
+    res = await client.get("/api/v1/public/home")
+    assert res.status_code == 200
+    assert PIN_JUEZ not in res.text
+    assert "judge_pin" not in res.text
+    assert "route_geojson" not in res.text
+    assert "LineString" not in res.text
+
+
+async def test_home_trae_los_tres_podios_con_su_forma(
+    client, async_session: AsyncSession
+):
+    """Los tres podios traen tres filas cada uno, con su forma exacta."""
+    await _sembrar_campeonato(async_session, corredores=40)
+
+    data = (await client.get("/api/v1/public/home")).json()
+
+    assert len(data["pro_podium"]) == 3
+    assert len(data["normal_podium"]) == 3
+    assert len(data["teams_podium"]) == 3
+    for fila in data["pro_podium"] + data["normal_podium"]:
+        assert fila["rider_name"]
+        assert isinstance(fila["total_points"], int)
+    for fila in data["teams_podium"]:
+        assert fila["team_name"]
+        assert isinstance(fila["total_points"], int)
+
+
+async def test_home_trae_los_titulos_de_montana_de_la_primera_fecha(
+    client, async_session: AsyncSession
+):
+    """Los títulos de montaña son los de la PRIMERA fecha disputada."""
+    stage = await _sembrar_campeonato(async_session)
+    await _sembrar_titulos_de_montana(async_session, stage, prefijo=" F1")
+
+    stage2 = Stage(
+        stage_number=2,
+        name="Fecha 2: Z Xtreme",
+        title="Z Xtreme",
+        short_name="Z Xtreme",
+        slug="z-xtreme-2026",
+        date=date_cls(2026, 6, 21),
+        status=StageStatusEnum.FINISHED,
+        distance_km=11.83,
+        elevation_gain_m=280,
+        laps=3,
+    )
+    async_session.add(stage2)
+    await async_session.commit()
+    await async_session.refresh(stage2)
+    await _sembrar_titulos_de_montana(async_session, stage2, prefijo=" F2")
+
+    data = (await client.get("/api/v1/public/home")).json()
+    titulos = data["mountain_titles"]
+
+    assert titulos["kom"]["athlete_name"] == "ESCALADOR M F1"
+    assert titulos["qom"]["athlete_name"] == "ESCALADORA F F1"
+    assert titulos["kamikaze_male"]["athlete_name"] == "KAMIKAZE M F1"
+    assert titulos["kamikaze_female"]["athlete_name"] == "KAMIKAZE F F1"
+
+
+async def test_home_sin_fechas_disputadas_no_inventa_podios(
+    client, async_session: AsyncSession
+):
+    """Sin fechas disputadas los podios van vacíos: no se inventan datos."""
+    stage = Stage(
+        stage_number=1,
+        name="Fecha 1: La Joya Extreme",
+        slug="la-joya-extreme",
+        date=date_cls(2026, 5, 17),
+        status=StageStatusEnum.UPCOMING,
+    )
+    async_session.add(stage)
+    await async_session.commit()
+
+    res = await client.get("/api/v1/public/home")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["pro_podium"] == []
+    assert data["normal_podium"] == []
+    assert data["teams_podium"] == []
+    assert data["mountain_titles"] == {
+        "kom": None,
+        "qom": None,
+        "kamikaze_male": None,
+        "kamikaze_female": None,
+    }
+
+
+async def test_home_se_cachea_y_se_invalida_al_mutar(
+    client, async_session: AsyncSession
+):
+    """El agregado se cachea 60 s y se invalida cuando algo cambia de verdad."""
+    stage = await _sembrar_campeonato(async_session)
+
+    await client.get("/api/v1/public/home")
+    assert cache.get("public:home") is not None, "el agregado no se cacheó"
+
+    checkpoint = Checkpoint(
+        stage_id=stage.id,
+        name="Control Intermedio Cumbre",
+        order_index=50,
+        distance_from_start_km=20.425,
+        is_finish_line=False,
+    )
+    async_session.add(checkpoint)
+    await async_session.commit()
+    await async_session.refresh(checkpoint)
+
+    entrada = (
+        await async_session.exec(
+            select(StageEntry)
+            .where(StageEntry.stage_id == stage.id)
+            .order_by(StageEntry.bib_number)
+        )
+    ).first()
+    res = await client.post(
+        "/api/v1/timing/events",
+        json={
+            "id": str(uuid.uuid4()),
+            "stage_entry_id": entrada.id,
+            "checkpoint_id": checkpoint.id,
+            "recorded_at_ms": 1_700_000_100_000,
+        },
+        headers={"X-Judge-Pin": PIN_JUEZ},
+    )
+    assert res.status_code == 200, res.text
+
+    assert cache.get("public:home") is None, "la mutación no invalidó el agregado"
