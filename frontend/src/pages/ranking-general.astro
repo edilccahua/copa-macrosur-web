@@ -87,6 +87,11 @@ if (stageArg || catArg || kind === 'teams' || mode === 'fecha') {
 
 const initialStageId = stageArg ? stageArg.id : (context.selected_stage_id ?? null);
 const initialCategoryId = catArg ? catArg.id : null;
+
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=0, s-maxage=60, stale-while-revalidate=30'
+);
 ---
 
 <Base

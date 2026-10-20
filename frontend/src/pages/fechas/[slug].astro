@@ -33,6 +33,7 @@ let summary: StageSummary | null = null;
 let notFound = false;
 try {
   summary = await getStageSummary(String(slug));
+  Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=30');
 } catch (e) {
   if (e instanceof Error && e.message === 'stage-not-found') {
     notFound = true;
