@@ -9,22 +9,39 @@ import SectionLabel from '../components/bento/SectionLabel.astro';
 import EventCountdown from '../components/svelte/EventCountdown.svelte';
 import TimelineEvents from '../components/TimelineEvents.astro';
 import { API_V1 } from '../lib/api';
+import { getStages, formatStageDate } from '../lib/stages';
 
-// Copa de Equipos: se lee de la API durante el build; fallback a los valores vigentes.
-let topTeams = [
-  { name: 'TEAM COLCA BIKE', points: 142 },
-  { name: 'CLUB ORIGINAL BIKES AREQUIPA-PERÚ', points: 99 },
-  { name: "BIKER'S TEAM", points: 88 }
-];
+/**
+ * Copa de Equipos: se lee de la API. SIN datos literales: el arreglo de
+ * respaldo que había (142/99/88) estaba desactualizado y ponía de líder al
+ * equipo equivocado cuando la API no respondía (specs/03 §0.2).
+ */
+let topTeams: { name: string; points: number }[] = [];
+let teamsError = false;
 try {
   const res = await fetch(`${API_V1}/public/standings/teams`);
   if (res.ok) {
     const data = await res.json();
-    if (Array.isArray(data) && data.length) {
+    if (Array.isArray(data)) {
       topTeams = data.slice(0, 3).map((t: any) => ({ name: t.team_name, points: t.total_points }));
     }
+  } else {
+    teamsError = true;
   }
-} catch (e) {}
+} catch (e) {
+  teamsError = true;
+}
+
+/** El calendario y la próxima fecha salen de la BD, no de literales. */
+const stages = await getStages();
+const nextStage =
+  stages.find((s) => s.status === 'REGISTRATION_OPEN') ??
+  stages.find((s) => s.status === 'UPCOMING') ??
+  null;
+
+const countdownTarget = nextStage
+  ? `${nextStage.date}T${(nextStage.start_time ?? '08:00').replace(' AM', '').replace(' PM', '')}:00-05:00`
+  : '';
 ---
 <Showcase
   title="Kúspide MTB — Campeonato Oficial 2026"
@@ -69,44 +86,62 @@ try {
         </div>
 
         <ul class="hero__meta" data-hero-copy>
-          <li><a href="/fechas/la-joya-extreme">La Joya</a></li>
-          <li><a href="/fechas/z-xtreme-2026">Z Xtreme</a></li>
-          <li><a href="/fechas/vuelta-a-los-poblados">Poblados</a></li>
-          <li><a href="/fechas/quequena-xtreme">Quequeña</a></li>
+          {
+            stages.map((s) => (
+              <li>
+                <a href={`/fechas/${s.slug}`}>{s.short_name || s.name.replace(/^Fecha\s+\d+\s*:\s*/i, '')}</a>
+              </li>
+            ))
+          }
         </ul>
       </div>
 
       <!-- Próxima fecha dentro del primer viewport -->
-      <div class="hero__next" id="proxima">
-        <div class="next__inner container">
-          <div class="next__meta">
-            <span class="next__dot" aria-hidden="true"></span>
-            <span>[ PRÓXIMA FECHA ]</span>
-            <span>25 OCT 2026</span>
+      {
+        nextStage && (
+          <div class="hero__next" id="proxima">
+            <div class="next__inner container">
+              <div class="next__meta">
+                <span class="next__dot" aria-hidden="true" />
+                <span>[ PRÓXIMA FECHA ]</span>
+                <span>{formatStageDate(nextStage.date)}</span>
+              </div>
+              <div class="next__main">
+                <h2 class="next__title">
+                  {nextStage.short_name || nextStage.name.replace(/^Fecha\s+\d+\s*:\s*/i, '')}
+                </h2>
+                <p class="next__specs">
+                  {nextStage.distance_km.toFixed(1)} KM · +{nextStage.elevation_gain_m} M
+                  {nextStage.start_location ? ` · PARTIDA: ${nextStage.start_location.toUpperCase()}` : ''}
+                  {nextStage.start_time ? ` (${nextStage.start_time})` : ''}
+                </p>
+              </div>
+              <div class="next__timer">
+                <EventCountdown
+                  client:load
+                  targetDate={countdownTarget}
+                  status={nextStage.status ?? 'UPCOMING'}
+                  label="LARGADA OFICIAL"
+                />
+              </div>
+              <div class="next__actions">
+                <a class="btn btn--solid" href="/inscripciones">
+                  <span>Inscribirse</span>
+                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </a>
+                <a class="btn btn--ghost" href={`/fechas/${nextStage.slug}`}>
+                  <span>Ficha de ruta</span>
+                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </a>
+              </div>
+            </div>
           </div>
-          <div class="next__main">
-            <h2 class="next__title">El Retorno a los Poblados 2</h2>
-            <p class="next__specs">47.2 KM · +761 M · PARTIDA: PLAZA DE CHIGUATA (8:00 AM)</p>
-          </div>
-          <div class="next__timer">
-            <EventCountdown client:load targetDate="2026-10-25T08:00:00-05:00" label="LARGADA OFICIAL" />
-          </div>
-          <div class="next__actions">
-            <a class="btn btn--solid" href="/inscripciones">
-              <span>Inscribirse</span>
-              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M3 8h10M9 4l4 4-4 4"/>
-              </svg>
-            </a>
-            <a class="btn btn--ghost" href="/fechas/vuelta-a-los-poblados">
-              <span>Ficha de ruta</span>
-              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M3 8h10M9 4l4 4-4 4"/>
-              </svg>
-            </a>
-          </div>
-        </div>
-      </div>
+        )
+      }
     </section>
 
     <!-- ── 01 · Fechas y Eventos 2026 ──────────────────────────────── -->
@@ -123,24 +158,36 @@ try {
       <div class="panels">
         <div class="panel">
           <div class="panel__head">[ COPA DE EQUIPOS ]</div>
-          <h3 class="panel__title">{topTeams[0].name}</h3>
-          <p class="panel__body">
-            Líder de la Copa de Equipos acumulada tras La Joya Extreme y Z Xtreme 2026.
-          </p>
+          {teamsError ? (
+            <>
+              <h3 class="panel__title">Clasificación no disponible</h3>
+              <p class="panel__body">
+                No pudimos cargar la Copa de Equipos en este momento. Vuelve a intentarlo en unos
+                segundos.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3 class="panel__title">{topTeams[0]?.name ?? 'Sin equipos aún'}</h3>
+              <p class="panel__body">
+                Líder de la Copa de Equipos acumulada tras La Joya Extreme y Z Xtreme 2026.
+              </p>
 
-          <ol class="podium">
-            {
-              topTeams.map((t, idx) => (
-                <li class="podium__row">
-                  <span class="podium__rank">0{idx + 1}</span>
-                  <span class="podium__name">{t.name}</span>
-                  <span class="podium__pts">{t.points} pts</span>
-                </li>
-              ))
-            }
-          </ol>
+              <ol class="podium">
+                {
+                  topTeams.map((t, idx) => (
+                    <li class="podium__row">
+                      <span class="podium__rank">0{idx + 1}</span>
+                      <span class="podium__name">{t.name}</span>
+                      <span class="podium__pts">{t.points} pts</span>
+                    </li>
+                  ))
+                }
+              </ol>
+            </>
+          )}
 
-          <a class="panel__cta" href="/ranking-general">Ver copa completa →</a>
+          <a class="panel__cta" href="/ranking-general?tabla=EQUIPO">Ver copa completa →</a>
         </div>
 
         <div class="panel">

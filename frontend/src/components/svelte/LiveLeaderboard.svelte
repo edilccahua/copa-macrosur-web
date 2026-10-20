@@ -21,7 +21,15 @@
 
   let { stageId, stageName = 'Carrera en Vivo' }: Props = $props();
 
-  let isConnected = $state(false);
+  /**
+   * Estado de la conexión. Antes sólo había "conectado" y "no conectado", y
+   * el estado inicial caía en el segundo: la página arrancaba SIEMPRE
+   * diciendo "RECONECTANDO" (un error que no existía) hasta que el
+   * `EventSource` abría.
+   */
+  type ConnState = 'conectando' | 'vivo' | 'reconectando';
+
+  let connState = $state<ConnState>('conectando');
   let rows = $state<LeaderboardRow[]>([]);
   let lastEventMsg = $state<string>('Conectando a la central de cronometraje...');
 
@@ -45,7 +53,7 @@
     const eventSource = new EventSource(url);
 
     eventSource.onopen = () => {
-      isConnected = true;
+      connState = 'vivo';
       lastEventMsg = 'Canal SSE activo. Esperando marcaciones de meta...';
     };
 
@@ -75,8 +83,15 @@
           rows.unshift(newRow);
         }
 
+        // El resalte se apaga pasado un momento. IMPORTANTE: hay que leer la
+        // fila POR EL PROXY (`rows[i]`), no mutar el objeto crudo: el proxy
+        // es lo que avisa a la vista, y mutar el original no dispara nada
+        // (el resalte se quedaba puesto para siempre).
+        const rowIndex = rows.findIndex((r) => r.bib_number === payload.bib_number);
         setTimeout(() => {
-          newRow.just_finished = false;
+          if (rowIndex >= 0 && rows[rowIndex]) {
+            rows[rowIndex].just_finished = false;
+          }
         }, 4000);
       } catch (err) {
         console.error('Error parseando SSE', err);
@@ -91,7 +106,7 @@
     });
 
     eventSource.onerror = () => {
-      isConnected = false;
+      connState = 'reconectando';
       lastEventMsg = 'Reconectando con la central de cronometraje...';
     };
 
@@ -104,8 +119,14 @@
 <div class="live-leaderboard">
   <div class="live-status-bar">
     <div class="status-indicator">
-      <span class="live-dot" class:is-live={isConnected}></span>
-      <span class="status-text">{isConnected ? 'TRANSMISIÓN EN VIVO' : 'RECONECTANDO'}</span>
+      <span class="live-dot" class:is-live={connState === 'vivo'}></span>
+      <span class="status-text">
+        {connState === 'vivo'
+          ? 'TRANSMISIÓN EN VIVO'
+          : connState === 'conectando'
+            ? 'CONECTANDO'
+            : 'RECONECTANDO'}
+      </span>
     </div>
     <div class="event-ticker font-mono">{lastEventMsg}</div>
   </div>

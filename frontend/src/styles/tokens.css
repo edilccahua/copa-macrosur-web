@@ -260,10 +260,10 @@
    Marcadas aparte a propósito: lo de arriba es copia fiel, lo de abajo es nuestro.
    ========================================================================= */
 :root {
-  /* Flechas de posición del ranking acumulado */
-  --status-up: #00a873;
-  --status-down: #b3261e;
-
+  /* Los colores SEMÁNTICOS del Δ están arriba, en el bloque de semántica de
+     estado (--status-up / --status-down). No se redefinen aquí: con la misma
+     especificidad, la última definición ganaba y el bloque semántico quedaba
+     muerto. */
   /* Numerales tabulares obligatorios en tiempos y dorsales:
      sin esto, los dígitos bailan horizontalmente al correr el cronómetro. */
   --numeric-tabular: tabular-nums;
@@ -274,6 +274,6 @@
      - la barra de navegación mide 49px de alto y las barras de sección se
        pegan a `top: 3rem`. */
   --container-page: 79.875rem;
-  --nav-height: 3rem;
+  --nav-height: 3.0625rem;
   --nav-height-mobile: 4rem;
 }

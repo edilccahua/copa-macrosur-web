@@ -13,7 +13,18 @@ export interface PendingTimingEvent {
 }
 
 const DB_NAME = 'mtb_judge_db';
-const DB_VERSION = 1;
+/**
+ * v2: se elimina el índice `synced`.
+ *
+ * El índice se construía sobre un CAMPO BOOLEANO y IndexedDB **no indexa
+ * booleanos**: los valores no indexables se omiten del índice, así que el
+ * índice estaba vacío por construcción. Peor: `IDBKeyRange.only(false)`
+ *lanza `DataError` (un booleano no es una clave válida), de modo que
+ * `getUnsyncedEvents()` fallaba SIEMPRE y la cola offline del juez nunca
+ * se subía. Ahora se filtra en memoria: con cientos de marcaciones es
+ * instantáneo y no depende de tipos de clave.
+ */
+const DB_VERSION = 2;
 const STORE_NAME = 'pending_events';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -24,8 +35,13 @@ export async function getJudgeDB(): Promise<IDBPDatabase> {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          store.createIndex('synced', 'synced', { unique: false });
           store.createIndex('created_at', 'created_at', { unique: false });
+          return;
+        }
+        // Base ya existente (v1 → v2): fuera el índice inútil.
+        const store = db.transaction.objectStore(STORE_NAME);
+        if (store.indexNames.contains('synced')) {
+          store.deleteIndex('synced');
         }
       },
     });
@@ -51,9 +67,9 @@ export async function savePendingEvent(event: PendingTimingEvent): Promise<void>
 
 export async function getUnsyncedEvents(): Promise<PendingTimingEvent[]> {
   const db = await getJudgeDB();
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const index = tx.store.index('synced');
-  return await index.getAll(IDBKeyRange.only(false));
+  // Sin índice: `synced` es booleano y IndexedDB no indexa booleanos.
+  const all = await db.getAll(STORE_NAME);
+  return all.filter((event) => !event.synced);
 }
 
 export async function markEventSynced(id: string): Promise<void> {

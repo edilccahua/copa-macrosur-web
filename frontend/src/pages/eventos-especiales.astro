@@ -3,7 +3,7 @@
  * eventos-especiales.astro — Página editorial de carreras especiales y clásicas de ruta.
  * Estilo GetArtCraft: Bento grid de tarjetas técnicas, bordes finos y enlaces directos de WhatsApp.
  */
-import Base from '../layouts/Base.astro';
+import Showcase from '../layouts/Showcase.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
@@ -27,54 +27,27 @@ interface ExtraEventData {
   status: string;
 }
 
-let events: ExtraEventData[] = [
-  {
-    id: 1,
-    name: 'La Vuelta a Talamolle 2026',
-    short_name: 'Talamolle',
-    slug: 'vuelta-a-talamolle-2026',
-    event_type: 'ROAD',
-    edition: 'Edición 2026',
-    dates_text: '26 de Julio de 2026',
-    start_location: 'Plaza de Mollebaya',
-    start_time: '08:00 AM',
-    distance_text: '63 KM / 43 KM',
-    description: 'Ruta en línea de alta exigencia: Mollebaya - Talamolle (63 KM para Elite y Master A, B, C, D / 43 KM para Turismo y Damas). Carrera preparatoria oficial para la Doble Arequipa - Mollendo.',
-    poster_url: '/images/posters/extra-vuelta-talamolle-card.webp',
-    whatsapp_contact: '994382248',
-    registration_fee_text: 'S/ 40.00 (Preventa) / S/ 50.00 (General)',
-    status: 'FINISHED'
-  },
-  {
-    id: 2,
-    name: 'Clásica Arequipa - Mollendo',
-    short_name: 'Arequipa - Mollendo',
-    slug: 'clasica-arequipa-mollendo-72',
-    event_type: 'ROAD',
-    edition: '72ª Edición',
-    dates_text: '07 y 08 de Noviembre de 2026',
-    start_location: 'Arequipa',
-    start_time: '08:00 AM',
-    distance_text: '2 Etapas en Ruta',
-    description: 'Tradición, pasión y leyenda en el sur del Perú. 72ª Edición de la carrera ciclista de ruta más emblemática del país en dos etapas épicas con cupos limitados.',
-    poster_url: '/images/posters/extra-clasica-mollendo-card.webp',
-    whatsapp_contact: '994382248',
-    registration_fee_text: 'Cupos Limitados — Informes WhatsApp',
-    status: 'UPCOMING'
-  }
-];
+// Sin datos literales: si la API no responde, la página lo dice (specs/03
+// §0.2). Antes había un arreglo hardcodeado que tapaba la caída del backend.
+let events: ExtraEventData[] = [];
+let apiError = false;
 
 try {
   const res = await fetch(`${API_V1}/public/extra-events`);
   if (res.ok) {
     const data = await res.json();
-    if (Array.isArray(data) && data.length) {
-      events = data;
-    }
+    if (Array.isArray(data)) events = data;
+  } else {
+    apiError = true;
   }
-} catch (e) {}
+} catch (e) {
+  apiError = true;
+}
 ---
-<Base title="Eventos Especiales y Clásicas de Ruta — Kúspide">
+<Showcase
+  title="Eventos Especiales y Clásicas de Ruta — Kúspide"
+  sections={[{ label: 'Calendario', id: 'eventos' }]}
+>
   <SiteHeader />
 
   <main class="page-content container">
@@ -88,8 +61,12 @@ try {
       </p>
     </header>
 
-    <section class="events-section">
+    <section class="events-section" id="eventos">
       <SectionLabel number="01" label="CALENDARIO DE RUTA & ESPECIALES" kicker="AREQUIPA 2026" />
+
+      {apiError && (
+        <p class="page-desc">No pudimos cargar el calendario de eventos. Vuelve a intentarlo en unos segundos.</p>
+      )}
 
       <div class="events-grid">
         {events.map((ev) => {
@@ -160,7 +137,7 @@ try {
   </main>
 
   <SiteFooter />
-</Base>
+</Showcase>
 
 <style>
   .page-content {

@@ -2,13 +2,21 @@
 /**
  * SiteFooter.astro — pie de página oficial de Kúspide MTB.
  * Estructura y escala portadas de copiaartcraft/src/components/SiteFooter.astro
+ *
+ * El calendario se lee de la API (no se escribe a mano): antes el pie
+ * repetía las fechas en literal y mentía en cuanto el organizador movía
+ * una carrera. Tampoco hay enlaces de administración ni al panel del juez:
+ * el sitio público no expone herramientas internas.
  */
+import { getStages, formatStageDateShort } from '../lib/stages';
+
+const stages = await getStages();
 ---
 <footer class="ftr">
   <div class="container">
     <div class="ftr__top">
       <div class="ftr__brand">
-        <div class="ftr__logo">KÚSPIDE</div>
+        <a class="ftr__logo" href="/">KÚSPIDE</a>
         <p class="ftr__tagline">
           La Copa MacroSur MTB — Edición 2026 Kúspide. Organizado por <strong>Kúspide Xtreme Sports</strong>. Cronometraje electrónico, clasificaciones por categoría y Copa de Equipos en Arequipa.
         </p>
@@ -24,10 +32,15 @@
         <div class="ftr__col">
           <h3 class="ftr__col-title">Calendario MTB</h3>
           <ul>
-            <li><a href="/fechas/la-joya-extreme">La Joya · 17 May</a></li>
-            <li><a href="/fechas/z-xtreme-2026">Z Xtreme · 23 Ago</a></li>
-            <li><a href="/fechas/vuelta-a-los-poblados">Poblados · 25 Oct</a></li>
-            <li><a href="/fechas/quequena-xtreme">Quequeña · 13 Dic</a></li>
+            {
+              stages.map((s) => (
+                <li>
+                  <a href={`/fechas/${s.slug}`}>
+                    {s.name.replace(/^Fecha\s+\d+\s*:\s*/i, '')} · {formatStageDateShort(s.date)}
+                  </a>
+                </li>
+              ))
+            }
             <li><a href="/eventos-especiales"><strong>Eventos de Ruta Extra →</strong></a></li>
           </ul>
         </div>
@@ -35,14 +48,10 @@
         <div class="ftr__col">
           <h3 class="ftr__col-title">Competición</h3>
           <ul>
-            <li><a href="/ranking-general">Ranking acumulado</a></li>
+            <li><a href="/ranking-general">Clasificaciones</a></li>
+            <li><a href="/ranking-general?tabla=EQUIPO">Copa de Equipos</a></li>
+            <li><a href="/ranking-general?modo=fecha">Resultados por fecha</a></li>
             <li><a href="/en-vivo">Cronómetro en vivo</a></li>
-            <li>
-              <a href="/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=1">
-                Resultados oficiales
-              </a>
-            </li>
-            <li><a href="/ranking-general">Copa de equipos</a></li>
           </ul>
         </div>
 
@@ -51,8 +60,7 @@
           <ul>
             <li><a href="/inscripciones">Inscripciones</a></li>
             <li><a href="/reclamos">Buzón de reclamos</a></li>
-            <li><a href="/admin/juez">Panel del juez</a></li>
-            <li><a href="/admin">Administración</a></li>
+            <li><a href="/eventos-especiales">Clásicas de ruta</a></li>
           </ul>
         </div>
       </div>
@@ -78,12 +86,18 @@
   }
 
   .ftr__logo {
+    display: inline-block;
     font-family: var(--font-display);
     font-size: 1rem;
     font-weight: 750;
     font-stretch: 125%;
     letter-spacing: 0.02em;
     color: var(--ink);
+    text-decoration: none;
+  }
+
+  .ftr__logo:hover {
+    color: var(--accent);
   }
 
   .ftr__tagline {

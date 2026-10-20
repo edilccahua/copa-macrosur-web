@@ -15,9 +15,14 @@ export interface StageOption {
   id: number;
   stage_number: number;
   name: string;
+  short_name?: string | null;
+  title?: string | null;
   slug: string;
   date: string;
   distance_km: number;
+  elevation_gain_m?: number;
+  start_location?: string | null;
+  start_time?: string | null;
   laps: number;
   status?: string;
 }

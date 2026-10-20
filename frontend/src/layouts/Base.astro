@@ -3,7 +3,13 @@
  * Base.astro — shell global de Kúspide MTB.
  * Carga las 4 tipografías autoalojadas y los tokens medidos de GetArtCraft.
  * Cero Tailwind (AGENTS.md).
+ *
+ * Además monta el ROUTER de Astro (`astro:transitions`): la navegación pasa
+ * a ser de cliente, en la MISMA pestaña, con un fundido corto y con la
+ * cabecera persistida. Así la entrada de la barra ocurre una sola vez por
+ * sesión y cambiar de página no recarga ni repite las animaciones.
  */
+import { ClientRouter } from 'astro:transitions';
 import '@fontsource-variable/archivo';
 import '@fontsource-variable/archivo/standard.css';
 import '@fontsource-variable/inter';
@@ -40,33 +46,49 @@ const {
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#101014" />
 
-    <!-- Aplica el tema guardado ANTES del primer pintado (evita el flash) -->
+    <!--
+      El tema se aplica ANTES del primer pintado (evita el destello).
+      Se escribe SIEMPRE `data-theme`, aunque no haya preferencia guardada:
+      si no, el botón de tema queda desincronizado del tema real (el sitio
+      se ve oscuro por `prefers-color-scheme` pero el icono pide "ponerse
+      oscuro", y el conmutador no hace nada visible).
+    -->
     <script is:inline>
       (function () {
         try {
           var stored = localStorage.getItem('kuspide-theme');
-          if (stored === 'light' || stored === 'dark') {
-            document.documentElement.dataset.theme = stored;
-          }
-        } catch (e) {}
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
       })();
     </script>
 
-    <script is:inline>
-      (function () {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        var root = document.documentElement;
-        root.classList.add('motion-ready');
-        window.setTimeout(function () {
-          if (!window.__motionReady) root.classList.remove('motion-ready');
-        }, 3000);
-      })();
-    </script>
+    <!--
+      `motion-ready` marca que la página tiene movimiento y que el estado
+      inicial de las animaciones lo aplica el CSS. La red de seguridad
+      (quitar la clase si el módulo no arrancó) la pone el layout de
+      escaparate, no éste: las páginas sin movimiento NUNCA deben ocultar
+      contenido.
+    -->
+    <slot name="head" />
   </head>
   <body>
     <slot />
+
+    <ClientRouter />
   </body>
 </html>
+
+<script>
+  import '../scripts/site-shell';
+</script>
 
 <style>
   :global(.container) {
@@ -82,6 +104,36 @@ const {
     :global(.container) {
       padding-inline: 1.5rem;
       padding-right: 4.5rem;
+    }
+  }
+
+  /* ── Transición de página ───────────────────────────────────────────────
+     Un fundido corto (180 ms). El contenido entra con el fundido y los
+     elementos que quedan fuera de pantalla se revelan al hacer scroll. */
+  :global(::view-transition-old(root)) {
+    animation: 180ms cubic-bezier(0.4, 0, 0.2, 1) both vt-out;
+  }
+
+  :global(::view-transition-new(root)) {
+    animation: 180ms cubic-bezier(0.4, 0, 0.2, 1) both vt-in;
+  }
+
+  @keyframes vt-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes vt-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(::view-transition-old(root)),
+    :global(::view-transition-new(root)) {
+      animation: none;
     }
   }
 </style>
