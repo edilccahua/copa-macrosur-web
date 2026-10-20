@@ -50,11 +50,11 @@ interface Props {
   /** La cifra del premio, cuando es una sola (Premio CLARO, títulos). */
   amount?: string;
   /** Etiqueta del estado: qué pasa con el premio. */
-  state?: string;
+  state?: string | null;
   /** El dato del estado: el nombre de quien lo lleva. */
-  value?: string;
+  value?: string | null;
   /** Detalle del estado. */
-  detail?: string;
+  detail?: string | null;
   /** Acento de la celda. */
   accent?: 'pro' | 'normal' | 'gold';
 }

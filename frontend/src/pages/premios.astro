@@ -24,7 +24,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
 import PageHeader from '../components/PageHeader.astro';
 import PrizeCell from '../components/PrizeCell.astro';
-import { API_V1, getRemontada, getStandings, type MountainTitle, type StandingsRow } from '../lib/api';
+import { getRemontada, getStandings, type StandingsRow } from '../lib/api';
 import { MOUNTAIN_TITLES } from '../data/mountain-titles';
 import {
   ACCUMULATED_PRIZES,
@@ -33,29 +33,6 @@ import {
   PRIZE_CATEGORIES,
   PRIZE_CURRENCY,
 } from '../data/prizes';
-
-/** Los cuatro títulos de montaña de la Fecha 1 (KOM/QOM/Kamikaze). */
-async function fetchMountainTitles(): Promise<Record<string, MountainTitle | null>> {
-  const titles: Record<string, MountainTitle | null> = {
-    kom: null,
-    qom: null,
-    kamikaze_male: null,
-    kamikaze_female: null,
-  };
-  try {
-    const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
-    if (res.ok) {
-      const data = await res.json();
-      titles.kom = data.kom ?? null;
-      titles.qom = data.qom ?? null;
-      titles.kamikaze_male = data.kamikaze_male ?? null;
-      titles.kamikaze_female = data.kamikaze_female ?? null;
-    }
-  } catch (e) {
-    /* Las celdas muestran "sin ganador todavía". */
-  }
-  return titles;
-}
 
 /** La clasificación de una agrupación: sus filas y las fechas ya disputadas. */
 interface ScopeData {
@@ -76,8 +53,11 @@ async function fetchScope(scope: 'PRO' | 'NORMAL'): Promise<ScopeData> {
 }
 
 // Las lecturas van en paralelo: la página no encadena latencias.
-const [mountain, remontada, proScope, normalScope] = await Promise.all([
-  fetchMountainTitles(),
+//
+// Los títulos de montaña NO se piden aquí: son premios POR FECHA y su
+// ganador es el de la Fecha 1, no el del campeonato. Se publican en la
+// ficha de cada fecha (`/fechas/[slug]`) y en la portada.
+const [remontada, proScope, normalScope] = await Promise.all([
   getRemontada(),
   fetchScope('PRO'),
   fetchScope('NORMAL'),
@@ -96,11 +76,6 @@ function leader(scope: ScopeData) {
     stagesCounted: scope.stagesCounted,
     totalStages: remontada?.total_stages ?? 0,
   };
-}
-
-/** "300 / 200 / 100": los peldaños de una escala, en una línea. */
-function escala(tiers: { amountUsd: number }[]): string {
-  return tiers.map((tier) => tier.amountUsd).join(' / ');
 }
 
 const pro = leader(proScope);
@@ -140,7 +115,7 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
       <SectionLabel
         number="01"
         label="Acumulado del campeonato"
-        kicker={`${PRIZE_CURRENCY} ${escala(ACCUMULATED_PRIZES[0].tiers)}`}
+        kicker="PRO Y NORMAL"
       />
 
       <div class="prize-table prize-table--pair">
@@ -170,7 +145,7 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
       <SectionLabel
         number="02"
         label="Premio por fecha"
-        kicker={`${PRIZE_CURRENCY} ${escala(PER_DATE_PRIZES)} · CADA CATEGORÍA`}
+        kicker={`${PRIZE_CATEGORIES.length} CATEGORÍAS · 4 FECHAS`}
       />
 
       <div class="prize-table prize-table--pair">
@@ -197,7 +172,7 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
       <SectionLabel
         number="03"
         label="Premio CLARO"
-        kicker={`${PRIZE_CURRENCY} ${remontada?.amount_usd ?? 100} · ACUMULADO`}
+        kicker="LA REMONTADA"
       />
 
       <div class="prize-table prize-table--pair">
@@ -235,31 +210,22 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
       <SectionLabel
         number="04"
         label="Títulos de montaña"
-        kicker={`${PRIZE_CURRENCY} 15 CADA UNO`}
+        kicker="4 TÍTULOS POR FECHA"
       />
 
       <div class="prize-table prize-table--four">
         {
-          MOUNTAIN_TITLES.map((definition, i) => {
-            const winner = mountain[definition.key] ?? null;
-            return (
-              <PrizeCell
-                index={String(i + 5).padStart(2, '0')}
-                title={definition.title}
-                body={definition.criterion}
-                amount={`${PRIZE_CURRENCY} ${definition.amountUsd}`}
-                icon={definition.icon}
-                accent="gold"
-                state="Uno por fecha"
-                value={winner?.athlete_name}
-                detail={
-                  winner
-                    ? `${winner.formatted_time} · ${winner.segment_name}`
-                    : 'Sin ganador todavía'
-                }
-              />
-            );
-          })
+          MOUNTAIN_TITLES.map((definition, i) => (
+            <PrizeCell
+              index={String(i + 5).padStart(2, '0')}
+              title={definition.title}
+              body={definition.criterion}
+              amount={`${PRIZE_CURRENCY} ${definition.amountUsd}`}
+              icon={definition.icon}
+              accent="gold"
+              state="Uno por fecha"
+            />
+          ))
         }
       </div>
     </section>
