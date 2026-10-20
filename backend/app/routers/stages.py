@@ -6,7 +6,14 @@ from sqlmodel import select
 from backend.app.core.cache import cache
 from backend.app.core.db import get_session
 from backend.app.models.entities import (
-    Stage, StageEntry, RaceStatusEnum, SpecialAward, StravaSegment, StravaEffort, Category, Rider, Team
+    Stage, StageEntry, RaceStatusEnum, StravaSegment, StravaEffort, Category, Rider, Team
+)
+from backend.app.models.schemas import (
+    PodiumEntryRead,
+    StageDetailPublicRead,
+    StagePublicRead,
+    StageResultsPublicRead,
+    StageSummaryRead,
 )
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.stage_summary_service import (
@@ -25,8 +32,19 @@ from backend.app.services.stage_summary_service import (
 router = APIRouter(prefix="/stages", tags=["Stages"])
 
 
-@router.get("")
+@router.get(
+    "",
+    response_model=List[StagePublicRead],
+    response_model_exclude_unset=False,
+)
 async def list_stages(session: AsyncSession = Depends(get_session)):
+    """El calendario de fechas.
+
+    Cada fecha sale por su versión PÚBLICA (`StagePublicRead`): el PIN de juez
+    es una credencial y no viaja en ninguna respuesta pública (specs/00 §1.4).
+    La garantía la da el `response_model`: aunque el objeto ORM traiga el
+    PIN, el modelo de respuesta no lo declara y por tanto no lo serializa.
+    """
     cached = cache.get("stages:list")
     if cached is not None:
         return cached
@@ -36,16 +54,16 @@ async def list_stages(session: AsyncSession = Depends(get_session)):
     return stages
 
 
-@router.get("/{slug}")
+@router.get("/{slug}", response_model=StageDetailPublicRead)
 async def get_stage_by_slug(slug: str, session: AsyncSession = Depends(get_session)):
+    """La ficha de una fecha: sus premios, sus segmentos y sus extremos."""
     stmt = select(Stage).where(Stage.slug == slug)
     stage = (await session.exec(stmt)).first()
     if not stage:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
 
-    # Premios especiales
-    stmt_aw = select(SpecialAward).where(SpecialAward.stage_id == stage.id)
-    awards = (await session.exec(stmt_aw)).all()
+    # Premios especiales (con el ganador ya resuelto por nombre).
+    awards = await compute_stage_awards(session, stage.id)
 
     # Segmentos Strava
     stmt_seg = select(StravaSegment).where(StravaSegment.stage_id == stage.id)
@@ -88,26 +106,30 @@ async def get_stage_by_slug(slug: str, session: AsyncSession = Depends(get_sessi
     scratch_data = None
     if scratch_entry:
         await session.refresh(scratch_entry, ["rider", "category", "team"])
-        scratch_data = {
-            "bib_number": scratch_entry.bib_number,
-            "rider_name": scratch_entry.rider.full_name if scratch_entry.rider else "",
-            "category_name": scratch_entry.category.name if scratch_entry.category else "",
-            "team_name": scratch_entry.team.name if scratch_entry.team else "LIBRE",
-            "elapsed_ms": scratch_entry.finish_elapsed_ms,
-            "formatted_time": format_ms_to_time(scratch_entry.finish_elapsed_ms or 0)
-        }
+        scratch_data = PodiumEntryRead(
+            rank=scratch_entry.category_rank or 0,
+            bib_number=scratch_entry.bib_number,
+            rider_name=scratch_entry.rider.full_name if scratch_entry.rider else "",
+            rider_slug=scratch_entry.rider.slug if scratch_entry.rider else "",
+            team_name=scratch_entry.team.name if scratch_entry.team else "LIBRE",
+            team_slug=scratch_entry.team.slug if scratch_entry.team else None,
+            formatted_time=format_ms_to_time(scratch_entry.finish_elapsed_ms or 0),
+            points_earned=scratch_entry.points_earned or 0,
+        )
 
     farolito_data = None
     if farolito_entry:
         await session.refresh(farolito_entry, ["rider", "category", "team"])
-        farolito_data = {
-            "bib_number": farolito_entry.bib_number,
-            "rider_name": farolito_entry.rider.full_name if farolito_entry.rider else "",
-            "category_name": farolito_entry.category.name if farolito_entry.category else "",
-            "team_name": farolito_entry.team.name if farolito_entry.team else "LIBRE",
-            "elapsed_ms": farolito_entry.finish_elapsed_ms,
-            "formatted_time": format_ms_to_time(farolito_entry.finish_elapsed_ms or 0)
-        }
+        farolito_data = PodiumEntryRead(
+            rank=farolito_entry.category_rank or 0,
+            bib_number=farolito_entry.bib_number,
+            rider_name=farolito_entry.rider.full_name if farolito_entry.rider else "",
+            rider_slug=farolito_entry.rider.slug if farolito_entry.rider else "",
+            team_name=farolito_entry.team.name if farolito_entry.team else "LIBRE",
+            team_slug=farolito_entry.team.slug if farolito_entry.team else None,
+            formatted_time=format_ms_to_time(farolito_entry.finish_elapsed_ms or 0),
+            points_earned=farolito_entry.points_earned or 0,
+        )
 
     return {
         "stage": stage,
@@ -120,7 +142,7 @@ async def get_stage_by_slug(slug: str, session: AsyncSession = Depends(get_sessi
     }
 
 
-@router.get("/{slug}/summary")
+@router.get("/{slug}/summary", response_model=StageSummaryRead)
 async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_session)):
     """
     Agregado de presentación de una fecha para la ficha `/fechas/[slug]`.
@@ -129,6 +151,10 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
     jornada, podio por categoría, podio de equipos de la jornada, segmentos
     Strava con sus mejores tiempos, checkpoints, premios con su ganador y los
     extremos (scratch / farolito). La página no recalcula nada.
+
+    El `response_model` es la puerta: la `stage` sale por su versión pública
+    (sin PIN de juez ni geometría) y el perfil de ruta sin la traza punto a
+    punto (specs/00 §1.4).
     """
     cache_key = f"stage:summary:{slug}"
     cached = cache.get(cache_key)
@@ -184,7 +210,7 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
     return res
 
 
-@router.get("/{slug}/results")
+@router.get("/{slug}/results", response_model=StageResultsPublicRead)
 async def get_stage_results(slug: str, session: AsyncSession = Depends(get_session)):
     stmt = select(Stage).where(Stage.slug == slug)
     stage = (await session.exec(stmt)).first()
