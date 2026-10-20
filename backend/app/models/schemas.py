@@ -92,8 +92,131 @@ class StageRead(BaseModel):
     distance_km: float
     elevation_gain_m: int
     route_geojson: Optional[Dict[str, Any]] = None
+    laps: int = 1
+    strava_route_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Resumen de presentación de una fecha (`GET /stages/{slug}/summary`) ---
+#
+# La ficha `/fechas/[slug]` consume este agregado en UNA llamada: cifras de la
+# jornada, podio por categoría, podio de equipos, segmentos Strava, checkpoints,
+# premios y extremos. La página no recalcula nada (specs/03 §1.2).
+
+
+class StageStatsRead(BaseModel):
+    """Cifras de una jornada.
+
+    `distance_km` y `elevation_gain_m` de la tabla `stages` son POR VUELTA
+    (ver `entities.Stage`); aquí se exponen las dos lecturas para que la
+    página no las mezcle.
+    """
+
+    entries_total: int
+    finishers: int
+    non_finishers: int
+    points_total: int
+    distance_km_per_lap: float
+    distance_km_total: float
+    elevation_m_per_lap: int
+    elevation_m_total: int
+    laps: int
+    winner_time_ms: Optional[int] = None
+    winner_avg_speed_kmh: Optional[float] = None
+    categories_count: int
+
+
+class PodiumEntryRead(BaseModel):
+    """Un corredor en un podio (por categoría o como extremo de la jornada)."""
+
+    rank: int
+    bib_number: int
+    rider_name: str
+    rider_slug: str
+    team_name: str
+    team_slug: Optional[str] = None
+    formatted_time: str
+    points_earned: int
+
+
+class CategoryPodiumRead(BaseModel):
+    category_id: int
+    category_name: str
+    short_code: str
+    entries: List[PodiumEntryRead]
+
+
+class TeamPodiumRead(BaseModel):
+    team_id: int
+    team_name: str
+    team_slug: str
+    points: int
+    riders_counted: int
+    best_rank: int
+
+
+class StravaEffortRead(BaseModel):
+    athlete_name: str
+    elapsed_time_sec: int
+    formatted_time: str
+    is_kom_qom: bool
+
+
+class StravaSegmentSummaryRead(BaseModel):
+    strava_segment_id: str
+    name: str
+    distance_m: float
+    average_grade: float
+    distance_km: float
+    efforts: List[StravaEffortRead]
+    kom: Optional[StravaEffortRead] = None
+
+
+class CheckpointRead(BaseModel):
+    name: str
+    order_index: int
+    distance_from_start_km: float
+    is_finish_line: bool
+
+
+class AwardSummaryRead(BaseModel):
+    title: str
+    sponsor_name: Optional[str] = None
+    sponsor_logo_url: Optional[str] = None
+    prize_description: Optional[str] = None
+    metric_value: Optional[str] = None
+    winner_name: Optional[str] = None
+
+
+class StageExtremesRead(BaseModel):
+    """Extremos de la jornada. Cualquiera de los dos puede ser `None`."""
+
+    scratch: Optional[PodiumEntryRead] = None
+    farolito: Optional[PodiumEntryRead] = None
+
+
+class StageNavigationRead(BaseModel):
+    """Fechas vecinas en el calendario, para la navegación prev/next."""
+
+    prev_slug: Optional[str] = None
+    prev_name: Optional[str] = None
+    next_slug: Optional[str] = None
+    next_name: Optional[str] = None
+
+
+class StageSummaryRead(BaseModel):
+    """Agregado completo de presentación de una fecha."""
+
+    stage: StageRead
+    stats: StageStatsRead
+    podium: List[CategoryPodiumRead]
+    teams: List[TeamPodiumRead]
+    strava: List[StravaSegmentSummaryRead]
+    checkpoints: List[CheckpointRead]
+    awards: List[AwardSummaryRead]
+    extremes: StageExtremesRead
+    navigation: StageNavigationRead
 
 
 # Extra Events Schemas

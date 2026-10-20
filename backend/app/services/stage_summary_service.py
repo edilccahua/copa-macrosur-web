@@ -1,0 +1,423 @@
+"""
+Servicio de resumen de una fecha — la fuente de datos de `/fechas/[slug]`.
+
+Agrega, en una sola pasada de consulta, todo lo que la ficha de una carrera
+muestra: cifras de la jornada, podio por categoría, podio de equipos, segmentos
+Strava con sus mejores tiempos, checkpoints, premios y los extremos (scratch /
+farolito).
+
+Reglas de dominio (specs/01 §3.1, specs/03 §1.2):
+  · `Stage.distance_km` y `Stage.elevation_gain_m` son **POR VUELTA**. Los
+    totales de carrera se derivan multiplicando por `Stage.laps`. Una fecha
+    disputada sin vueltas tiene `laps = 1` y ambos coinciden.
+  · El puesto de un corredor es `StageEntry.category_rank`, ya calculado por el
+    motor de scoring: el PDF oficial manda y aquí no se recalcula.
+  · Una fecha no disputada no tiene cifras: los agregados返回 `None`, no 0.
+"""
+from typing import List, Optional
+
+from sqlalchemy import Integer, func
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from backend.app.models.entities import (
+    Category,
+    Checkpoint,
+    RaceStatusEnum,
+    Rider,
+    SpecialAward,
+    Stage,
+    StageEntry,
+    StravaEffort,
+    StravaSegment,
+    Team,
+)
+from backend.app.models.schemas import (
+    AwardSummaryRead,
+    CategoryPodiumRead,
+    CheckpointRead,
+    PodiumEntryRead,
+    StageStatsRead,
+    StravaEffortRead,
+    StravaSegmentSummaryRead,
+    TeamPodiumRead,
+)
+from backend.app.services.pdf_service import format_ms_to_time
+
+# Escala de puntos de specs/01 §3.1: 1°=10 … 10°=1, 11°+=1, DNF/DNS/DSQ=0.
+_POINTS_TOP10 = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+# Cuántos efforts de Strava se exponen por segmento (specs/03 §1.2 punto 5).
+_STRAVA_TOP_N = 10
+
+
+def _points_for_position(position: int) -> int:
+    """Puntos de un puesto según la escala de specs/01 §3.1."""
+    if position <= 0:
+        return 0
+    if position <= len(_POINTS_TOP10):
+        return _POINTS_TOP10[position - 1]
+    return 1
+
+
+def _normalize_team_name(name: str) -> str:
+    """Une el club partido por un salto de línea.
+
+    El PDF oficial corta los nombres largos entre líneas, así que
+    'CLUB ORIGINAL BIKES AREQUIPA-' + 'PERÚ' es UN club, no dos
+    (INTEGRIDAD-DATOS.md §2.2, caso 3). La misma normalización vive en
+    `excel_service.resolve_or_create_team`; aquí se usa solo para agrupar.
+    """
+    cleaned = " ".join(name.split())
+    if cleaned.endswith("-"):
+        cleaned = cleaned[:-1]
+    return cleaned.strip()
+
+
+async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStatsRead:
+    """Cifras de la jornada: inscripciones, finalizados, puntos y tiempos.
+
+    `distance_km` y `elevation_gain_m` de `Stage` son por vuelta; aquí se
+    exponen las dos lecturas (por vuelta y total) para que la página no los
+    mezcle.
+    """
+    stage = (await session.exec(select(Stage).where(Stage.id == stage_id))).first()
+    if stage is None:
+        raise ValueError(f"Stage {stage_id} no existe")
+
+    totals = (
+        await session.exec(
+            select(
+                func.count(StageEntry.id),
+                func.sum(
+                    func.cast(StageEntry.finish_elapsed_ms.is_not(None), Integer)
+                ),
+                func.coalesce(func.sum(StageEntry.points_earned), 0),
+            ).where(StageEntry.stage_id == stage_id)
+        )
+    ).first()
+    entries_total = int(totals[0] or 0) if totals else 0
+    finishers = int(totals[1] or 0) if totals else 0
+    points_total = int(totals[2] or 0) if totals else 0
+
+    # Un único aggregate devuelve el escalar directo en SQLModel, no una tupla.
+    winner = (
+        await session.exec(
+            select(func.min(StageEntry.finish_elapsed_ms)).where(
+                StageEntry.stage_id == stage_id,
+                StageEntry.finish_elapsed_ms.is_not(None),
+            )
+        )
+    ).first()
+    winner_time_ms = int(winner) if winner is not None else None
+
+    categories_count = (
+        await session.exec(
+            select(func.count(func.distinct(StageEntry.category_id))).where(
+                StageEntry.stage_id == stage_id
+            )
+        )
+    ).first()
+    categories = int(categories_count or 0)
+
+    laps = max(1, stage.laps or 1)
+    distance_km_total = round(stage.distance_km * laps, 2)
+    elevation_m_total = stage.elevation_gain_m * laps
+
+    winner_avg_speed_kmh: Optional[float] = None
+    if winner_time_ms and winner_time_ms > 0 and distance_km_total > 0:
+        hours = winner_time_ms / 3_600_000
+        winner_avg_speed_kmh = round(distance_km_total / hours, 2)
+
+    return StageStatsRead(
+        entries_total=entries_total,
+        finishers=finishers,
+        non_finishers=max(0, entries_total - finishers),
+        points_total=points_total,
+        distance_km_per_lap=stage.distance_km,
+        distance_km_total=distance_km_total,
+        elevation_m_per_lap=stage.elevation_gain_m,
+        elevation_m_total=elevation_m_total,
+        laps=laps,
+        winner_time_ms=winner_time_ms,
+        winner_avg_speed_kmh=winner_avg_speed_kmh,
+        categories_count=categories,
+    )
+
+
+async def compute_category_podium(
+    session: AsyncSession, stage_id: int
+) -> List[CategoryPodiumRead]:
+    """Top-3 de cada categoría, ordenado por `category_rank`.
+
+    No recalcula puestos: `StageEntry.category_rank` es la autoridad
+    (specs/01 §1.5.2, erratas documentadas en INTEGRIDAD-DATOS.md §5).
+    """
+    rows = (
+        await session.exec(
+            select(StageEntry, Category, Rider, Team)
+            .join(Category, StageEntry.category_id == Category.id)
+            .join(Rider, StageEntry.rider_id == Rider.id)
+            .outerjoin(Team, StageEntry.team_id == Team.id)
+            .where(
+                StageEntry.stage_id == stage_id,
+                StageEntry.category_rank.is_not(None),
+                StageEntry.category_rank <= 3,
+            )
+            .order_by(Category.id, StageEntry.category_rank)
+        )
+    ).all()
+
+    by_category: dict[int, CategoryPodiumRead] = {}
+    for entry, category, rider, team in rows:
+        bucket = by_category.get(category.id)
+        if bucket is None:
+            bucket = CategoryPodiumRead(
+                category_id=category.id,
+                category_name=category.name,
+                short_code=category.short_code,
+                entries=[],
+            )
+            by_category[category.id] = bucket
+        bucket.entries.append(
+            PodiumEntryRead(
+                rank=int(entry.category_rank or 0),
+                bib_number=entry.bib_number,
+                rider_name=rider.full_name,
+                rider_slug=rider.slug,
+                team_name=team.name if team else "LIBRE",
+                team_slug=team.slug if team else None,
+                formatted_time=format_ms_to_time(entry.finish_elapsed_ms or 0)
+                if entry.finish_elapsed_ms
+                else "-",
+                points_earned=entry.points_earned or 0,
+            )
+        )
+
+    return list(by_category.values())
+
+
+async def compute_stage_team_podium(
+    session: AsyncSession, stage_id: int
+) -> List[TeamPodiumRead]:
+    """Top-3 equipos por puntos sumados en ESTA fecha.
+
+    No es el acumulado del campeonato: son los puntos de la jornada, que es lo
+    que define el podio de la carrera (specs/03 §1.2 punto 3).
+    """
+    rows = (
+        await session.exec(
+            select(
+                Team.id,
+                Team.name,
+                Team.slug,
+                func.coalesce(func.sum(StageEntry.points_earned), 0),
+                func.count(StageEntry.id),
+                func.min(StageEntry.category_rank),
+            )
+            .join(StageEntry, StageEntry.team_id == Team.id)
+            .where(StageEntry.stage_id == stage_id)
+            .group_by(Team.id, Team.name, Team.slug)
+            .having(func.coalesce(func.sum(StageEntry.points_earned), 0) > 0)
+            .order_by(func.coalesce(func.sum(StageEntry.points_earned), 0).desc())
+        )
+    ).all()
+
+    podium: List[TeamPodiumRead] = []
+    for team_id, team_name, team_slug, points, riders, best_rank in rows:
+        podium.append(
+            TeamPodiumRead(
+                team_id=team_id,
+                team_name=_normalize_team_name(team_name),
+                team_slug=team_slug,
+                points=int(points or 0),
+                riders_counted=int(riders or 0),
+                best_rank=int(best_rank) if best_rank is not None else 999,
+            )
+        )
+
+    # Un club partido por salto de línea puede aparecer dos veces: se fusionan
+    # sumando sus puntos (INTEGRIDAD-DATOS.md §2.2, caso 3).
+    merged: dict[str, TeamPodiumRead] = {}
+    for entry in podium:
+        key = entry.team_name.casefold()
+        if key not in merged:
+            merged[key] = entry
+            continue
+        current = merged[key]
+        merged[key] = TeamPodiumRead(
+            team_id=current.team_id,
+            team_name=current.team_name,
+            team_slug=current.team_slug,
+            points=current.points + entry.points,
+            riders_counted=current.riders_counted + entry.riders_counted,
+            best_rank=min(current.best_rank, entry.best_rank),
+        )
+
+    return sorted(merged.values(), key=lambda t: (-t.points, t.team_name))[:3]
+
+
+async def compute_stage_strava(
+    session: AsyncSession, stage_id: int
+) -> List[StravaSegmentSummaryRead]:
+    """Segmentos Strava de la fecha con sus 10 mejores tiempos y el KOM.
+
+    El flag `is_kom_qom` de la BD es la autoridad del KOM (specs/02 §4).
+    """
+    segments = (
+        await session.exec(
+            select(StravaSegment)
+            .where(StravaSegment.stage_id == stage_id)
+            .order_by(StravaSegment.id)
+        )
+    ).all()
+
+    summaries: List[StravaSegmentSummaryRead] = []
+    for segment in segments:
+        efforts = (
+            await session.exec(
+                select(StravaEffort)
+                .where(StravaEffort.segment_id == segment.id)
+                .order_by(StravaEffort.elapsed_time_sec)
+            )
+        ).all()
+
+        effort_reads = [
+            StravaEffortRead(
+                athlete_name=effort.athlete_name_raw or "—",
+                elapsed_time_sec=int(effort.elapsed_time_sec or 0),
+                formatted_time=format_ms_to_time(int(effort.elapsed_time_sec or 0) * 1000),
+                is_kom_qom=bool(effort.is_kom_qom),
+            )
+            for effort in efforts
+        ]
+
+        kom = next((e for e in effort_reads if e.is_kom_qom), None)
+        if kom is None and effort_reads:
+            kom = effort_reads[0]
+
+        summaries.append(
+            StravaSegmentSummaryRead(
+                strava_segment_id=str(segment.strava_segment_id or ""),
+                name=segment.name or "",
+                distance_m=float(segment.distance_m or 0),
+                average_grade=float(segment.average_grade or 0),
+                distance_km=round(float(segment.distance_m or 0) / 1000, 2),
+                efforts=effort_reads[:_STRAVA_TOP_N],
+                kom=kom,
+            )
+        )
+
+    return summaries
+
+
+async def compute_stage_checkpoints(
+    session: AsyncSession, stage_id: int
+) -> List[CheckpointRead]:
+    """Checkpoints de la fecha: Partida, intermedios y Meta, en orden."""
+    rows = (
+        await session.exec(
+            select(Checkpoint)
+            .where(Checkpoint.stage_id == stage_id)
+            .order_by(Checkpoint.order_index)
+        )
+    ).all()
+    return [
+        CheckpointRead(
+            name=cp.name,
+            order_index=cp.order_index,
+            distance_from_start_km=cp.distance_from_start_km,
+            is_finish_line=cp.is_finish_line,
+        )
+        for cp in rows
+    ]
+
+
+async def compute_stage_awards(
+    session: AsyncSession, stage_id: int
+) -> List[AwardSummaryRead]:
+    """Premios de la fecha con su ganador resuelto desde `winner_rider_id`."""
+    awards = (
+        await session.exec(
+            select(SpecialAward)
+            .where(SpecialAward.stage_id == stage_id)
+            .order_by(SpecialAward.id)
+        )
+    ).all()
+    if not awards:
+        return []
+
+    winner_ids = [a.winner_rider_id for a in awards if a.winner_rider_id]
+    names: dict[int, str] = {}
+    if winner_ids:
+        riders = (
+            await session.exec(select(Rider).where(Rider.id.in_(winner_ids)))
+        ).all()
+        names = {r.id: r.full_name for r in riders}
+
+    return [
+        AwardSummaryRead(
+            title=award.title or "",
+            sponsor_name=award.sponsor_name,
+            sponsor_logo_url=award.sponsor_logo_url,
+            prize_description=award.prize_description,
+            metric_value=award.metric_value,
+            winner_name=names.get(award.winner_rider_id) if award.winner_rider_id else None,
+        )
+        for award in awards
+    ]
+
+
+async def compute_stage_extremes(
+    session: AsyncSession, stage_id: int
+) -> dict:
+    """Scratch (tiempo mínimo) y farolito (tiempo máximo) de la jornada.
+
+    Devuelve claves siempre presentes: `scratch` o `farolito` pueden ser
+    `None` si la fecha no tiene ese extremo (una fecha con un solo finisher,
+    por ejemplo). La ficha debe renderizar lo que haya, sin asumir que ambos
+    existen.
+    """
+    scratch_entry = (
+        await session.exec(
+            select(StageEntry)
+            .where(
+                StageEntry.stage_id == stage_id,
+                StageEntry.race_status == RaceStatusEnum.FINISHED,
+                StageEntry.finish_elapsed_ms.is_not(None),
+            )
+            .order_by(StageEntry.finish_elapsed_ms)
+        )
+    ).first()
+
+    farolito_entry = (
+        await session.exec(
+            select(StageEntry)
+            .where(
+                StageEntry.stage_id == stage_id,
+                StageEntry.race_status == RaceStatusEnum.FINISHED,
+                StageEntry.finish_elapsed_ms.is_not(None),
+            )
+            .order_by(StageEntry.finish_elapsed_ms.desc())
+        )
+    ).first()
+
+    async def _to_read(entry) -> Optional[PodiumEntryRead]:
+        if entry is None:
+            return None
+        await session.refresh(entry, ["rider", "category", "team"])
+        return PodiumEntryRead(
+            rank=entry.category_rank or 0,
+            bib_number=entry.bib_number,
+            rider_name=entry.rider.full_name if entry.rider else "",
+            rider_slug=entry.rider.slug if entry.rider else "",
+            team_name=entry.team.name if entry.team else "LIBRE",
+            team_slug=entry.team.slug if entry.team else None,
+            formatted_time=format_ms_to_time(entry.finish_elapsed_ms or 0),
+            points_earned=entry.points_earned or 0,
+        )
+
+    return {
+        "scratch": await _to_read(scratch_entry),
+        "farolito": await _to_read(farolito_entry),
+    }

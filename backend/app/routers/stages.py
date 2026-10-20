@@ -8,6 +8,15 @@ from backend.app.models.entities import (
     Stage, StageEntry, RaceStatusEnum, SpecialAward, StravaSegment, StravaEffort, Category, Rider, Team
 )
 from backend.app.services.pdf_service import format_ms_to_time
+from backend.app.services.stage_summary_service import (
+    compute_category_podium,
+    compute_stage_awards,
+    compute_stage_checkpoints,
+    compute_stage_extremes,
+    compute_stage_stats,
+    compute_stage_strava,
+    compute_stage_team_podium,
+)
 
 router = APIRouter(prefix="/stages", tags=["Stages"])
 
@@ -100,6 +109,55 @@ async def get_stage_by_slug(slug: str, session: AsyncSession = Depends(get_sessi
             "scratch": scratch_data,
             "farolito": farolito_data
         }
+    }
+
+
+@router.get("/{slug}/summary")
+async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_session)):
+    """
+    Agregado de presentación de una fecha para la ficha `/fechas/[slug]`.
+
+    Devuelve en UNA llamada todo lo que la página muestra: cifras de la
+    jornada, podio por categoría, podio de equipos de la jornada, segmentos
+    Strava con sus mejores tiempos, checkpoints, premios con su ganador y los
+    extremos (scratch / farolito). La página no recalcula nada.
+    """
+    stmt = select(Stage).where(Stage.slug == slug)
+    stage = (await session.exec(stmt)).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    # Fechas vecinas en el calendario, para la navegación prev/next.
+    prev_stage = (
+        await session.exec(
+            select(Stage)
+            .where(Stage.stage_number < stage.stage_number)
+            .order_by(Stage.stage_number.desc())
+        )
+    ).first()
+    next_stage = (
+        await session.exec(
+            select(Stage)
+            .where(Stage.stage_number > stage.stage_number)
+            .order_by(Stage.stage_number)
+        )
+    ).first()
+
+    return {
+        "stage": stage,
+        "stats": await compute_stage_stats(session, stage.id),
+        "podium": await compute_category_podium(session, stage.id),
+        "teams": await compute_stage_team_podium(session, stage.id),
+        "strava": await compute_stage_strava(session, stage.id),
+        "checkpoints": await compute_stage_checkpoints(session, stage.id),
+        "awards": await compute_stage_awards(session, stage.id),
+        "extremes": await compute_stage_extremes(session, stage.id),
+        "navigation": {
+            "prev_slug": prev_stage.slug if prev_stage else None,
+            "prev_name": prev_stage.title or prev_stage.name if prev_stage else None,
+            "next_slug": next_stage.slug if next_stage else None,
+            "next_name": next_stage.title or next_stage.name if next_stage else None,
+        },
     }
 
 
