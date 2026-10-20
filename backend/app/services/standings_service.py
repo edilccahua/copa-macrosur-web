@@ -4,11 +4,11 @@ Motor de clasificación del portal público.
 Calcula el ranking acumulado "a la fecha" (patrón Tour de Francia) con las
 mismas reglas de desempate del reglamento, pero **pooling por ámbito**:
 
-  - `COMBINADO`: PRO + NORMAL (E-MTB queda fuera: es otra modalidad).
+  - `COMBINADO`: PRO + NORMAL (E-BIKE queda fuera: es otra modalidad).
   - `PRO`: ELITE, MASTER A, MASTER B, MASTER C.
   - `NORMAL`: TURISMO OPEN, TURISMO MASTER, MASTER D, OPEN DAMAS, DAMAS MASTER,
     JUVENILES 15-17.
-  - `E-MTB`: E-BIKE OPEN.
+  - `E-BIKE`: E-BIKE OPEN.
   - `category_id`: acota a una categoría concreta (su propio ranking).
 
 Fuente de verdad: `StageEntry` (resultados oficiales). No se usan tablas de
@@ -37,20 +37,30 @@ from backend.app.services.pdf_service import format_ms_to_time
 
 #: Cada ámbito agrupa las categorías de una modalidad. El tiempo acumulado solo
 #: es comparable dentro de un ámbito: las distancias y desniveles de PRO, NORMAL
-#: y E-MTB no son homologables entre sí.
+#: y E-BIKE no son homologables entre sí.
 SCOPE_GROUPS: Dict[str, List[str]] = {
     "PRO": ["ELI", "MSA", "MSB", "MSC"],
     "NORMAL": ["TOV", "TMV", "MSD", "OPD", "DMM", "JUV"],
-    "E-MTB": ["EBK"],
+    "E-BIKE": ["EBK"],
 }
 
+#: Etiqueta CORTA del ámbito: es la que va en la pestaña, donde el espacio es
+#: escaso. La larga (`SCOPE_LABELS_LONG`) es la de los rótulos con sitio.
 SCOPE_LABELS: Dict[str, str] = {
     "PRO": "PRO",
     "NORMAL": "NORMAL",
-    "E-MTB": "E-MTB",
+    "E-BIKE": "E-BIKE",
 }
 
-SCOPE_ORDER: List[str] = ["PRO", "NORMAL", "E-MTB"]
+#: Etiqueta LARGA del ámbito, para donde hay espacio (la cinta de la tabla, los
+#: textos de la API). El E-BIKE se llama igual que su categoría.
+SCOPE_LABELS_LONG: Dict[str, str] = {
+    "PRO": "PRO",
+    "NORMAL": "NORMAL",
+    "E-BIKE": "E-BIKE OPEN",
+}
+
+SCOPE_ORDER: List[str] = ["PRO", "NORMAL", "E-BIKE"]
 
 #: Modos de la clasificación pública.
 #: - "acumulado": la fecha es el CORTE (se suma todo lo disputado hasta ahí).
@@ -69,6 +79,24 @@ def normalize_mode(mode: Optional[str]) -> str:
 def scope_short_codes(scope: str) -> List[str]:
     """Devuelve los short_codes de categoría que integran un ámbito."""
     return list(SCOPE_GROUPS.get(scope, []))
+
+
+#: Ámbitos que se renombraron. Las URLs y los enlaces viejos con la clave
+#: anterior siguen funcionando: se normalizan al nombre vigente.
+SCOPE_ALIASES: Dict[str, str] = {
+    "E-MTB": "E-BIKE",
+}
+
+
+def normalize_scope(scope: Optional[str]) -> str:
+    """Ámbito válido; cualquier valor desconocido cae en COMBINADO."""
+    if not scope:
+        return "COMBINED"
+    scope = scope.upper()
+    scope = SCOPE_ALIASES.get(scope, scope)
+    if scope == "COMBINED" or scope in SCOPE_GROUPS:
+        return scope
+    return "COMBINED"
 
 
 def scope_of_category(short_code: str) -> str:
@@ -174,7 +202,7 @@ async def compute_standings(
     """
     Ranking individual: acumulado hasta la fecha `stage_limit` (None = todas).
 
-    `scope` acota las categorías (`COMBINED`, `PRO`, `NORMAL`, `E-MTB`) y
+    `scope` acota las categorías (`COMBINED`, `PRO`, `NORMAL`, `E-BIKE`) y
     `category_id`, si se indica, acota a una categoría concreta y anula el ámbito.
 
     `mode`:
@@ -441,6 +469,7 @@ async def standings_context(
         "total_distance_km": round(distance, 2),
         "groups": {k: list(v) for k, v in SCOPE_GROUPS.items()},
         "scope_labels": dict(SCOPE_LABELS),
+        "scope_labels_long": dict(SCOPE_LABELS_LONG),
         "scope_order": list(SCOPE_ORDER),
         "categories": [
             {"id": c.id, "short_code": c.short_code, "name": c.name}

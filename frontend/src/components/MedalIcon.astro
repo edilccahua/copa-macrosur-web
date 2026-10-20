@@ -1,0 +1,63 @@
+---
+/**
+ * MedalIcon.astro — la medalla de puesto (1, 2, 3).
+ *
+ * Es la insignia de leaderboard de Strava (`icon-at-pr-01/02/03`): una
+ * silueta de "bolsillo" con la cinta y, en el disco, el puesto CALADO al
+ * vacío. La geometría está en `src/assets/medals/medal-N.svg`, generada por
+ * `tools/build-medals.mjs` (fuente única).
+ *
+ * El SVG se inserta EN LÍNEA (no como <img>) por dos razones:
+ *
+ *   - el color lo hereda del sitio (`currentColor` → token `--medal-N`), de
+ *     modo que la medalla se adapta al tema claro/oscuro;
+ *   - el número calado deja ver el fondo REAL de la página, en vez del
+ *     blanco de un archivo suelto.
+ *
+ * No hace falta máscara ni `id`: el calado va con `fill-rule="evenodd"`
+ * dentro de un único path, así que dos medallas del mismo puesto pueden
+ * convivir en la misma página sin colisión.
+ *
+ * Las copias planas para reutilizar fuera de Astro están en
+ * `public/icons/medals/medal-N.svg`.
+ */
+import medal1 from '../assets/medals/medal-1.svg?raw';
+import medal2 from '../assets/medals/medal-2.svg?raw';
+import medal3 from '../assets/medals/medal-3.svg?raw';
+
+interface Props {
+  /** El puesto: 1, 2 o 3. */
+  rank: 1 | 2 | 3;
+  /** Lado del cuadrado, en píxeles. */
+  size?: number;
+  class?: string;
+}
+
+const { rank, size = 20, class: className = '' } = Astro.props;
+
+const SOURCE: Record<1 | 2 | 3, string> = { 1: medal1, 2: medal2, 3: medal3 };
+---
+
+<span
+  class={`medal ${className}`}
+  style={`--medal-size: ${size}px; --medal-color: var(--medal-${rank}, #a97a12)`}
+  set:html={SOURCE[rank]}
+/>
+
+<style>
+  .medal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--medal-size);
+    height: var(--medal-size);
+    flex: 0 0 auto;
+    color: var(--medal-color);
+  }
+
+  .medal :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>

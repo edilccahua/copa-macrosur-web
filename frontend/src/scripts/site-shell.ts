@@ -406,6 +406,36 @@ function scrollToHash(hash: string): void {
   }
 }
 
+// ── Barra de avance de lectura ───────────────────────────────────────────────
+
+/**
+ * Una línea bajo el menú que se llena según lo scrolleado.
+ *
+ * Sólo se ve donde NO hay regulador lateral (por debajo de 48em): en
+ * escritorio el regulador lateral ya dice en qué parte de la página estás, y
+ * en el móvil no hay ninguna otra indicación.
+ */
+let progressEl: HTMLElement | null = null;
+let progressFrame = 0;
+
+function updateReadingProgress(): void {
+  progressFrame = 0;
+  if (!progressEl) {
+    progressEl = document.querySelector<HTMLElement>('[data-read-progress]');
+  }
+  if (!progressEl) return;
+
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+  progressEl.style.transform = `scaleX(${ratio})`;
+}
+
+/** Las escrituras se agrupan en un fotograma. */
+function scheduleReadingProgress(): void {
+  if (progressFrame) return;
+  progressFrame = requestAnimationFrame(updateReadingProgress);
+}
+
 // ── Ciclo de vida del movimiento ─────────────────────────────────────────────
 
 type MotionModule = {
@@ -527,6 +557,8 @@ function initRouter(): void {
   document.addEventListener('astro:page-load', async () => {
     restoreTheme();
     applyActiveNav(window.location.pathname);
+    // La barra de avance se recalcula: al navegar, el scroll vuelve arriba.
+    scheduleReadingProgress();
 
     // El regulador de scroll está en todas las páginas.
     const rul = await ensureRuler();
@@ -563,6 +595,11 @@ applyActiveNav(window.location.pathname);
 restoreTheme();
 armHeaderIntroOnce();
 showThemeHintOnce();
+
+// Barra de avance de lectura: en todas las páginas.
+window.addEventListener('scroll', scheduleReadingProgress, { passive: true });
+window.addEventListener('resize', scheduleReadingProgress);
+scheduleReadingProgress();
 
 // La primera carga de una página de escaparate pide su movimiento.
 if (pageWantsMotion()) {

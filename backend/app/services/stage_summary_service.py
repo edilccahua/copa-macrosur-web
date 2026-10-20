@@ -60,9 +60,9 @@ from backend.app.services.standings_service import scope_of_category
 # Escala de puntos de specs/01 §3.1: 1°=10 … 10°=1, 11°+=1, DNF/DNS/DSQ=0.
 _POINTS_TOP10 = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
 
-# La E-MTB no compite por el titulo de la fecha: el E-BIKE OPEN tiene su
+# La E-BIKE no compite por el titulo de la fecha: el E-BIKE OPEN tiene su
 # propio leaderboard, pero un e-bike no puede ser el scratch de MTB.
-E_MTB_SHORT_CODE = "EBK"
+E_BIKE_SHORT_CODE = "EBK"
 
 # Cuántos efforts de Strava se exponen por segmento (specs/03 §1.2 punto 5).
 _STRAVA_TOP_N = 10
@@ -153,8 +153,8 @@ async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStat
                 StageEntry.stage_id == stage_id,
                 StageEntry.finish_elapsed_ms.is_not(None),
                 StageEntry.race_status == RaceStatusEnum.FINISHED,
-                # La E-MTB no entra en la pugna por el titulo de la fecha.
-                Category.short_code != E_MTB_SHORT_CODE,
+                # La E-BIKE no entra en la pugna por el titulo de la fecha.
+                Category.short_code != E_BIKE_SHORT_CODE,
             )
         )
     ).all()
@@ -686,7 +686,7 @@ async def compute_stage_extremes(
 
     Dos reglas que no son obvias:
 
-    · **La categoría E-MTB no compite por el título.** Un e-bike no es un
+    · **La categoría E-BIKE OPEN no compite por el título.** Un e-bike no es un
       scratch de MTB: el E-BIKE OPEN sigue con su propio leaderboard, pero
       no puede ser el ganador de la fecha.
     · **El criterio es la VELOCIDAD, no el tiempo.** En un circuito por
@@ -706,8 +706,8 @@ async def compute_stage_extremes(
                 StageEntry.stage_id == stage.id,
                 StageEntry.race_status == RaceStatusEnum.FINISHED,
                 StageEntry.finish_elapsed_ms.is_not(None),
-                # La E-MTB no entra en la pugna por el titulo de la fecha.
-                Category.short_code != E_MTB_SHORT_CODE,
+                # La E-BIKE no entra en la pugna por el titulo de la fecha.
+                Category.short_code != E_BIKE_SHORT_CODE,
             )
         )
     ).all()

@@ -338,7 +338,7 @@ async def test_category_podium_returns_top3_per_category(async_session):
 
 
 async def test_category_podium_carries_the_scope_group(async_session):
-    """Cada categoría declara su grupo (PRO/NORMAL/E-MTB) para el acento."""
+    """Cada categoría declara su grupo (PRO/NORMAL/E-BIKE) para el acento."""
     stage = await _seed_stage_with_results(
         async_session, entries=12, finishers=12, points=120, categories=2
     )
@@ -355,7 +355,7 @@ async def test_category_podium_carries_the_scope_group(async_session):
     groups = {c.short_code: c.group for c in podium}
     assert groups["ELI"] == "PRO"
     assert groups["TOV"] == "NORMAL"
-    assert groups["EBK"] == "E-MTB"
+    assert groups["EBK"] == "E-BIKE"
 
 
 async def test_category_podium_is_empty_for_undisputed_stage(async_session):
@@ -975,7 +975,7 @@ async def test_summary_endpoint_carries_profile_summits_and_titles(async_session
 
 
 # --------------------------------------------------------------------------
-# La E-MTB no compite por el titulo de la fecha
+# La E-BIKE no compite por el titulo de la fecha
 # --------------------------------------------------------------------------
 
 

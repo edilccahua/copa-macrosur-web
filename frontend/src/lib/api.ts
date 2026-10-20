@@ -78,7 +78,10 @@ export interface StandingsContext {
   stages_counted: number;
   total_distance_km: number;
   groups: Record<string, string[]>;
+  /** Etiqueta CORTA del ámbito (la de la pestaña). */
   scope_labels: Record<string, string>;
+  /** Etiqueta LARGA del ámbito (la de la cinta: "E-BIKE OPEN"). */
+  scope_labels_long: Record<string, string>;
   scope_order: string[];
   categories: CategoryOption[];
 }
@@ -105,7 +108,7 @@ export interface StandingsParams {
 
 /**
  * Ranking acumulado "a la fecha" (patrón Tour de Francia).
- * `scope`: COMBINED | PRO | NORMAL | E-MTB. `categoryId` acota a una categoría.
+ * `scope`: COMBINED | PRO | NORMAL | E-BIKE. `categoryId` acota a una categoría.
  */
 export async function getStandings(
   params: StandingsParams = {}
@@ -159,7 +162,7 @@ export interface CategoryPodium {
   category_id: number;
   category_name: string;
   short_code: string;
-  /** Grupo de la categoría: PRO | NORMAL | E-MTB (es el acento del leaderboard). */
+  /** Grupo de la categoría: PRO | NORMAL | E-BIKE (es el acento del leaderboard). */
   group: string;
   entries: PodiumEntry[];
 }

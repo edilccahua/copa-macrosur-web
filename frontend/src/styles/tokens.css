@@ -145,6 +145,16 @@
   --podium-2: #aab2bd;
   --podium-3: #c07f47;
   --podium-fg: #101014;
+  --medal-1: #e0a72a;
+  --medal-2: #9ba6ae;
+  --medal-3: #cd7039;
+  /* MEDALLAS: la insignia de puesto de Strava (`icon-at-pr-01/02/03`), con
+     su oro, su plata y su bronce exactos. El número va calado al vacío, así
+     que el fondo que se ve a través es el de la página. Geometría en
+     `src/assets/medals/`, generada por `tools/build-medals.mjs`. */
+  --medal-1: #eeaf0b;
+  --medal-2: #8b9699;
+  --medal-3: #c46c3b;
 }
 
 :root[data-theme='dark'] {
@@ -166,6 +176,9 @@
     --podium-2: #aeb6c2;
     --podium-3: #c08552;
     --podium-fg: #101014;
+    --medal-1: #e0a72a;
+    --medal-2: #9ba6ae;
+    --medal-3: #cd7039;
   }
 }
 

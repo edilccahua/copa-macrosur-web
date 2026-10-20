@@ -144,7 +144,7 @@ class CategoryPodiumRead(BaseModel):
     category_id: int
     category_name: str
     short_code: str
-    # Grupo de la categoría: PRO | NORMAL | E-MTB. Es el acento que lleva el
+    # Grupo de la categoría: PRO | NORMAL | E-BIKE. Es el acento que lleva el
     # leaderboard de la ficha.
     group: str = "PRO"
     entries: List[PodiumEntryRead]
