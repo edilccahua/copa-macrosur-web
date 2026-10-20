@@ -49,6 +49,7 @@ from backend.app.models.schemas import (
 )
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.route_profile_service import build_route_profile
+from backend.app.services.standings_service import scope_of_category
 
 # Escala de puntos de specs/01 §3.1: 1°=10 … 10°=1, 11°+=1, DNF/DNS/DSQ=0.
 _POINTS_TOP10 = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
@@ -221,6 +222,7 @@ async def compute_category_podium(
                 category_id=category.id,
                 category_name=category.name,
                 short_code=category.short_code,
+                group=scope_of_category(category.short_code),
                 entries=[],
             )
             by_category[category.id] = bucket
@@ -263,6 +265,10 @@ async def compute_stage_team_podium(
                     func.cast(StageEntry.points_earned > 0, Integer)
                 ),
                 func.min(StageEntry.category_rank),
+                # Medallas de la jornada: los puestos 1º, 2º y 3º del podio.
+                func.sum(func.cast(StageEntry.category_rank == 1, Integer)),
+                func.sum(func.cast(StageEntry.category_rank == 2, Integer)),
+                func.sum(func.cast(StageEntry.category_rank == 3, Integer)),
             )
             .join(StageEntry, StageEntry.team_id == Team.id)
             .where(StageEntry.stage_id == stage_id)
@@ -280,8 +286,11 @@ async def compute_stage_team_podium(
             "points": int(points or 0),
             "riders_counted": int(riders or 0),
             "best_rank": int(best_rank) if best_rank is not None else 999,
+            "first_places": int(golds or 0),
+            "second_places": int(silvers or 0),
+            "third_places": int(bronzes or 0),
         }
-        for team_id, team_name, team_slug, points, riders, best_rank in rows
+        for team_id, team_name, team_slug, points, riders, best_rank, golds, silvers, bronzes in rows
     ]
 
     # Un club partido por salto de línea puede aparecer dos veces ('...PERÚ' y
@@ -301,6 +310,9 @@ async def compute_stage_team_podium(
                 points=entry["points"],
                 riders_counted=entry["riders_counted"],
                 best_rank=entry["best_rank"],
+                first_places=entry["first_places"],
+                second_places=entry["second_places"],
+                third_places=entry["third_places"],
             )
             continue
         current = merged[key]
@@ -311,6 +323,9 @@ async def compute_stage_team_podium(
             points=current.points + entry["points"],
             riders_counted=current.riders_counted + entry["riders_counted"],
             best_rank=min(current.best_rank, entry["best_rank"]),
+            first_places=current.first_places + entry["first_places"],
+            second_places=current.second_places + entry["second_places"],
+            third_places=current.third_places + entry["third_places"],
         )
 
     return sorted(merged.values(), key=lambda t: (-t.points, t.team_name))[:3]

@@ -154,6 +154,8 @@ export interface CategoryPodium {
   category_id: number;
   category_name: string;
   short_code: string;
+  /** Grupo de la categoría: PRO | NORMAL | E-MTB (es el acento del leaderboard). */
+  group: string;
   entries: PodiumEntry[];
 }
 
@@ -164,6 +166,10 @@ export interface TeamPodium {
   points: number;
   riders_counted: number;
   best_rank: number;
+  /** Medallas de la jornada: puestos 1º, 2º y 3º conseguidos. */
+  first_places: number;
+  second_places: number;
+  third_places: number;
 }
 
 export interface StravaEffort {
@@ -181,6 +187,12 @@ export interface StravaSegmentSummary {
   distance_km: number;
   efforts: StravaEffort[];
   kom: StravaEffort | null;
+  /** Tipo del tramo: CLIMB | DESCENT | FLAT. */
+  kind: 'CLIMB' | 'DESCENT' | 'FLAT';
+  /** Lugar del segmento ("Uchumayo, Arequipa"), tal como lo reporta Strava. */
+  location: string | null;
+  elevation_min_m: number | null;
+  elevation_max_m: number | null;
 }
 
 export interface Checkpoint {
@@ -188,6 +200,58 @@ export interface Checkpoint {
   order_index: number;
   distance_from_start_km: number;
   is_finish_line: boolean;
+}
+
+/** Un punto de la traza: kilómetro, altitud y coordenada. */
+export interface RoutePoint {
+  km: number;
+  ele: number;
+  lat: number;
+  lon: number;
+}
+
+/** El perfil de altimetría de la ruta, derivado de su geometría real. */
+export interface RouteProfile {
+  distance_km: number;
+  distance_km_stage: number;
+  elevation_min_m: number;
+  elevation_max_m: number;
+  elevation_gain_m: number;
+  elevation_loss_m: number;
+  mean_grade_pct: number;
+  max_grade_pct: number;
+  max_grade_at_km: number;
+  /** False cuando la geometría es de UNA vuelta de un circuito por vueltas. */
+  geometry_covers_full_stage: boolean;
+  points: RoutePoint[];
+}
+
+/** Una cima de la ruta: el «puerto» del perfil de etapa. */
+export interface Summit {
+  name: string;
+  category: string;
+  distance_km: number;
+  elevation_m: number;
+  climb_gain_m: number;
+  avg_grade_pct: number;
+  max_grade_pct: number;
+  lat: number | null;
+  lon: number | null;
+  name_source: string;
+}
+
+/** El King of the Mountain o la Queen of the Mountain de la fecha. */
+export interface MountainTitle {
+  strava_segment_id: string;
+  segment_name: string;
+  location: string | null;
+  distance_km: number;
+  average_grade: number;
+  elevation_min_m: number | null;
+  elevation_max_m: number | null;
+  athlete_name: string;
+  formatted_time: string;
+  elapsed_time_sec: number;
 }
 
 export interface AwardSummary {
@@ -231,6 +295,10 @@ export interface StageSummary {
   checkpoints: Checkpoint[];
   awards: AwardSummary[];
   extremes: { scratch: PodiumEntry | null; farolito: PodiumEntry | null };
+  route_profile: RouteProfile | null;
+  summits: Summit[];
+  kom: MountainTitle | null;
+  qom: MountainTitle | null;
   navigation: {
     prev_slug: string | null;
     prev_name: string | null;

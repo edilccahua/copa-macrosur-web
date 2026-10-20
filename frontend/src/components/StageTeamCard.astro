@@ -1,0 +1,254 @@
+---
+/**
+ * StageTeamCard.astro — la tarjeta de un club en el podio de la fecha.
+ *
+ * Adaptación de `copiaartcraft/src/components/AppCard.astro` (la tarjeta del
+ * lineup de getartcraft.com/apps): recuadro de iniciales, índice + categoría,
+ * nombre, línea de contexto, estado con las_points, etiquetas de medallas y
+ * enlace de exploración. La estructura de clases es la del original para que
+ * el CSS sea reconocible.
+ */
+import type { TeamPodium } from '../lib/api';
+
+interface Props {
+  teams: TeamPodium[];
+}
+
+const { teams } = Astro.props;
+
+/** El acento lo da el lugar en el podio: oro, plata, bronce. */
+const placeClass = (index: number) => `app-club-${index + 1}`;
+
+/** Las medallas del club, en el orden del Tour: oros, platas, bronces. */
+function medals(team: TeamPodium): { label: string; value: number }[] {
+  return [
+    { label: 'OROS', value: team.first_places ?? 0 },
+    { label: 'PLATAS', value: team.second_places ?? 0 },
+    { label: 'BRONCES', value: team.third_places ?? 0 },
+  ];
+}
+
+/** La línea de contexto de la tarjeta. */
+function context(team: TeamPodium): string {
+  const riders = team.riders_counted === 1 ? 'corredor puntuó' : 'corredores puntuaron';
+  const best = team.best_rank <= 900 ? ' · mejor puesto ' + team.best_rank + 'º' : '';
+  return `${team.riders_counted} ${riders}${best}`;
+}
+---
+
+<ol class="team-grid">
+  {
+    teams.map((team, index) => (
+      <li class={`teamcard ${placeClass(index)}`}>
+        <div class="teamcard__media" aria-hidden="true">
+          <span class="teamcard__initial">{team.team_name.slice(0, 2)}</span>
+        </div>
+
+        <div class="teamcard__body">
+          <header class="teamcard__head">
+            <span class="teamcard__index tabular">{String(index + 1).padStart(2, '0')}</span>
+            <span class="teamcard__category">CLUB</span>
+          </header>
+
+          <div class="teamcard__title-row">
+            <span class="teamcard__icon" aria-hidden="true">
+              {team.team_name.slice(0, 1)}
+            </span>
+            <h3 class="teamcard__name">
+              <a href={`/equipos/${team.team_slug}`}>{team.team_name}</a>
+            </h3>
+          </div>
+
+          <p class="teamcard__text">{context(team)}</p>
+
+          <p class="teamcard__status">{team.points} PTS</p>
+
+          <ul class="teamcard__medals">
+            {medals(team).map((medal) => (
+              <li class="teamcard__medal">
+                {medal.value} {medal.label}
+              </li>
+            ))}
+          </ul>
+
+          <a class="teamcard__explore" href={`/equipos/${team.team_slug}`}>
+            Ver ficha del club →
+          </a>
+        </div>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 1rem;
+    list-style: none;
+    margin: 1.5rem 0 3.5rem;
+    padding: 0;
+  }
+
+  .teamcard {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color var(--default-transition-duration)
+      var(--default-transition-timing-function);
+  }
+
+  .teamcard:hover {
+    border-color: var(--app, var(--line-strong));
+  }
+
+  /* El lugar en el podio marca el acento: oro, plata, bronce. */
+  .app-club-1 {
+    --app: var(--podium-1, #a97a12);
+    --app-ink: var(--podium-1, #a97a12);
+  }
+
+  .app-club-2 {
+    --app: var(--podium-2, #6f7784);
+    --app-ink: var(--podium-2, #6f7784);
+  }
+
+  .app-club-3 {
+    --app: var(--podium-3, #8a5a34);
+    --app-ink: var(--podium-3, #8a5a34);
+  }
+
+  .teamcard__media {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 16 / 7;
+    background: var(--bg-sunken);
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .teamcard__initial {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: var(--tracking-tight);
+    color: var(--app);
+    opacity: 0.35;
+  }
+
+  .teamcard__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1.25rem;
+  }
+
+  .teamcard__head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .teamcard__index {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--app-ink);
+  }
+
+  .teamcard__category {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+
+  .teamcard__title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+  }
+
+  .teamcard__icon {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: 0 0 auto;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--app-ink);
+  }
+
+  .teamcard__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    min-width: 0;
+  }
+
+  .teamcard__name a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .teamcard__name a:hover {
+    color: var(--app-ink);
+  }
+
+  .teamcard__text {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .teamcard__status {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--app-ink);
+  }
+
+  .teamcard__medals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: auto 0 0;
+    padding-top: 0.5rem;
+    border-top: var(--hairline) solid var(--line);
+    list-style: none;
+  }
+
+  .teamcard__medal {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.5rem;
+    color: var(--muted);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .teamcard__explore {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--app-ink);
+    text-decoration: none;
+  }
+
+  .teamcard__explore:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+</style>

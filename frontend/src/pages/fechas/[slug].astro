@@ -4,17 +4,16 @@
  *
  * Ruta dinámica en SSR: el slug se resuelve contra
  * `GET /api/v1/stages/{slug}/summary` en cada request. Si la fecha no existe
- * la respuesta es 404; si el backend no responde, es 503. Nunca hay datos
- * ficticios: esta página no contiene ni un solo literal de datos
- * (specs/03 §0.2 y §1.2).
+ * la respuesta es `404`; si el backend no responde, `503`. **La página no
+ * contiene ningún dato literal**: todo viene del resumen (specs/03 §0.2).
  */
 import Showcase from '../../layouts/Showcase.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import RouteMapGpx from '../../components/svelte/RouteMapGpx.svelte';
 import StageStatsRow from '../../components/StageStatsRow.astro';
-import StagePodiumGrid from '../../components/StagePodiumGrid.astro';
-import StageTeamPodium from '../../components/StageTeamPodium.astro';
+import StageLeaderboard from '../../components/StageLeaderboard.astro';
+import StageTeamCard from '../../components/StageTeamCard.astro';
 import SectionLabel from '../../components/bento/SectionLabel.astro';
 import EventCountdown from '../../components/svelte/EventCountdown.svelte';
 import { getStageSummary, type StageSummary } from '../../lib/api';
@@ -42,12 +41,12 @@ const stats = summary?.stats;
 // El nombre visible sin el prefijo "Fecha N:" (el eyebrow ya lo dice).
 const displayName = String(stage?.title || stage?.name || '').replace(
   /^Fecha\s+\d+\s*:\s*/i,
-  ''
+  '',
 );
 
 // La distancia y el desnivel se leen de las dos medidas de la BD: por vuelta
-// y total. Mezclarlas fue el bug que mostraba +840 m en un sitio y +280 m en
-// otro (Task 1.1 del plan).
+// Y total. Mezclarlas fue el bug que mostraba +840 m en un sitio y +280 m en
+// otro.
 const distLabel =
   stats && stats.laps > 1
     ? `${stats.distance_km_per_lap} KM × ${stats.laps} VUELTAS = ${stats.distance_km_total} KM`
@@ -82,6 +81,17 @@ const posterFull = posterCard.replace('-card.webp', '-full.webp');
 const gpxUrl = stage?.gpx_file_url ?? undefined;
 
 /**
+ * Los segmentos Strava, ordenados por tipo: primero las subidas, luego las
+ * bajadas y por último los llanos. Dentro de cada grupo, los más largos.
+ */
+const segments = [...(summary?.strava ?? [])].sort((a, b) => {
+  const rank = (kind: string) => (kind === 'CLIMB' ? 0 : kind === 'DESCENT' ? 1 : 2);
+  const byKind = rank(a.kind) - rank(b.kind);
+  if (byKind !== 0) return byKind;
+  return b.distance_km - a.distance_km;
+});
+
+/**
  * Numeración de las secciones: consecutiva y sin huecos, aunque una fecha no
  * tenga podio, equipos, extremos o Strava. Los bloques que no aplican se
  * omiten enteros; los que aplican se numeran seguidos.
@@ -106,12 +116,12 @@ const sections: { key: string; label: string; present: boolean }[] = [
   {
     key: 'route',
     label: 'PERFIL TÉCNICO Y RUTA DE CARRERA',
-    present: Boolean(stage?.route_geojson || gpxUrl),
+    present: Boolean(summary?.route_profile),
   },
   {
     key: 'strava',
     label: 'SEGMENTOS OFICIALES STRAVA (KOM / QOM)',
-    present: (summary?.strava.length ?? 0) > 0,
+    present: segments.length > 0,
   },
   {
     key: 'awards',
@@ -162,6 +172,39 @@ function sectionNumber(key: string): string | null {
         </section>
       ) : (
         <>
+          {/* ── Navegación entre fechas: ARRIBA, protagonista ───────── */}
+          <nav class="stage-nav" aria-label="Otras fechas del campeonato">
+            {summary.navigation.prev_slug ? (
+              <a href={`/fechas/${summary.navigation.prev_slug}`} class="stage-nav__link stage-nav__link--prev">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path d="M19 12H5M11 18l-6-6 6-6" />
+                </svg>
+                <span class="stage-nav__text">
+                  <span class="stage-nav__label font-mono">FECHA ANTERIOR</span>
+                  <span class="stage-nav__name">{summary.navigation.prev_name}</span>
+                </span>
+              </a>
+            ) : (
+              <span class="stage-nav__empty" aria-hidden="true" />
+            )}
+
+            <span class="stage-nav__here font-mono">FECHA {String(stage.stage_number).padStart(2, '0')}</span>
+
+            {summary.navigation.next_slug ? (
+              <a href={`/fechas/${summary.navigation.next_slug}`} class="stage-nav__link stage-nav__link--next">
+                <span class="stage-nav__text">
+                  <span class="stage-nav__label font-mono">FECHA SIGUIENTE</span>
+                  <span class="stage-nav__name">{summary.navigation.next_name}</span>
+                </span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </a>
+            ) : (
+              <span class="stage-nav__empty" aria-hidden="true" />
+            )}
+          </nav>
+
           {/* ── Hero: datos reales de la BD ─────────────────────────── */}
           <section class="stage-hero" data-draw>
             <div class="hero-grid">
@@ -211,10 +254,7 @@ function sectionNumber(key: string): string | null {
 
                 <div class="hero-buttons">
                   {stage.status === 'FINISHED' ? (
-                    <a
-                      href={`/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=${stage.stage_number}`}
-                      class="btn btn--solid"
-                    >
+                    <a href={`/fechas/${slug}/resultados`} class="btn btn--solid">
                       Resultados Oficiales →
                     </a>
                   ) : (
@@ -232,24 +272,6 @@ function sectionNumber(key: string): string | null {
                     </a>
                   )}
                 </div>
-
-                {/* Navegación entre fechas del calendario */}
-                <nav class="stage-nav font-mono" aria-label="Otras fechas">
-                  {summary.navigation.prev_slug ? (
-                    <a href={`/fechas/${summary.navigation.prev_slug}`} class="stage-nav__link">
-                      ← {summary.navigation.prev_name ?? 'FECHA ANTERIOR'}
-                    </a>
-                  ) : (
-                    <span class="stage-nav__empty" aria-hidden="true">←</span>
-                  )}
-                  {summary.navigation.next_slug ? (
-                    <a href={`/fechas/${summary.navigation.next_slug}`} class="stage-nav__link">
-                      {summary.navigation.next_name ?? 'FECHA SIGUIENTE'} →
-                    </a>
-                  ) : (
-                    <span class="stage-nav__empty" aria-hidden="true">→</span>
-                  )}
-                </nav>
 
                 {stage.status === 'LIVE' && (
                   <a href="/en-vivo" class="live-badge font-mono">[ EN VIVO — CRONOMETRAJE ]</a>
@@ -275,19 +297,19 @@ function sectionNumber(key: string): string | null {
             <StageStatsRow stats={stats!} />
           </section>
 
-          {/* ── Podio por categoría ──────────────────────────────────── */}
+          {/* ── Leaderboard por categoría ────────────────────────────── */}
           {summary.podium.length > 0 && (
             <section class="podium-section">
               <SectionLabel number={sectionNumber('podium')!} label="PODIO OFICIAL POR CATEGORÍA" />
-              <StagePodiumGrid id="podio" podium={summary.podium} />
+              <StageLeaderboard id="podio" podium={summary.podium} />
             </section>
           )}
 
-          {/* ── Podio de equipos de la fecha ────────────────────────── */}
+          {/* ── Podio de clubes de la fecha ──────────────────────────── */}
           {summary.teams.length > 0 && (
             <section class="teams-section">
               <SectionLabel number={sectionNumber('teams')!} label="PODIO DE CLUBES DE LA FECHA" />
-              <StageTeamPodium teams={summary.teams} />
+              <StageTeamCard teams={summary.teams} />
             </section>
           )}
 
@@ -323,35 +345,77 @@ function sectionNumber(key: string): string | null {
             </section>
           )}
 
-          {/* ── Ruta y altimetría reales ─────────────────────────────── */}
-          {(stage.route_geojson || gpxUrl) && (
+          {/* ── Perfil de etapa ──────────────────────────────────────── */}
+          {summary.route_profile && (
             <section class="route-section">
               <SectionLabel number={sectionNumber('route')!} label="PERFIL TÉCNICO Y RUTA DE CARRERA" />
               <RouteMapGpx
                 client:visible
                 stageName={displayName}
-                routeGeoJson={stage.route_geojson}
+                routeProfile={summary.route_profile}
+                summits={summary.summits}
                 checkpoints={summary.checkpoints}
-                distanceKm={stats!.distance_km_per_lap}
-                elevationGainM={stats!.elevation_m_per_lap}
                 gpxUrl={gpxUrl}
               />
             </section>
           )}
 
           {/* ── Segmentos Strava ─────────────────────────────────────── */}
-          {summary.strava.length > 0 && (
+          {segments.length > 0 && (
             <section class="strava-section">
               <SectionLabel number={sectionNumber('strava')!} label="SEGMENTOS OFICIALES STRAVA (KOM / QOM)" />
+
+              {/* Los dos títulos de montaña de la fecha */}
+              <div class="titles">
+                {summary.kom && (
+                  <article class="title title--kom">
+                    <div class="title__label font-mono">[ KING OF THE MOUNTAIN ]</div>
+                    <div class="title__name">{summary.kom.athlete_name}</div>
+                    <div class="title__segment">{summary.kom.segment_name}</div>
+                    <div class="title__meta font-mono">
+                      {summary.kom.formatted_time} // {summary.kom.average_grade}% //{' '}
+                      {summary.kom.distance_km} KM
+                    </div>
+                    {summary.kom.location && (
+                      <div class="title__place font-mono">{summary.kom.location}</div>
+                    )}
+                  </article>
+                )}
+                {summary.qom && (
+                  <article class="title title--qom">
+                    <div class="title__label font-mono">[ QUEEN OF THE MOUNTAIN ]</div>
+                    <div class="title__name">{summary.qom.athlete_name}</div>
+                    <div class="title__segment">{summary.qom.segment_name}</div>
+                    <div class="title__meta font-mono">
+                      {summary.qom.formatted_time} // {summary.qom.average_grade}% //{' '}
+                      {summary.qom.distance_km} KM
+                    </div>
+                    {summary.qom.location && (
+                      <div class="title__place font-mono">{summary.qom.location}</div>
+                    )}
+                  </article>
+                )}
+              </div>
+
               <div class="strava-grid">
-                {summary.strava.map((seg) => (
-                  <div class="strava-card" data-reveal>
+                {segments.map((seg) => (
+                  <div class="strava-card" data-kind={seg.kind} data-reveal>
                     <div class="strava-header font-mono">
-                      <span class="strava-logo">SEGMENTO OFICIAL // STRAVA</span>
+                      <span class="strava-logo">
+                        {seg.kind === 'CLIMB'
+                          ? 'SUBIDA'
+                          : seg.kind === 'DESCENT'
+                            ? 'BAJADA'
+                            : 'PLANO'}
+                      </span>
                       <span class="strava-grade">{seg.average_grade}% PEND. MEDIA</span>
                     </div>
                     <div class="strava-name">{seg.name}</div>
-                    <div class="strava-dist font-mono">DISTANCIA OFICIAL: {seg.distance_km} KM</div>
+                    <div class="strava-dist font-mono">
+                      {seg.distance_km} KM
+                      {seg.elevation_max_m != null && ` · ${seg.elevation_max_m} MSNM`}
+                      {seg.location && ` · ${seg.location}`}
+                    </div>
                     {seg.kom ? (
                       <div class="strava-kom font-mono">
                         <span class="kom-label">RÉCORD KOM:</span> {seg.kom.athlete_name} ({seg.kom.formatted_time})
@@ -422,9 +486,105 @@ function sectionNumber(key: string): string | null {
 
 <style>
   .stage-page {
-    padding-top: 2rem;
+    padding-top: 1.5rem;
   }
 
+  /* ── Navegación de fechas: arriba y protagonista ─────────────────── */
+  .stage-nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    padding-block: 0.75rem 1.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .stage-nav__link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    color: var(--ink);
+    text-decoration: none;
+    min-width: 0;
+    transition: border-color var(--default-transition-duration)
+      var(--default-transition-timing-function),
+      background var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .stage-nav__link--next {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .stage-nav__link svg {
+    flex: 0 0 auto;
+    color: var(--muted);
+    transition: color var(--default-transition-duration)
+      var(--default-transition-timing-function),
+      transform var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .stage-nav__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .stage-nav__label {
+    font-size: 0.5625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .stage-nav__name {
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-weight: 620;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--ink-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stage-nav__here {
+    font-size: 0.5625rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .stage-nav__link:hover {
+    border-color: var(--line-strong);
+    background: var(--bg-sunken);
+  }
+
+  .stage-nav__link:hover svg {
+    color: var(--accent);
+  }
+
+  .stage-nav__link--prev:hover svg {
+    transform: translateX(-3px);
+  }
+
+  .stage-nav__link--next:hover svg {
+    transform: translateX(3px);
+  }
+
+  @media (max-width: 47.99em) {
+    .stage-nav__name {
+      font-size: 0.8125rem;
+    }
+  }
+
+  /* ── Hero ────────────────────────────────────────────────────────── */
   .stage-hero {
     padding-bottom: 3rem;
     border-bottom: var(--hairline) solid var(--line);
@@ -567,34 +727,6 @@ function sectionNumber(key: string): string | null {
     background: var(--bg-sunken);
   }
 
-  /* Navegación entre fechas */
-  .stage-nav {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-top: 2rem;
-    padding-top: 1.25rem;
-    border-top: var(--hairline) solid var(--line);
-    font-size: 0.6875rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .stage-nav__link {
-    color: var(--ink);
-    text-decoration: none;
-    border-bottom: var(--hairline) solid var(--line-strong);
-    padding-bottom: 0.15rem;
-  }
-
-  .stage-nav__link:hover {
-    color: var(--accent);
-  }
-
-  .stage-nav__empty {
-    color: var(--faint);
-  }
-
   .live-badge {
     display: inline-block;
     margin-top: 1.5rem;
@@ -612,7 +744,7 @@ function sectionNumber(key: string): string | null {
     max-width: 22rem;
   }
 
-  /* Extremos */
+  /* ── Extremos ────────────────────────────────────────────────────── */
   .extremes-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -659,12 +791,81 @@ function sectionNumber(key: string): string | null {
     color: var(--ink);
   }
 
-  /* Strava */
+  /* ── Títulos de montaña ──────────────────────────────────────────── */
+  .titles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .title {
+    padding: 1.25rem 1.5rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    box-shadow: inset 3px 0 0 0 var(--line-strong);
+  }
+
+  .title--kom {
+    box-shadow: inset 3px 0 0 0 var(--podium-1, #a97a12);
+  }
+
+  .title--qom {
+    box-shadow: inset 3px 0 0 0 var(--podium-2, #6f7784);
+  }
+
+  .title__label {
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 0.5rem;
+  }
+
+  .title--kom .title__label {
+    color: var(--podium-1, #a97a12);
+  }
+
+  .title--qom .title__label {
+    color: var(--podium-2, #6f7784);
+  }
+
+  .title__name {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 620;
+    letter-spacing: -0.02em;
+    color: var(--ink-strong);
+    line-height: 1.15;
+  }
+
+  .title__segment {
+    margin-top: 0.25rem;
+    font-size: var(--text-sm);
+    color: var(--muted);
+  }
+
+  .title__meta,
+  .title__place {
+    margin-top: 0.5rem;
+    font-size: 0.6875rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .title__place {
+    color: var(--faint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Strava ──────────────────────────────────────────────────────── */
   .strava-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
-    margin-top: 1.5rem;
+    margin-top: 0;
     margin-bottom: 3.5rem;
   }
 
@@ -672,6 +873,14 @@ function sectionNumber(key: string): string | null {
     border: var(--hairline) solid var(--line);
     background: var(--bg-raised);
     padding: 1.25rem 1.5rem;
+  }
+
+  .strava-card[data-kind='CLIMB'] {
+    box-shadow: inset 3px 0 0 0 var(--podium-1, #a97a12);
+  }
+
+  .strava-card[data-kind='DESCENT'] {
+    box-shadow: inset 3px 0 0 0 var(--podium-2, #6f7784);
   }
 
   .strava-header {
@@ -707,8 +916,6 @@ function sectionNumber(key: string): string | null {
     font-weight: 400;
   }
 
-  /* Sin KOM marcado en la BD: se muestra el mejor tiempo, sin llamarlo
-     récord oficial. */
   .strava-kom--best {
     color: var(--muted);
   }
@@ -761,7 +968,7 @@ function sectionNumber(key: string): string | null {
     color: #fc4c02;
   }
 
-  /* Premios */
+  /* ── Premios ─────────────────────────────────────────────────────── */
   .awards-grid {
     display: grid;
     grid-template-columns: 1fr;
