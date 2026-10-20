@@ -14,7 +14,7 @@ Reglas de dominio (specs/01 §3.1, specs/03 §1.2):
     motor de scoring: el PDF oficial manda y aquí no se recalcula.
   · Una fecha no disputada no tiene cifras: los agregados返回 `None`, no 0.
 """
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy import Integer, func
 from sqlmodel import select
@@ -28,6 +28,7 @@ from backend.app.models.entities import (
     SpecialAward,
     Stage,
     StageEntry,
+    StageStatusEnum,
     StravaEffort,
     StravaSegment,
     Team,
@@ -74,6 +75,31 @@ def _normalize_team_name(name: str) -> str:
     return cleaned.strip()
 
 
+def _merge_split_team_names(names: List[str]) -> Dict[str, str]:
+    """Mapea cada nombre de club a la forma canónica del club.
+
+    Un club partido por el PDF queda con un guion pegado al final
+    ('CLUB ORIGINAL BIKES AREQUIPA-') y su continuación en la línea siguiente
+    ('CLUB ORIGINAL BIKES AREQUIPA-PERÚ'). Ambos son el mismo club: el que
+    tiene el guion es un prefijo del otro (INTEGRIDAD-DATOS.md §2.2, caso 3).
+
+    Solo se fusiona cuando el nombre corto termina en guion, que es la marca
+    del corte de línea del PDF: dos clubes distintos que comparten prefijo
+    ('TEAM COLCA BIKE' y 'TEAM COLCA BIKE 2') no se tocan.
+
+    Devuelve `{nombre_original: nombre_canonico}`.
+    """
+    canonical: Dict[str, str] = {name: name for name in names}
+    # Del más largo al más corto: el nombre completo es el canónico.
+    for name in sorted(names, key=len, reverse=True):
+        for other in names:
+            if other == name or not other.endswith("-"):
+                continue
+            if len(other) < len(name) and name.startswith(other):
+                canonical[other] = name
+    return canonical
+
+
 async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStatsRead:
     """Cifras de la jornada: inscripciones, finalizados, puntos y tiempos.
 
@@ -103,13 +129,20 @@ async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStat
     # Un único aggregate devuelve el escalar directo en SQLModel, no una tupla.
     winner = (
         await session.exec(
-            select(func.min(StageEntry.finish_elapsed_ms)).where(
+            select(StageEntry.finish_elapsed_ms, StageEntry.laps)
+            .where(
                 StageEntry.stage_id == stage_id,
                 StageEntry.finish_elapsed_ms.is_not(None),
             )
+            .order_by(StageEntry.finish_elapsed_ms)
+            .limit(1)
         )
     ).first()
-    winner_time_ms = int(winner) if winner is not None else None
+    winner_time_ms = int(winner[0]) if winner and winner[0] is not None else None
+    # En un circuito por vueltas no todos completan la misma cantidad: la
+    # velocidad del ganador se calcula sobre las vueltas que ÉL hizo, no sobre
+    # el máximo de vueltas de la fecha.
+    winner_laps = int(winner[1]) if winner and winner[1] else 1
 
     categories_count = (
         await session.exec(
@@ -125,14 +158,21 @@ async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStat
     elevation_m_total = stage.elevation_gain_m * laps
 
     winner_avg_speed_kmh: Optional[float] = None
-    if winner_time_ms and winner_time_ms > 0 and distance_km_total > 0:
+    if winner_time_ms and winner_time_ms > 0 and stage.distance_km > 0:
+        winner_distance_km = stage.distance_km * max(1, winner_laps)
         hours = winner_time_ms / 3_600_000
-        winner_avg_speed_kmh = round(distance_km_total / hours, 2)
+        winner_avg_speed_kmh = round(winner_distance_km / hours, 2)
+
+    # Los no finalizados son los que compitieron y no llegaron a meta. En una
+    # fecha que todavía no se disputa, `REGISTERED` significa "aún no compite"
+    # y no es un abandono.
+    disputed = stage.status == StageStatusEnum.FINISHED
+    non_finishers = max(0, entries_total - finishers) if disputed else 0
 
     return StageStatsRead(
         entries_total=entries_total,
         finishers=finishers,
-        non_finishers=max(0, entries_total - finishers),
+        non_finishers=non_finishers,
         points_total=points_total,
         distance_km_per_lap=stage.distance_km,
         distance_km_total=distance_km_total,
@@ -212,7 +252,11 @@ async def compute_stage_team_podium(
                 Team.name,
                 Team.slug,
                 func.coalesce(func.sum(StageEntry.points_earned), 0),
-                func.count(StageEntry.id),
+                # Solo los corredores que SUMARON puntos: un corredor con 0
+                # puntos no puntuó y no cuenta como corredor del podio.
+                func.sum(
+                    func.cast(StageEntry.points_earned > 0, Integer)
+                ),
                 func.min(StageEntry.category_rank),
             )
             .join(StageEntry, StageEntry.team_id == Team.id)
@@ -223,35 +267,45 @@ async def compute_stage_team_podium(
         )
     ).all()
 
-    podium: List[TeamPodiumRead] = []
-    for team_id, team_name, team_slug, points, riders, best_rank in rows:
-        podium.append(
-            TeamPodiumRead(
-                team_id=team_id,
-                team_name=_normalize_team_name(team_name),
-                team_slug=team_slug,
-                points=int(points or 0),
-                riders_counted=int(riders or 0),
-                best_rank=int(best_rank) if best_rank is not None else 999,
-            )
-        )
+    raw = [
+        {
+            "team_id": team_id,
+            "team_name": team_name,
+            "team_slug": team_slug,
+            "points": int(points or 0),
+            "riders_counted": int(riders or 0),
+            "best_rank": int(best_rank) if best_rank is not None else 999,
+        }
+        for team_id, team_name, team_slug, points, riders, best_rank in rows
+    ]
 
-    # Un club partido por salto de línea puede aparecer dos veces: se fusionan
-    # sumando sus puntos (INTEGRIDAD-DATOS.md §2.2, caso 3).
-    merged: dict[str, TeamPodiumRead] = {}
-    for entry in podium:
-        key = entry.team_name.casefold()
+    # Un club partido por salto de línea puede aparecer dos veces ('...PERÚ' y
+    # '...PERÚ' con el guion de la línea anterior): se fusionan sumando sus
+    # puntos (INTEGRIDAD-DATOS.md §2.2, caso 3).
+    canonical = _merge_split_team_names([t["team_name"] for t in raw])
+
+    merged: Dict[str, TeamPodiumRead] = {}
+    for entry in raw:
+        name = canonical.get(entry["team_name"], entry["team_name"])
+        key = name.casefold()
         if key not in merged:
-            merged[key] = entry
+            merged[key] = TeamPodiumRead(
+                team_id=entry["team_id"],
+                team_name=name,
+                team_slug=entry["team_slug"],
+                points=entry["points"],
+                riders_counted=entry["riders_counted"],
+                best_rank=entry["best_rank"],
+            )
             continue
         current = merged[key]
         merged[key] = TeamPodiumRead(
             team_id=current.team_id,
             team_name=current.team_name,
             team_slug=current.team_slug,
-            points=current.points + entry.points,
-            riders_counted=current.riders_counted + entry.riders_counted,
-            best_rank=min(current.best_rank, entry.best_rank),
+            points=current.points + entry["points"],
+            riders_counted=current.riders_counted + entry["riders_counted"],
+            best_rank=min(current.best_rank, entry["best_rank"]),
         )
 
     return sorted(merged.values(), key=lambda t: (-t.points, t.team_name))[:3]
@@ -271,17 +325,26 @@ async def compute_stage_strava(
             .order_by(StravaSegment.id)
         )
     ).all()
+    if not segments:
+        return []
+
+    # Los esfuerzos de TODOS los segmentos se cargan de una vez: consultarlos
+    # uno por uno es un N+1 (una consulta extra por cada segmento).
+    segment_ids = [segment.id for segment in segments]
+    efforts = (
+        await session.exec(
+            select(StravaEffort)
+            .where(StravaEffort.segment_id.in_(segment_ids))
+            .order_by(StravaEffort.segment_id, StravaEffort.elapsed_time_sec)
+        )
+    ).all()
+
+    by_segment: Dict[int, List[StravaEffort]] = {}
+    for effort in efforts:
+        by_segment.setdefault(effort.segment_id, []).append(effort)
 
     summaries: List[StravaSegmentSummaryRead] = []
     for segment in segments:
-        efforts = (
-            await session.exec(
-                select(StravaEffort)
-                .where(StravaEffort.segment_id == segment.id)
-                .order_by(StravaEffort.elapsed_time_sec)
-            )
-        ).all()
-
         effort_reads = [
             StravaEffortRead(
                 athlete_name=effort.athlete_name_raw or "—",
@@ -289,12 +352,13 @@ async def compute_stage_strava(
                 formatted_time=format_ms_to_time(int(effort.elapsed_time_sec or 0) * 1000),
                 is_kom_qom=bool(effort.is_kom_qom),
             )
-            for effort in efforts
+            for effort in by_segment.get(segment.id, [])
         ]
 
+        # El KOM es el effort que la BD marca como tal. Si ninguno lo está,
+        # no hay KOM: no se inventa un récord oficial (el mejor tiempo sigue
+        # visible en `efforts`).
         kom = next((e for e in effort_reads if e.is_kom_qom), None)
-        if kom is None and effort_reads:
-            kom = effort_reads[0]
 
         summaries.append(
             StravaSegmentSummaryRead(

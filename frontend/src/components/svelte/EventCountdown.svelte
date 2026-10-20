@@ -7,11 +7,14 @@
   interface Props {
     targetDate?: string;
     label?: string;
+    /** La hora de largada en formato de lectura ("08:00 HRS"). */
+    displayTime?: string;
   }
 
   let {
     targetDate = '2026-10-25T08:00:00-05:00',
-    label = 'LARGADA OFICIAL'
+    label = 'LARGADA OFICIAL',
+    displayTime = '08:00 HRS'
   }: Props = $props();
 
   function getDiffMs(): number {
@@ -46,7 +49,7 @@
   <div class="countdown__header">
     <span class="countdown__pulse" aria-hidden="true"></span>
     <span class="countdown__kicker">[ {label} ]</span>
-    <span class="countdown__time-target">08:00 HRS · PE</span>
+    <span class="countdown__time-target">{displayTime} · PE</span>
   </div>
 
   {#if isPast}

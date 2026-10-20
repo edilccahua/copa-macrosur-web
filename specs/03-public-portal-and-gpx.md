@@ -60,8 +60,8 @@ Diseño Bento Grid modular oscuro (estilo GetArtCraft consumiendo los estilos y 
 > **Rediseño del 19 de Octubre de 2026.** Antes la página tenía un espejo hardcodeado de las cuatro fechas (`stagesDb`) que servía de red de seguridad cuando el API fallaba. Eso ocultaba la caída del API (el `uvicorn` llevaba horas sirviendo un modelo viejo sin `title`/`short_name`/`start_location`, la página leía `undefined` y caía al mock) y mostraba cifras distintas de las de la BD (40.9 km en vez de 40.85). El mock se eliminó.
 
 1. **Hero con datos reales:** póster oficial, nombre de la fecha sin el prefijo `Fecha N:`, fecha, punto de partida y hora, **distancia y desnivel por vuelta Y total** (`Stage.distance_km` y `Stage.elevation_gain_m` son **por vuelta**; el total es `× Stage.laps`), estado y sinopsis derivada de los datos. Botones a la tabla de resultados, al ranking acumulado y a la ruta de Strava.
-2. **Navegación de campeonato:** fecha anterior y siguiente (`navigation` del resumen), cuenta regresiva en las fechas con inscripción abierta y badge `[ EN VIVO ]` cuando `Stage.status == LIVE`.
-3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha.
+2. **Navegación de campeonato:** fecha anterior y siguiente (`navigation` del resumen), cuenta regresiva en las fechas con inscripción abierta y badge `[ EN VIVO ]` cuando `Stage.status == LIVE`. La hora de largada se interpreta con su meridiem (`"02:30 PM"` son las 14:30, no las 02:30) mediante `frontend/src/lib/datetime.ts`.
+3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha. Los "no finalizados" son solo los abandonos de una fecha **ya disputada**: en una fecha con inscripción abierta, `REGISTERED` significa "aún no compite" y se rotula así.
 4. **Podio oficial por categoría** (`StagePodiumGrid`): top-3 de cada categoría con puesto, dorsal, tiempo oficial, puntos y club, enlazados al perfil del corredor y del equipo. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
 5. **Podio de clubes de la fecha** (`StageTeamPodium`): los 3 equipos con más puntos **sumados en esa jornada** (no el acumulado del campeonato), con el número de corredores que puntuaron y su mejor puesto. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
 6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo). Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro.
@@ -265,10 +265,10 @@ agregado, sin acceso a disco ni a la red) + `backend/app/routers/stages.py`.
 
 | Función | Devuelve |
 | :--- | :--- |
-| `compute_stage_stats(session, stage_id)` | `StageStatsRead`: inscritos, finalizados, no finalizados, puntos, distancia y desnivel **por vuelta y total**, vueltas, tiempo y velocidad del ganador, nº de categorías. |
+| `compute_stage_stats(session, stage_id)` | `StageStatsRead`: inscritos, finalizados, no finalizados, puntos, distancia y desnivel **por vuelta y total**, vueltas, tiempo y velocidad del ganador, nº de categorías. La velocidad usa las vueltas que el ganador **completó** (`StageEntry.laps`), no el máximo de la fecha: en un circuito por vueltas no todos dan el mismo número de vueltas. |
 | `compute_category_podium(session, stage_id)` | `List[CategoryPodiumRead]`: top-3 por categoría con `PodiumEntryRead` (puesto, dorsal, nombre, slug, club, tiempo formateado, puntos). |
-| `compute_stage_team_podium(session, stage_id)` | `List[TeamPodiumRead]`: los 3 equipos con más puntos **de esa jornada**, con corredores puntuadores y mejor puesto. |
-| `compute_stage_strava(session, stage_id)` | `List[StravaSegmentSummaryRead]`: segmentos con distancia, pendiente, **top 10** de efforts y el `kom`. |
+| `compute_stage_team_podium(session, stage_id)` | `List[TeamPodiumRead]`: los 3 equipos con más puntos **de esa jornada**, con corredores puntuadores (los que suman puntos) y mejor puesto. Un club partido por salto de línea se fusiona con su forma completa. |
+| `compute_stage_strava(session, stage_id)` | `List[StravaSegmentSummaryRead]`: segmentos con distancia, pendiente, **top 10** de efforts y el `kom`. El `kom` es `null` si ningún effort está marcado como tal: no se inventa un récord oficial. Los esfuerzos de todos los segmentos se cargan en una sola consulta. |
 | `compute_stage_checkpoints(session, stage_id)` | `List[CheckpointRead]`: Partida, intermedios y Meta, en orden. |
 | `compute_stage_awards(session, stage_id)` | `List[AwardSummaryRead]`: premios con patrocinador, descripción y ganador resuelto. |
 
@@ -277,10 +277,13 @@ agregado, sin acceso a disco ni a la red) + `backend/app/routers/stages.py`.
 `navigation` trae `prev_slug`/`prev_name` y `next_slug`/`next_name`.
 Si la fecha no existe: `404` con `{"detail": "Etapa no encontrada."}`.
 
-**Tests:** `backend/tests/test_stage_summary.py` (17 tests) fija las cifras
+**Tests:** `backend/tests/test_stage_summary.py` (24 tests) fija las cifras
 oficiales (225 inscripciones / 198 con tiempo / 667 puntos en La Joya) y los
-cinco casos límite: fecha no disputada, circuito por vueltas, extremos
-independientes, club partido por salto de línea y colecciones vacías.
+casos límite: fecha no disputada, circuito por vueltas (la velocidad usa las
+vueltas realmente completadas), extremos independientes, club partido por
+salto de línea (se fusiona y suma sus puntos), colecciones vacías, velocidad
+del ganador, abandono vs. "aún no compite", riders puntuadores y ausencia de
+KOM marcado.
 
 ### 1.5 Perfil Público del Ciclista (`/corredor/[slug]`)
 > Ruta **dinámica en SSR**: perfil resuelto contra `GET /api/v1/riders/{slug}`. Sin mock: si el corredor no existe, la respuesta es `404`.

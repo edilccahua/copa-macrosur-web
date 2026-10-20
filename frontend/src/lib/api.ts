@@ -91,6 +91,11 @@ export interface StandingsParams {
   scope?: string;
   categoryId?: number | null;
   kind?: 'individual' | 'teams';
+  /**
+   * "acumulado": la fecha es el corte (se suma todo lo disputado hasta ahí).
+   * "fecha": la fecha es la carrera exacta (solo sus puntos y su tiempo).
+   */
+  mode?: 'acumulado' | 'fecha';
 }
 
 /**
@@ -105,6 +110,7 @@ export async function getStandings(
   if (params.scope) q.set('scope', params.scope);
   if (params.categoryId != null) q.set('category_id', String(params.categoryId));
   if (params.kind) q.set('kind', params.kind);
+  if (params.mode) q.set('mode', params.mode);
   const res = await fetch(`${API_V1}/public/standings?${q.toString()}`);
   if (!res.ok) throw new Error(`standings HTTP ${res.status}`);
   return res.json();

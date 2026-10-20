@@ -18,6 +18,7 @@ import StageTeamPodium from '../../components/StageTeamPodium.astro';
 import SectionLabel from '../../components/bento/SectionLabel.astro';
 import EventCountdown from '../../components/svelte/EventCountdown.svelte';
 import { getStageSummary, type StageSummary } from '../../lib/api';
+import { toDisplayTime, toStartInstant } from '../../lib/datetime';
 
 const { slug } = Astro.params;
 
@@ -255,7 +256,8 @@ function sectionNumber(key: string): string | null {
                   <div class="countdown">
                     <EventCountdown
                       client:load
-                      targetDate={`${stage.date}T${(stage.start_time ?? '08:00 AM').replace(' AM', ':00').replace(' PM', ':00')}-05:00`}
+                      targetDate={toStartInstant(stage.date, stage.start_time)}
+                      displayTime={toDisplayTime(stage.start_time)}
                       label="LARGADA OFICIAL"
                     />
                   </div>
@@ -347,11 +349,15 @@ function sectionNumber(key: string): string | null {
                     </div>
                     <div class="strava-name">{seg.name}</div>
                     <div class="strava-dist font-mono">DISTANCIA OFICIAL: {seg.distance_km} KM</div>
-                    {seg.kom && (
+                    {seg.kom ? (
                       <div class="strava-kom font-mono">
                         <span class="kom-label">RÉCORD KOM:</span> {seg.kom.athlete_name} ({seg.kom.formatted_time})
                       </div>
-                    )}
+                    ) : seg.efforts.length > 0 ? (
+                      <div class="strava-kom strava-kom--best font-mono">
+                        <span class="kom-label">MEJOR TIEMPO REGISTRADO:</span> {seg.efforts[0].athlete_name} ({seg.efforts[0].formatted_time})
+                      </div>
+                    ) : null}
 
                     {seg.efforts.length > 0 && (
                       <ol class="strava-board font-mono">
@@ -696,6 +702,12 @@ function sectionNumber(key: string): string | null {
   .kom-label {
     color: var(--muted);
     font-weight: 400;
+  }
+
+  /* Sin KOM marcado en la BD: se muestra el mejor tiempo, sin llamarlo
+     récord oficial. */
+  .strava-kom--best {
+    color: var(--muted);
   }
 
   .strava-board {

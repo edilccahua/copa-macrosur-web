@@ -570,3 +570,234 @@ async def test_summary_endpoint_extremes_may_be_independent(async_session, clien
     assert extremes["scratch"] is not None
     assert extremes["scratch"]["formatted_time"]
 
+
+async def test_extremes_are_none_without_finishers(async_session, client):
+    """Sin corredores en meta no hay scratch ni farolito: ambos son null.
+
+    La ficha guarda cada tarjeta por separado, así que un extremo ausente no
+    rompe el render de la página.
+    """
+    await _seed_stage_with_results(
+        async_session, entries=5, finishers=0, points=0, categories=1
+    )
+
+    res = await client.get("/api/v1/stages/la-joya-extreme/summary")
+    assert res.status_code == 200
+    extremes = res.json()["extremes"]
+    assert extremes["scratch"] is None
+    assert extremes["farolito"] is None
+
+
+async def test_strava_loads_all_efforts_in_one_query(async_session):
+    """Los esfuerzos de todos los segmentos se cargan de una sola vez.
+
+    Consultar los esfuerzos segmento por segmento es un N+1: con 3 segmentos
+    son 4 consultas donde bastan 2.
+    """
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    session = async_session
+    for index in range(3):
+        segment = StravaSegment(
+            stage_id=stage.id,
+            strava_segment_id=str(1000 + index),
+            name=f"Segmento {index}",
+            distance_m=1000.0 * (index + 1),
+            average_grade=1.0,
+        )
+        session.add(segment)
+        await session.flush()
+        for e in range(4):
+            session.add(
+                StravaEffort(
+                    segment_id=segment.id,
+                    athlete_name_raw=f"ATHLETE {index}-{e}",
+                    elapsed_time_sec=300 + e,
+                    is_kom_qom=1 if e == 0 else 0,
+                )
+            )
+    await session.commit()
+
+    # El contador se engancha al motor que usa la sesión de test.
+    statements: list[str] = []
+    from sqlalchemy import event
+
+    def _count(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(async_session.bind.sync_engine, "before_cursor_execute", _count)
+    try:
+        segs = await compute_stage_strava(session, stage.id)
+    finally:
+        event.remove(async_session.bind.sync_engine, "before_cursor_execute", _count)
+
+    assert len(segs) == 3
+    assert all(len(s.efforts) == 4 for s in segs)
+    # 2 consultas (segmentos + esfuerzos), no 4 (una por segmento).
+    assert len(statements) <= 2, f"consultas de Strava: {len(statements)}"
+
+
+# --------------------------------------------------------------------------
+# Correcciones de la revisión final
+# --------------------------------------------------------------------------
+
+
+async def test_winner_speed_uses_laps_actually_completed(async_session):
+    """La velocidad del ganador usa las vueltas que ÉL completó.
+
+    En un circuito por vueltas no todos completan la misma cantidad: en
+    Z Xtreme hay corredores de 2 y de 3 vueltas. Calcular la velocidad con
+    la distancia total (3 vueltas) sobre el tiempo de quien hizo 2 publishes
+    una velocidad un 50% más alta que la real.
+    """
+    stage = await _seed_stage_with_results(
+        async_session,
+        slug="z-xtreme-2026",
+        stage_number=2,
+        distance_km=11.83,
+        elevation_gain_m=280,
+        laps=3,
+        entries=4,
+        finishers=4,
+        points=40,
+        categories=2,
+    )
+    session = async_session
+    entries = (
+        await session.exec(
+            select(StageEntry)
+            .where(StageEntry.stage_id == stage.id)
+            .order_by(StageEntry.finish_elapsed_ms)
+        )
+    ).all()
+    # El más rápido solo completó 2 vueltas; el siguiente, 3.
+    entries[0].laps = 2
+    entries[0].finish_elapsed_ms = 3_600_000
+    entries[1].laps = 3
+    entries[1].finish_elapsed_ms = 4_132_000
+    await session.commit()
+
+    stats = await compute_stage_stats(session, stage.id)
+    assert stats.winner_time_ms == 3_600_000
+    # 11.83 km × 2 vueltas = 23.66 km en 1 h
+    assert stats.winner_avg_speed_kmh == pytest.approx(23.66, abs=0.01)
+
+
+async def test_stats_distinguish_registered_from_not_finished(async_session):
+    """'NO FINALIZARON' cuenta a los que compitieron y no llegaron a meta.
+
+    Un corredor con inscripción `REGISTERED` en una fecha ya disputada es un
+    no-finalizado. En una fecha que aún no se corre, `REGISTERED` significa
+    'todavía no compite' y no debe contar como abandono.
+    """
+    stage = await _seed_stage_with_results(
+        async_session, entries=10, finishers=8, points=80, categories=2
+    )
+    session = async_session
+    # Las dos entradas sin tiempo quedan REGISTERED (por defecto del helper).
+    stats = await compute_stage_stats(session, stage.id)
+    assert stats.entries_total == 10
+    assert stats.finishers == 8
+    assert stats.non_finishers == 2
+
+    # Si la fecha todavía no se ha disputado, no hay abandonos: hay gente
+    # inscrita que aún no corre.
+    stage.status = StageStatusEnum.REGISTRATION_OPEN
+    await session.commit()
+    stats = await compute_stage_stats(session, stage.id)
+    assert stats.non_finishers == 0
+
+
+async def test_team_podium_merges_club_split_by_line_break(async_session):
+    """Un club partido por un salto de línea en el PDF es UN solo club.
+
+    'CLUB ORIGINAL BIKES AREQUIPA-' y 'CLUB ORIGINAL BIKES AREQUIPA-PERÚ' son
+    el mismo club: el PDF corta el nombre entre líneas. Sus puntos deben
+    sumarse en una sola entrada del podio, no aparecer como dos equipos.
+    """
+    stage = await _seed_stage_with_results(
+        async_session, entries=0, categories=0
+    )
+    session = async_session
+    categories = await _seed_categories(session, ["ELI"])
+    team_a = await _seed_team(session, "CLUB ORIGINAL BIKES AREQUIPA-")
+    team_b = await _seed_team(session, "CLUB ORIGINAL BIKES AREQUIPA-PERÚ")
+    await session.commit()
+
+    # Un corredor de cada variante, con puntos.
+    for index, (team, points) in enumerate([(team_a, 10), (team_b, 9)]):
+        digest = hashlib.md5(f"club-split:{index}".encode()).hexdigest()
+        rider = Rider(
+            dni=str(int(digest[:12], 16) % 100_000_000).zfill(8),
+            full_name=f"CLUB SPLIT {index}",
+            slug=f"club-split-{index}",
+            team_id=team.id,
+        )
+        session.add(rider)
+        await session.flush()
+        session.add(
+            StageEntry(
+                stage_id=stage.id,
+                rider_id=rider.id,
+                category_id=categories[0].id,
+                team_id=team.id,
+                bib_number=index + 1,
+                race_status=RaceStatusEnum.FINISHED,
+                finish_elapsed_ms=3_600_000 + index * 60_000,
+                category_rank=index + 1,
+                points_earned=points,
+            )
+        )
+    await session.commit()
+
+    podium = await compute_stage_team_podium(session, stage.id)
+    assert len(podium) == 1, f"el club partido no se fusionó: {podium}"
+    assert podium[0].points == 19
+    assert podium[0].team_name == "CLUB ORIGINAL BIKES AREQUIPA-PERÚ"
+
+
+async def test_strava_kom_is_null_when_no_effort_is_flagged(async_session):
+    """Sin `is_kom_qom` no hay KOM: no se inventa un récord oficial."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    session = async_session
+    segment = StravaSegment(
+        stage_id=stage.id,
+        strava_segment_id="99999",
+        name="Segmento sin KOM",
+        distance_m=1000.0,
+        average_grade=0.0,
+    )
+    session.add(segment)
+    await session.flush()
+    session.add(
+        StravaEffort(
+            segment_id=segment.id,
+            athlete_name_raw="ATHLETE 00",
+            elapsed_time_sec=300,
+            is_kom_qom=0,
+        )
+    )
+    await session.commit()
+
+    segs = await compute_stage_strava(session, stage.id)
+    assert segs[0].kom is None
+    # El mejor tiempo sigue disponible, aunque no sea un KOM.
+    assert segs[0].efforts[0].athlete_name == "ATHLETE 00"
+
+
+async def test_team_podium_counts_only_point_scorers(async_session):
+    """`riders_counted` son los corredores que SUMARON puntos.
+
+    Un corredor con 0 puntos no puntuó: no cuenta como corredor del podio.
+    """
+    stage = await _seed_stage_with_results(
+        async_session, entries=12, finishers=8, points=80, categories=2
+    )
+    podium = await compute_stage_team_podium(async_session, stage.id)
+    assert len(podium) == 1
+    # 12 inscripciones, 8 con tiempo, todas con puntos > 0.
+    assert podium[0].riders_counted == 8
+
