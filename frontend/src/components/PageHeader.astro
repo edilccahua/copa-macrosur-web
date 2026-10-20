@@ -30,22 +30,45 @@ const { eyebrow, before, accent, after = '', lead } = Astro.props;
 ---
 
 <header class="masthead" data-draw>
-  {eyebrow && (
-    <div class="masthead__eyebrow font-mono" data-draw-eyebrow>[ {eyebrow} ]</div>
-  )}
+  <div class="masthead__main">
+    {eyebrow && (
+      <div class="masthead__eyebrow font-mono" data-draw-eyebrow>[ {eyebrow} ]</div>
+    )}
 
-  <DisplayTitle size="page" before={before} accent={accent} after={after} />
+    <DisplayTitle size="page" before={before} accent={accent} after={after} />
 
-  {lead && (
-    <p class="masthead__lead" data-reveal>
-      {lead}
-    </p>
-  )}
+    {lead && (
+      <p class="masthead__lead" data-reveal>
+        {lead}
+      </p>
+    )}
+  </div>
+
+  {/*
+    La columna derecha es opcional: la mete la página con
+    `<Fragment slot="aside">`. Sin ella, la cabecera se queda a una columna
+    (como antes). Con ella, el titular deja de ser un bloque pegado a la
+    izquierda y la página gana su segunda columna.
+  */}
+  <aside class="masthead__aside" data-reveal>
+    <slot name="aside" />
+  </aside>
 </header>
 
 <style>
   .masthead {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
     margin-bottom: 3rem;
+  }
+
+  @media (min-width: 68.75em) {
+    .masthead {
+      grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
+      gap: 3rem;
+      align-items: start;
+    }
   }
 
   .masthead__eyebrow {
@@ -62,5 +85,10 @@ const { eyebrow, before, accent, after = '', lead } = Astro.props;
     font-size: var(--text-base);
     line-height: var(--leading-relaxed);
     color: var(--muted);
+  }
+
+  /* Sin panel, no queda un hueco vacío a la derecha. */
+  .masthead__aside:empty {
+    display: none;
   }
 </style>

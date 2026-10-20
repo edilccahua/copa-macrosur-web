@@ -29,8 +29,15 @@ const { definition, winner } = Astro.props;
       <Icon name={definition.icon} size={18} />
     </span>
     <span class="mountain-card__cadence font-mono">UNO POR FECHA</span>
-    <span class="mountain-card__amount font-mono">USD {definition.amountUsd}</span>
   </header>
+
+  {/*
+    El PREMIO es el titular de la tarjeta, no una etiqueta en la esquina:
+    `USD 15` a .2xl en monoespaciada y en el oro de la copa. El nombre del
+    título (KOM / QOM / KAMIKAZE) baja a un punto menor para que no compita
+    con la cifra.
+  */}
+  <p class="mountain-card__amount font-mono">USD {definition.amountUsd}</p>
 
   <h3 class="mountain-card__title">{definition.title}</h3>
   <p class="mountain-card__subtitle font-mono">{definition.subtitle}</p>
@@ -86,17 +93,22 @@ const { definition, winner } = Astro.props;
     color: var(--muted);
   }
 
+  /* El premio es el titular: cifra grande, monoespaciada, en el oro de la
+     copa y con cifras tabulares para que no baile. */
   .mountain-card__amount {
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1;
     color: var(--copa-gold);
   }
 
   .mountain-card__title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
     line-height: var(--leading-tight);
     letter-spacing: var(--tracking-tight);

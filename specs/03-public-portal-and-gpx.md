@@ -998,6 +998,31 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   la sección de premios pesaba el doble que la clasificación que tiene justo
   encima. La identidad (`PRO`, `NORMAL`, `CADA CATEGORÍA`) va en el rótulo,
   con el mismo orden que `PodiumPanel` (`[ PRO · TODOS ]` → `[ PRO · ACUMULADO ]`).
+- **Identidad tipográfica de la página** (20-Oct-2026). La página se lee en
+  dos bandas:
+  - **Escala (secciones 01 y 02): tabla de datos.** Tablas cortas, rótulo en
+    monoespaciada con color, montos en `.875 rem`, cuerpo en la sans del
+    sitio. Escala compartida con `PodiumPanel` (ningún texto pasa de 14 px).
+  - **Premios especiales (secciones 03 y 04): cartel.** Aquí **el premio es
+    el titular**: la cifra (`USD 100`, `USD 15`) va en monoespaciada, en el
+    **oro de la copa** y a `.2xl` (24 px), por encima del nombre del premio
+    (`Premio CLARO`, `KOM`), que baja a `.xl`/`.lg` con la escala de titular
+    de la casa (620 + 118 %). Antes la cifra era una etiqueta de 10 px en la
+    esquina y el nombre se llevaba un titular de 2.75 rem: la jerarquía
+    estaba invertida.
+- **La cabecera de `/premios` tiene dos columnas.** El masthead es un grid: a
+  la izquierda, el antetítulo, el titular y la bajada; a la derecha, el
+  **panel de la escala de la edición** (`[ ESCALA DE LA EDICIÓN ]`) con las
+  tres escalas y el Premio CLARO, con las cifras en el oro de la copa. Sin
+  panel, la cabecera se queda a una columna (`PageHeader` acepta un
+  `<Fragment slot="aside">` opcional; `:empty` oculta la columna).
+- **El Premio CLARO ocupa tres columnas** en la banda ancha: el logotipo, la
+  descripción (criterio y regla) y **el ganador en su propia columna**, con
+  un filete vertical. Antes el ganador estaba debajo del texto y la mitad
+  derecha de la tarjeta se quedaba vacía.
+- **La introducción de los títulos de montaña también es de dos columnas**:
+  la nota a la izquierda y el panel `[ CÓMO SE RESUELVEN ]` a la derecha
+  (mismo componente `prize-note` que usa la sección 02).
 - **BD pendiente:** `prize_tiers` todavía conserva la escala anterior
   (por fecha 70/50/30 y acumulado por categoría). Mientras no se migre, la
   escala vive en `frontend/src/data/prizes.ts` y la deuda está documentada en
