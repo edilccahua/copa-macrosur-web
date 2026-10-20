@@ -17,7 +17,6 @@ import {
   type HomeBundle,
   type LiveStageBrief,
   type LiveStatus,
-  type MountainTitle,
 } from '../lib/api';
 import { formatStageDate } from '../lib/stages';
 import { SITE_NAME, BRAND_WORDMARK, BRAND_ACCENT, BRAND_EDITION } from '../data/site';
@@ -26,9 +25,9 @@ import {
   PER_DATE_PRIZES,
   PER_DATE_PRIZE_ICON,
   PRIZE_CURRENCY,
+  TEAM_PRIZES,
 } from '../data/prizes';
 import { MOUNTAIN_TITLES } from '../data/mountain-titles';
-import type { PrizeLeader } from '../components/PrizeScale.astro';
 
 /**
  * Las tres clasificaciones de la portada se leen de la API. SIN datos
@@ -86,39 +85,12 @@ const topTeams = (bundle?.teams_podium ?? []).map((fila) => ({
 }));
 const teamsError = cargaFallida;
 const liveStatusRaw = bundle?.live_status ?? null;
-const mountain: Record<'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female', MountainTitle | null> =
-  bundle?.mountain_titles ?? {
-    kom: null,
-    qom: null,
-    kamikaze_male: null,
-    kamikaze_female: null,
-  };
 const remontada = bundle?.remontada ?? null;
 
 const nextStage =
   stages.find((s) => s.status === 'REGISTRATION_OPEN') ??
   stages.find((s) => s.status === 'UPCOMING') ??
   null;
-
-/**
- * El premio acumulado se paga al LÍDER de la agrupación. Mientras el
- * campeonato no se cierra, ese líder sólo es provisional: la tarjeta lo dice
- * con su nombre en vez de un "por anunciar" vacío.
- *
- * El recuento de fechas sale del Premio CLARO (`remontada`), que ya se pide
- * para esta portada: no cuesta una petición extra.
- */
-function provisionalLeader(rows: PodiumRow[]): PrizeLeader | null {
-  const top = rows[0];
-  if (!top) return null;
-  return {
-    name: top.name,
-    slug: top.slug,
-    points: top.points,
-    stagesCounted: remontada?.stages_counted ?? 0,
-    totalStages: remontada?.total_stages ?? 0,
-  };
-}
 
 function toLiveBrief(s: typeof nextStage): LiveStageBrief | null {
   if (!s) return null;
@@ -317,7 +289,7 @@ const nextDistanceText =
     <section class="section container" id="premios">
       <SectionLabel number="03" label="Premios" kicker="EN DÓLARES · EDICIÓN 2026" />
 
-      <div class="panels panels--three">
+      <div class="panels panels--four">
         {
           ACCUMULATED_PRIZES.map((prize) => (
             <PrizeScale
@@ -328,9 +300,8 @@ const nextDistanceText =
               currency={PRIZE_CURRENCY}
               accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
               icon={prize.icon}
-              leader={provisionalLeader(
-                prize.scope === 'PRO' ? proPodium.rows : normalPodium.rows
-              )}
+              podium={prize.tiers}
+              status="AL CIERRE"
               tags={['PODIO DE LA AGRUPACIÓN']}
             />
           ))
@@ -341,13 +312,29 @@ const nextDistanceText =
           title="CADA CATEGORÍA"
           body="El podio de cada una de las 11 categorías, en cada una de las cuatro fechas."
           tiers={PER_DATE_PRIZES}
+          podium={PER_DATE_PRIZES}
           currency={PRIZE_CURRENCY}
           accent="gold"
           icon={PER_DATE_PRIZE_ICON}
           status="CADA FECHA"
           tags={['11 CATEGORÍAS', '4 FECHAS']}
         />
+
+        <PrizeScale
+          label="ACUMULADO"
+          title="EQUIPOS"
+          body="Al club con más puntos en la Copa de Equipos acumulada."
+          tiers={TEAM_PRIZES}
+          podium={TEAM_PRIZES}
+          currency={PRIZE_CURRENCY}
+          accent="gold"
+          icon="flag"
+          status="AL CIERRE"
+          tags={['PODIO DE CLUBES']}
+        />
       </div>
+
+      <a class="panel__cta" href="/premios">Ver todos los premios →</a>
 
       <div class="specials">
         <div class="specials__head">
@@ -366,16 +353,7 @@ const nextDistanceText =
             </div>
             <p class="special__label font-mono">ACUMULADO · 4 FECHAS</p>
             <h4 class="special__title">{remontada?.title ?? 'Premio CLARO'}</h4>
-            <p class="special__amount font-mono">
-              USD {remontada?.amount_usd ?? 100}
-            </p>
-            <p class="special__winner font-mono">
-              {
-                remontada?.winner
-                  ? `${remontada.provisional ? 'PROVISIONAL' : 'GANADOR'}: ${remontada.winner.rider_name}`
-                  : 'POR ANUNCIAR'
-              }
-            </p>
+            <p class="special__sticker font-mono">USD {remontada?.amount_usd ?? 100}</p>
           </article>
 
           {
@@ -386,10 +364,8 @@ const nextDistanceText =
                 </div>
                 <p class="special__label font-mono">TÍTULO DE MONTAÑA</p>
                 <h4 class="special__title">{definition.title}</h4>
-                <p class="special__amount font-mono">USD {definition.amountUsd} · UNO POR FECHA</p>
-                <p class="special__winner font-mono">
-                  {mountain[definition.key]?.athlete_name ?? 'SIN GANADOR TODAVÍA'}
-                </p>
+                <p class="special__sticker font-mono">USD {definition.amountUsd}</p>
+                <p class="special__cadence font-mono">UNO POR FECHA</p>
               </article>
             ))
           }
@@ -702,21 +678,25 @@ const nextDistanceText =
     color: var(--ink-strong);
   }
 
-  .special__amount {
+  .special__sticker {
+    align-self: flex-start;
     margin: 0;
-    font-size: 0.625rem;
-    letter-spacing: 0.1em;
-    color: var(--copa-gold);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    color: var(--bg);
+    background: var(--copa-gold);
+    transform: rotate(-2.5deg);
   }
 
-  .special__winner {
-    margin: auto 0 0;
-    padding-top: 0.6rem;
-    border-top: var(--hairline) solid var(--line);
+  .special__cadence {
+    margin: 0;
     font-size: 0.5625rem;
-    line-height: 1.5;
-    letter-spacing: 0.08em;
-    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
   }
 
   .specials .panel__cta {
@@ -829,9 +809,13 @@ const nextDistanceText =
       --hero-next-height: 5.25rem;
     }
 
-    /* Tres clasificaciones y tres bloques de premios en una sola línea. */
+    /* Tres clasificaciones y cuatro bloques de premios en una sola línea. */
     .panels--three {
       grid-template-columns: repeat(3, 1fr);
+    }
+
+    .panels--four {
+      grid-template-columns: repeat(4, 1fr);
     }
 
     /* CLARO + los cuatro títulos de montaña, en una sola fila. */
