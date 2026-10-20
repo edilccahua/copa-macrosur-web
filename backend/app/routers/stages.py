@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
+from backend.app.core.cache import cache
 from backend.app.core.db import get_session
 from backend.app.models.entities import (
     Stage, StageEntry, RaceStatusEnum, SpecialAward, StravaSegment, StravaEffort, Category, Rider, Team
@@ -26,8 +27,12 @@ router = APIRouter(prefix="/stages", tags=["Stages"])
 
 @router.get("")
 async def list_stages(session: AsyncSession = Depends(get_session)):
+    cached = cache.get("stages:list")
+    if cached is not None:
+        return cached
     stmt = select(Stage).order_by(Stage.stage_number)
     stages = (await session.exec(stmt)).all()
+    cache.set("stages:list", stages, ttl_seconds=120)
     return stages
 
 
@@ -125,6 +130,11 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
     Strava con sus mejores tiempos, checkpoints, premios con su ganador y los
     extremos (scratch / farolito). La página no recalcula nada.
     """
+    cache_key = f"stage:summary:{slug}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     stmt = select(Stage).where(Stage.slug == slug)
     stage = (await session.exec(stmt)).first()
     if not stage:
@@ -148,7 +158,7 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
 
     mountain_titles = await compute_stage_mountain_titles(session, stage)
 
-    return {
+    res = {
         "stage": stage,
         "stats": await compute_stage_stats(session, stage.id),
         "podium": await compute_category_podium(session, stage.id),
@@ -170,6 +180,8 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
             "next_name": next_stage.title or next_stage.name if next_stage else None,
         },
     }
+    cache.set(cache_key, res, ttl_seconds=120)
+    return res
 
 
 @router.get("/{slug}/results")

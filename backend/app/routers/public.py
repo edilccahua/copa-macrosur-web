@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
+from backend.app.core.cache import cache
 from backend.app.core.db import get_session
 from backend.app.models.entities import (
     Rider, Team, Category, Stage, StageEntry, ChampionshipStanding,
@@ -32,7 +33,12 @@ async def get_live_status(session: AsyncSession = Depends(get_session)):
     cierre es manual del organizador. La portada y `/en-vivo` leen esto para
     no mostrar un enlace "en vivo" cuando no hay carrera.
     """
-    return await resolve_live_status(session)
+    cached = cache.get("public:live_status")
+    if cached is not None:
+        return cached
+    res = await resolve_live_status(session)
+    cache.set("public:live_status", res, ttl_seconds=15)
+    return res
 
 
 @router.get("/remontada")
@@ -42,7 +48,12 @@ async def get_claro_remontada(session: AsyncSession = Depends(get_session)):
     El ganador se recalcula en cada request sobre las fechas ya disputadas;
     mientras falten fechas para cerrar el campeonato es **provisional**.
     """
-    return await compute_claro_remontada(session)
+    cached = cache.get("public:remontada")
+    if cached is not None:
+        return cached
+    res = await compute_claro_remontada(session)
+    cache.set("public:remontada", res, ttl_seconds=120)
+    return res
 
 
 @router.get("/prizes", response_model=List[PrizeTierRead])
@@ -92,6 +103,11 @@ async def get_standings(
     """
     mode = normalize_mode(mode)
     scope = normalize_scope(scope)
+    cache_key = f"public:standings:{stage}:{scope}:{category_id}:{kind}:{mode}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     # Se resuelve primero la fecha efectiva (la última disputada si no se indica):
     # la DELTA necesita un corte concreto para compararlo con la fecha anterior.
     context = await standings_context(
@@ -106,7 +122,7 @@ async def get_standings(
             session, stage_limit=target_stage, scope=scope, category_id=category_id, mode=mode
         )
 
-    return {
+    res = {
         "kind": kind,
         "scope": scope if kind == "individual" else None,
         "category_id": category_id,
@@ -114,6 +130,8 @@ async def get_standings(
         "rows": rows,
         "context": context,
     }
+    cache.set(cache_key, res, ttl_seconds=120)
+    return res
 
 @router.get("/standings/individual")
 async def get_individual_standings(
@@ -156,6 +174,9 @@ async def get_individual_standings(
 
 @router.get("/standings/teams")
 async def get_team_standings(session: AsyncSession = Depends(get_session)):
+    cached = cache.get("public:standings:teams")
+    if cached is not None:
+        return cached
     stmt = (
         select(TeamChampionshipStanding, Team)
         .join(Team, TeamChampionshipStanding.team_id == Team.id)
@@ -180,6 +201,7 @@ async def get_team_standings(session: AsyncSession = Depends(get_session)):
             "total_elapsed_ms": stand.total_elapsed_ms,
             "formatted_total_time": format_ms_to_time(stand.total_elapsed_ms)
         })
+    cache.set("public:standings:teams", rows, ttl_seconds=120)
     return rows
 
 

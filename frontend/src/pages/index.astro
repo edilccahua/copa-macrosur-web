@@ -55,40 +55,76 @@ async function fetchScopePodium(
   }
 }
 
-const [proPodium, normalPodium] = await Promise.all([
-  fetchScopePodium('PRO'),
-  fetchScopePodium('NORMAL'),
-]);
-
-let topTeams: PodiumRow[] = [];
-let teamsError = false;
-try {
-  const res = await fetch(`${API_V1}/public/standings/teams`);
-  if (res.ok) {
+async function fetchTeams(): Promise<{ rows: PodiumRow[]; error: boolean }> {
+  try {
+    const res = await fetch(`${API_V1}/public/standings/teams`);
+    if (!res.ok) return { rows: [], error: true };
     const data = await res.json();
-    if (Array.isArray(data)) {
-      topTeams = data.slice(0, 3).map((t: any) => ({ name: t.team_name, points: t.total_points }));
-    }
-  } else {
-    teamsError = true;
+    if (!Array.isArray(data)) return { rows: [], error: true };
+    return {
+      rows: data.slice(0, 3).map((t: any) => ({ name: t.team_name, points: t.total_points })),
+      error: false,
+    };
+  } catch (e) {
+    return { rows: [], error: true };
   }
-} catch (e) {
-  teamsError = true;
 }
 
-/** El calendario y la próxima fecha salen de la BD, no de literales. */
-const stages = await getStages();
+async function fetchLiveStatus(): Promise<LiveStatus | null> {
+  try {
+    const res = await fetch(`${API_V1}/public/live-status`, { cache: 'no-store' });
+    if (res.ok) return await res.json();
+  } catch (e) {}
+  return null;
+}
+
+async function fetchMountainTitles(): Promise<Record<'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female', MountainTitle | null>> {
+  const m: Record<'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female', MountainTitle | null> = {
+    kom: null,
+    qom: null,
+    kamikaze_male: null,
+    kamikaze_female: null,
+  };
+  try {
+    const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
+    if (res.ok) {
+      const data = await res.json();
+      m.kom = data.kom ?? null;
+      m.qom = data.qom ?? null;
+      m.kamikaze_male = data.kamikaze_male ?? null;
+      m.kamikaze_female = data.kamikaze_female ?? null;
+    }
+  } catch (e) {}
+  return m;
+}
+
+// Ejecución paralela de todos los datos de la portada en una sola tanda
+const [
+  proPodium,
+  normalPodium,
+  teamsData,
+  stages,
+  liveStatusRaw,
+  mountain,
+  remontada,
+] = await Promise.all([
+  fetchScopePodium('PRO'),
+  fetchScopePodium('NORMAL'),
+  fetchTeams(),
+  getStages(),
+  fetchLiveStatus(),
+  fetchMountainTitles(),
+  getRemontada(),
+]);
+
+const topTeams = teamsData.rows;
+const teamsError = teamsData.error;
+
 const nextStage =
   stages.find((s) => s.status === 'REGISTRATION_OPEN') ??
   stages.find((s) => s.status === 'UPCOMING') ??
   null;
 
-/**
- * Estado de la transmisión (specs/02 §6). La portada NO decide por su cuenta:
- * el backend resuelve la ventana en hora de Lima y el cierre manual del
- * organizador. Si el endpoint falla, la sección cae al modo informativo y
- * nunca afirma que hay una carrera en vivo.
- */
 function toLiveBrief(s: typeof nextStage): LiveStageBrief | null {
   if (!s) return null;
   return {
@@ -105,7 +141,7 @@ function toLiveBrief(s: typeof nextStage): LiveStageBrief | null {
 }
 
 const fallbackBrief = toLiveBrief(nextStage);
-let liveStatus: LiveStatus = {
+const liveStatus: LiveStatus = liveStatusRaw ?? {
   active: false,
   state: 'no_race_today',
   stage: fallbackBrief,
@@ -113,48 +149,12 @@ let liveStatus: LiveStatus = {
   opens_at: null,
   closed_at: null,
 };
-try {
-  const res = await fetch(`${API_V1}/public/live-status`, { cache: 'no-store' });
-  if (res.ok) liveStatus = await res.json();
-} catch (e) {
-  /* La sección informativa se muestra igual. */
-}
 
-/**
- * Los premios especiales de la Fecha 1, leídos de la API. Antes el panel
- * escribía a mano el texto del premio y no coincidía con la BD ("trofeo
- * conmemorativo a la máxima persistencia" frente a "Trofeo Conmemorativo
- * Coca de Bronce").
- */
-/** Los cuatro títulos de montaña de la Fecha 1 (KOM/QOM/Kamikaze). */
-const mountain: Record<
-  'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female',
-  MountainTitle | null
-> = {
-  kom: null,
-  qom: null,
-  kamikaze_male: null,
-  kamikaze_female: null,
-};
-
-try {
-  const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
-  if (res.ok) {
-    const data = await res.json();
-    mountain.kom = data.kom ?? null;
-    mountain.qom = data.qom ?? null;
-    mountain.kamikaze_male = data.kamikaze_male ?? null;
-    mountain.kamikaze_female = data.kamikaze_female ?? null;
-  }
-} catch (e) {
-  /* Las tarjetas quedan "por anunciar". */
-}
-
-/**
- * El Premio CLARO es ACUMULADO: se entrega al cerrar las cuatro fechas y no
- * pertenece a la ficha de una carrera. Su fuente es `/public/remontada`.
- */
-const remontada: RemontadaData | null = await getRemontada();
+// Cache-Control para que Cloudflare Pages Edge sirva la portada en milisegundos
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=0, s-maxage=60, stale-while-revalidate=30'
+);
 
 const countdownTarget = nextStage
   ? `${nextStage.date}T${(nextStage.start_time ?? '08:00').replace(' AM', '').replace(' PM', '')}:00-05:00`
