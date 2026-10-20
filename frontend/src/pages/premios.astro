@@ -11,16 +11,18 @@
  *     podio de NORMAL (por agrupación, no por categoría).
  *   · Por fecha: 100 / 50 / 30 USD en CADA UNA de las 11 categorías.
  *
- * Los premios especiales (Premio Coca y Rey de la Montaña) salen de la API,
- * con su ganador cuando `winner_rider_id` ya está resuelto.
+ * La página tiene UNA gramática: los ocho premios son celdas de la misma
+ * tabla (`PrizeCell`), con el filete de 1px de la referencia. El masthead es
+ * el de la referencia (`copiaartcraft/src/pages/apps.astro`): titular grande
+ * y bajada. Ni tablas aparte, ni notas, ni párrafos que repitan lo que ya
+ * dice la celda.
  */
 import Showcase from '../layouts/Showcase.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
 import PageHeader from '../components/PageHeader.astro';
-import PrizeScale from '../components/PrizeScale.astro';
-import MountainTitleCard from '../components/MountainTitleCard.astro';
+import PrizeCell from '../components/PrizeCell.astro';
 import { API_V1, getRemontada, getStandings, type MountainTitle, type StandingsRow } from '../lib/api';
 import { MOUNTAIN_TITLES } from '../data/mountain-titles';
 import {
@@ -29,13 +31,9 @@ import {
   PER_DATE_PRIZE_ICON,
   PRIZE_CATEGORIES,
   PRIZE_CURRENCY,
-  type PrizeStep,
 } from '../data/prizes';
-import type { PrizeLeader } from '../components/PrizeScale.astro';
 
-/**
- * Los cuatro títulos de montaña de la Fecha 1 (KOM/QOM/Kamikaze).
- */
+/** Los cuatro títulos de montaña de la Fecha 1 (KOM/QOM/Kamikaze). */
 async function fetchMountainTitles(): Promise<Record<string, MountainTitle | null>> {
   const titles: Record<string, MountainTitle | null> = {
     kom: null,
@@ -53,7 +51,7 @@ async function fetchMountainTitles(): Promise<Record<string, MountainTitle | nul
       titles.kamikaze_female = data.kamikaze_female ?? null;
     }
   } catch (e) {
-    /* Las tarjetas muestran "sin ganador todavía". */
+    /* Las celdas muestran "sin ganador todavía". */
   }
   return titles;
 }
@@ -76,7 +74,7 @@ async function fetchScope(scope: 'PRO' | 'NORMAL'): Promise<ScopeData> {
   }
 }
 
-// Las cuatro lecturas van en paralelo: la página no encadena latencias.
+// Las lecturas van en paralelo: la página no encadena latencias.
 const [mountain, remontada, proScope, normalScope] = await Promise.all([
   fetchMountainTitles(),
   getRemontada(),
@@ -86,15 +84,13 @@ const [mountain, remontada, proScope, normalScope] = await Promise.all([
 
 /**
  * El premio acumulado se paga al LÍDER de la agrupación. Mientras el
- * campeonato no se cierra, ese líder sólo es provisional: la tarjeta lo dice
- * con su nombre en vez de un "por anunciar" vacío.
+ * campeonato no se cierra, ese líder sólo es provisional.
  */
-function toLeader(scope: ScopeData): PrizeLeader | null {
+function leader(scope: ScopeData) {
   const top = scope.rows[0];
   if (!top) return null;
   return {
     name: top.rider_name,
-    slug: top.rider_slug,
     points: top.total_points,
     stagesCounted: scope.stagesCounted,
     totalStages: remontada?.total_stages ?? 0,
@@ -102,14 +98,26 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
 }
 
 /** "300 / 200 / 100": los peldaños de una escala, en una línea. */
-function escala(tiers: PrizeStep[]): string {
+function escala(tiers: { amountUsd: number }[]): string {
   return tiers.map((tier) => tier.amountUsd).join(' / ');
+}
+
+const pro = leader(proScope);
+const normal = leader(normalScope);
+const claro = remontada?.winner ?? null;
+
+/** La línea de puntos y fechas del ganador provisional. */
+function progreso(p: { points: number; stagesCounted: number; totalStages: number } | null) {
+  if (!p) return null;
+  return p.totalStages > 0
+    ? `${p.points} PTS · ${p.stagesCounted} DE ${p.totalStages} FECHAS`
+    : `${p.points} PTS`;
 }
 ---
 
 <Showcase
   title="Premios — Copa MacroSur MTB"
-  sections={[{ label: 'Premios', id: 'premios' }]}
+  sections={[{ label: 'La escala', id: 'escala' }]}
 >
   <SiteHeader />
 
@@ -118,214 +126,81 @@ function escala(tiers: PrizeStep[]): string {
       eyebrow="Kúspide Xtreme Sports // Premios"
       before="La escala de "
       accent="premios"
-      lead="El acumulado del campeonato reparte 300 / 200 / 100 USD entre los líderes de PRO y de NORMAL. Cada fecha reparte 100 / 50 / 30 USD en cada una de las 11 categorías."
-    >
-      {/*
-        La segunda columna de la cabecera: el dinero de la edición, en la
-        cifra de la casa (monoespaciada y tabular) y en el oro de la copa.
-        Es el resumen de las tres escalas más el premio especial; los
-        detalles de cada una están en su sección.
-      */}
-      <Fragment slot="aside">
-        <div class="scale-panel">
-          <p class="scale-panel__label font-mono">[ ESCALA DE LA EDICIÓN ]</p>
-          <dl class="scale-panel__list">
-            <div class="scale-panel__row">
-              <dt class="font-mono">ACUMULADO</dt>
-              <dd class="font-mono">{escala(ACCUMULATED_PRIZES[0].tiers)}</dd>
-            </div>
-            <div class="scale-panel__row">
-              <dt class="font-mono">POR FECHA</dt>
-              <dd class="font-mono">{escala(PER_DATE_PRIZES)}</dd>
-            </div>
-            <div class="scale-panel__row">
-              <dt class="font-mono">TÍTULOS DE MONTAÑA</dt>
-              <dd class="font-mono">{MOUNTAIN_TITLES[0].amountUsd} CADA UNO</dd>
-            </div>
-            <div class="scale-panel__row">
-              <dt class="font-mono">PREMIO CLARO</dt>
-              <dd class="font-mono">{remontada?.amount_usd ?? 100}</dd>
-            </div>
-          </dl>
-        </div>
-      </Fragment>
-    </PageHeader>
+      lead="Ocho premios con regla propia. Cada uno dice quién lo cobra, cuánto y en qué fecha se decide."
+    />
 
-    <!-- ── 01 · Acumulado del campeonato ─────────────────────────────── -->
-    <section class="premios-section">
-      <SectionLabel
-        number="01"
-        label="Acumulado del campeonato"
-        kicker={`${PRIZE_CURRENCY} 300 / 200 / 100`}
-      />
+    <section class="premios-section" id="escala">
+      <SectionLabel number="01" label="La escala" kicker={`EDICIÓN 2026`} />
 
-      <div class="prize-grid">
+      <div class="prize-table">
         {
-          ACCUMULATED_PRIZES.map((prize) => (
-            <PrizeScale
-              label="ACUMULADO"
-              title={prize.label}
-              body={prize.blurb}
-              tiers={prize.tiers}
-              currency={PRIZE_CURRENCY}
-              accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
-              icon={prize.icon}
-              leader={toLeader(prize.scope === 'PRO' ? proScope : normalScope)}
-              tags={['PODIO DE LA AGRUPACIÓN']}
-            />
-          ))
+          ACCUMULATED_PRIZES.map((prize, i) => {
+            const p = prize.scope === 'PRO' ? pro : normal;
+            return (
+              <PrizeCell
+                index={String(i + 1).padStart(2, '0')}
+                title={prize.label}
+                body={`Al líder de puntos del acumulado ${prize.scope}.`}
+                amount={`${PRIZE_CURRENCY} ${escala(prize.tiers)}`}
+                icon={prize.icon}
+                accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
+                state={p ? 'Ganador provisional' : 'Por anunciar'}
+                value={p?.name}
+                detail={progreso(p)}
+              />
+            );
+          })
         }
-      </div>
-    </section>
 
-    <!-- ── 02 · Premio por fecha ─────────────────────────────────────── -->
-    <section class="premios-section">
-      <SectionLabel
-        number="02"
-        label="Premio por fecha"
-        kicker={`${PRIZE_CURRENCY} 100 / 50 / 30 · CADA CATEGORÍA`}
-      />
-
-      <div class="date-grid">
-        <PrizeScale
-          label="POR FECHA"
+        <PrizeCell
+          index="03"
           title="CADA CATEGORÍA"
-          body="El podio de cada categoría cobra en cada una de las cuatro fechas. No hay una bolsa común para el grupo NORMAL."
-          tiers={PER_DATE_PRIZES}
-          currency={PRIZE_CURRENCY}
-          accent="gold"
+          body={`El podio de cada una de las ${PRIZE_CATEGORIES.length} categorías.`}
+          amount={`${PRIZE_CURRENCY} ${escala(PER_DATE_PRIZES)}`}
           icon={PER_DATE_PRIZE_ICON}
-          status="CADA FECHA"
-          tags={['11 CATEGORÍAS', '4 FECHAS']}
-        >
-          <div class="categories">
-            <p class="categories__label font-mono">SE REPARTE EN CADA UNA DE ESTAS CATEGORÍAS</p>
-            <ul class="categories__list">
-              {PRIZE_CATEGORIES.map((category) => (
-                <li class="categories__item font-mono">{category}</li>
-              ))}
-            </ul>
-          </div>
-        </PrizeScale>
+          accent="gold"
+          state="Cada fecha"
+          detail={`${PRIZE_CATEGORIES.length} PODIOS POR FECHA`}
+        />
 
-        <aside class="prize-note">
-          <p class="prize-note__label font-mono">[ CÓMO SE REPARTE ]</p>
-          <p class="prize-note__text">
-            Cada fecha tiene once podios, uno por categoría. El 1º de cada categoría cobra
-            <strong> {PRIZE_CURRENCY} 100</strong>, el 2º <strong>{PRIZE_CURRENCY} 50</strong> y el
-            3º <strong>{PRIZE_CURRENCY} 30</strong>.
-          </p>
-          <p class="prize-note__text">
-            El acumulado es distinto: no se paga por categoría, sino al líder de puntos de toda la
-            agrupación <strong>PRO</strong> y al de toda la agrupación <strong>NORMAL</strong>.
-          </p>
-        </aside>
-      </div>
-    </section>
+        <PrizeCell
+          index="04"
+          title="PREMIO CLARO"
+          body="Al corredor que más puestos sube en el campeonato."
+          amount={`${PRIZE_CURRENCY} ${remontada?.amount_usd ?? 100}`}
+          logo={remontada?.sponsor_logo_url ?? '/images/sponsors/claro.svg'}
+          logoAlt="Claro"
+          accent="gold"
+          state={claro ? (remontada?.provisional ? 'Ganador provisional' : 'Ganador') : 'Por anunciar'}
+          value={claro?.rider_name}
+          detail={
+            claro
+              ? `+${claro.positions_gained} PUESTOS · ${remontada?.stages_counted ?? 0} DE ${remontada?.total_stages ?? 0} FECHAS`
+              : null
+          }
+        />
 
-    <!-- ── 03 · Premio CLARO ─────────────────────────────────────────── -->
-    <section class="premios-section" id="claro">
-      <SectionLabel
-        number="03"
-        label="Premio CLARO"
-        kicker={`${PRIZE_CURRENCY} ${remontada?.amount_usd ?? 100} · ACUMULADO`}
-      />
-
-      <div class="claro">
-        <div class="claro__logo">
-          <img
-            src={remontada?.sponsor_logo_url ?? '/images/sponsors/claro.svg'}
-            alt="Claro"
-            loading="lazy"
-          />
-        </div>
-
-        <div class="claro__body">
-          <p class="claro__eyebrow font-mono">
-            ACUMULADO · {remontada?.total_stages ?? 4} FECHAS
-          </p>
-
-          {/*
-            El PREMIO es el titular: la cifra va en monoespaciada, en el oro
-            de la copa y con cifras tabulares. El nombre del premio baja a la
-            escala de titular de la casa (620 + 118 %), así que ya no le
-            dispute el sitio a la cifra.
-          */}
-          <p class="claro__amount font-mono">
-            {PRIZE_CURRENCY} {remontada?.amount_usd ?? 100}
-          </p>
-
-          <h2 class="claro__title">{remontada?.title ?? 'PREMIO CLARO'}</h2>
-          <p class="claro__criterion">
-            {remontada?.criterion ??
-              'Al corredor que más puestos sube en su categoría entre la primera y la última fecha disputada, habiendo terminado todas las fechas del campeonato.'}
-          </p>
-
-          <p class="claro__rule">
-            Se entrega al cerrar las cuatro fechas, no en una carrera. Debe haber terminado
-            <strong>todas</strong>; gana quien más puestos sube entre la <strong>primera</strong> y
-            la <strong>última</strong>. Hasta entonces, el ganador es
-            <strong>provisional</strong>.
-          </p>
-        </div>
-
-        <div class="claro__winner">
-          {
-            remontada?.winner ? (
-              <>
-                <p class="claro__winner-label font-mono">
-                  {remontada.provisional ? 'GANADOR PROVISIONAL' : 'GANADOR'}
-                </p>
-                <p class="claro__winner-name">{remontada.winner.rider_name}</p>
-                <p class="claro__winner-detail font-mono">
-                  FECHA {remontada.winner.first_stage_number}: {remontada.winner.first_rank}º →
-                    FECHA {remontada.winner.last_stage_number}: {remontada.winner.last_rank}º · +
-                    {remontada.winner.positions_gained} PUESTOS ·{' '}
-                    {remontada.winner.category_name}
-                  </p>
-                  <p class="claro__winner-meta font-mono">
-                    {remontada.stages_counted} DE {remontada.total_stages} FECHAS DISPUTADAS
-                  </p>
-                </>
-              ) : (
-                <p class="claro__winner-label font-mono">POR ANUNCIAR</p>
-              )
-            }
-        </div>
-      </div>
-    </section>
-
-    <!-- ── 04 · Títulos de montaña ───────────────────────────────────── -->
-    <section class="premios-section" id="montana">
-      <SectionLabel
-        number="04"
-        label="Títulos de montaña"
-        kicker={`${PRIZE_CURRENCY} 15 CADA UNO`}
-      />
-
-      <div class="mountain-intro">
-        <p class="mountain-note">
-          Cuatro títulos por fecha, con <strong>un solo ganador</strong> cada uno. Los que se ven
-          aquí son los de la Fecha 1; se actualizan al cerrar cada carrera.
-        </p>
-
-        <aside class="prize-note">
-          <p class="prize-note__label font-mono">[ CÓMO SE RESUELVEN ]</p>
-          <p class="prize-note__text">
-            Se resuelven con los intentos de Strava de la ruta oficial: el más rápido en cada
-            tramo, en su género. Cada uno cobra <strong>{PRIZE_CURRENCY} 15</strong>.
-          </p>
-        </aside>
-      </div>
-
-      <div class="mountain-grid">
         {
-          MOUNTAIN_TITLES.map((definition) => (
-            <MountainTitleCard
-              definition={definition}
-              winner={mountain[definition.key] ?? null}
-            />
-          ))
+          MOUNTAIN_TITLES.map((definition, i) => {
+            const winner = mountain[definition.key] ?? null;
+            return (
+              <PrizeCell
+                index={String(i + 5).padStart(2, '0')}
+                title={definition.title}
+                body={definition.criterion}
+                amount={`${PRIZE_CURRENCY} ${definition.amountUsd}`}
+                icon={definition.icon}
+                accent="gold"
+                state="Uno por fecha"
+                value={winner?.athlete_name}
+                detail={
+                  winner
+                    ? `${winner.formatted_time} · ${winner.segment_name}`
+                    : 'Sin ganador todavía'
+                }
+              />
+            );
+          })
         }
       </div>
     </section>
@@ -349,331 +224,29 @@ function escala(tiers: PrizeStep[]): string {
     padding-top: 0;
   }
 
-  .prize-grid {
+  /* ── La tabla de premios ──────────────────────────────────────────────
+     La grilla dibuja los filetes con `gap: 1px` sobre su propio fondo, y
+     las celdas lo tapan con el fondo de la página: por eso es UNA rejilla
+     y no un mosaico de cajas. Es el mecanismo de la tabla de principios de
+     la referencia (`copiaartcraft/src/pages/apps.astro`). */
+  .prize-table {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1px;
     margin-top: 1.5rem;
-  }
-
-  .date-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    align-items: start;
+    background: var(--line);
+    border-top: var(--hairline) solid var(--line);
   }
 
   @media (min-width: 48em) {
-    .prize-grid {
+    .prize-table {
       grid-template-columns: repeat(2, 1fr);
     }
   }
 
   @media (min-width: 68.75em) {
-    .date-grid {
-      grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.6fr);
-    }
-  }
-
-  /* ── La nota de la regla ─────────────────────────────────────────────── */
-  .prize-note {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    background: var(--bg-sunken);
-    border: var(--hairline) solid var(--line);
-  }
-
-  .prize-note__label {
-    margin: 0;
-    font-size: 0.6875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--faint);
-  }
-
-  .prize-note__text {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
-    color: var(--muted);
-  }
-
-  .prize-note__text strong {
-    color: var(--ink-strong);
-    font-weight: var(--font-weight-medium);
-  }
-
-  /* ── Las 11 categorías ───────────────────────────────────────────────── */
-  .categories {
-    margin-top: 0.5rem;
-    padding-top: 1rem;
-    border-top: var(--hairline) solid var(--line);
-  }
-
-  .categories__label {
-    margin: 0 0 0.625rem;
-    font-size: 0.625rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-
-  .categories__list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.375rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .categories__item {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.625rem;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    border: var(--hairline) solid var(--line);
-  }
-
-  /* ── Premio CLARO ────────────────────────────────────────────────────── */
-  .claro {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    padding: 1.5rem;
-    background: var(--bg-raised);
-    border: var(--hairline) solid var(--line);
-  }
-
-  .claro__logo {
-    display: grid;
-    place-items: center;
-    padding: 1.25rem;
-    background: #fff;
-    border: var(--hairline) solid var(--line);
-  }
-
-  .claro__logo img {
-    display: block;
-    width: 100%;
-    max-width: 12rem;
-    height: auto;
-  }
-
-  .claro__body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-
-  /* ── El panel de la cabecera: el dinero de la edición ────────────────── */
-  .scale-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.25rem;
-    background: var(--bg-raised);
-    border: var(--hairline) solid var(--line);
-  }
-
-  .scale-panel__label {
-    margin: 0;
-    font-size: 0.625rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-
-  .scale-panel__list {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .scale-panel__row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding-block: 0.55rem;
-    border-bottom: var(--hairline) solid var(--line);
-  }
-
-  .scale-panel__row:last-child {
-    border-bottom: 0;
-  }
-
-  .scale-panel__row dt {
-    font-size: 0.625rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .scale-panel__row dd {
-    margin: 0;
-    font-size: 0.8125rem;
-    font-weight: var(--font-weight-bold);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    color: var(--copa-gold);
-  }
-
-  .claro__eyebrow {
-    margin: 0;
-    font-size: 0.625rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-
-  /* El premio es el titular: cifra grande, monoespaciada y en el oro. */
-  .claro__amount {
-    margin: 0.35rem 0 0;
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-bold);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-    line-height: 1;
-    color: var(--copa-gold);
-  }
-
-  .claro__title {
-    margin: 0.35rem 0 0;
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: 620;
-    font-stretch: 118%;
-    line-height: 1.1;
-    letter-spacing: var(--tracking-tight);
-    color: var(--ink-strong);
-  }
-
-  .claro__criterion {
-    margin: 0.35rem 0 0;
-    max-width: 58ch;
-    font-size: var(--text-base);
-    line-height: var(--leading-relaxed);
-    color: var(--ink);
-  }
-
-  .claro__rule {
-    margin: 0;
-    max-width: 62ch;
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
-    color: var(--muted);
-  }
-
-  .claro__rule strong {
-    color: var(--ink-strong);
-    font-weight: var(--font-weight-medium);
-  }
-
-  .claro__winner {
-    margin-top: 0.75rem;
-    padding-top: 1rem;
-    border-top: var(--hairline) solid var(--line);
-  }
-
-  .claro__winner-label {
-    margin: 0;
-    font-size: 0.625rem;
-    letter-spacing: 0.14em;
-    color: var(--faint);
-  }
-
-  .claro__winner-name {
-    margin: 0.35rem 0 0;
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    font-stretch: 118%;
-    line-height: 1.1;
-    color: var(--ink-strong);
-  }
-
-  .claro__winner-detail {
-    margin: 0.35rem 0 0;
-    font-size: 0.6875rem;
-    line-height: 1.6;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-  }
-
-  .claro__winner-meta {
-    margin: 0.35rem 0 0;
-    font-size: 0.625rem;
-    letter-spacing: 0.12em;
-    color: var(--faint);
-  }
-
-  /* ── Títulos de montaña ─────────────────────────────────────────────── */
-  .mountain-intro {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1rem;
-    margin-top: 1.5rem;
-    align-items: start;
-  }
-
-  @media (min-width: 68.75em) {
-    .mountain-intro {
-      grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
-      gap: 2rem;
-    }
-  }
-
-  .mountain-note {
-    max-width: 62ch;
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
-    color: var(--muted);
-  }
-
-  .mountain-note strong {
-    color: var(--ink-strong);
-    font-weight: var(--font-weight-medium);
-  }
-
-  .mountain-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    margin-top: 1.5rem;
-  }
-
-  @media (min-width: 48em) {
-    .claro {
-      grid-template-columns: 14rem 1fr;
-      align-items: start;
-    }
-
-    .mountain-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  /* En la banda ancha el ganador del Premio CLARO deja de ser un bloque
-     debajo del texto y pasa a ser su propia columna: la tarjeta deja de
-     tener media página vacía a la derecha. */
-  @media (min-width: 68.75em) {
-    .claro {
-      grid-template-columns: 13rem minmax(0, 1fr) minmax(15rem, 19rem);
-      gap: 2rem;
-    }
-
-    .claro__winner {
-      margin-top: 0;
-      padding-top: 0;
-      border-top: 0;
-      border-left: var(--hairline) solid var(--line);
-      padding-left: 2rem;
+    .prize-table {
+      grid-template-columns: repeat(4, 1fr);
     }
   }
 </style>

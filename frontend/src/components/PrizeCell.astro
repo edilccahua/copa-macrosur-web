@@ -1,0 +1,201 @@
+---
+/**
+ * PrizeCell.astro — la celda de la tabla de premios.
+ *
+ * Es LA gramática de la página: los ocho premios se muestran con esta misma
+ * celda, sin excepciones. Es la tabla de "principios" de la referencia
+ * (`copiaartcraft/src/pages/apps.astro`, y `/apps` en vivo): una grilla con
+ * filetes de 1px, sin tarjeta propia, y una anatomía fija por celda:
+ *
+ *   emblema · índice  →  titular  →  regla corta  →  el premio y su estado
+ *
+ * La grilla dibuja los filetes con `gap: 1px` sobre su propio fondo, y las
+ * celdas lo tapan con el fondo de la página: por eso la tabla no es un
+ * mosaico de cajas sino UNA rejilla.
+ */
+import Icon from './Icon.astro';
+import type { IconName } from './Icon.astro';
+
+interface Props {
+  /** Índice de la celda ("01"…). */
+  index: string;
+  /** Titular del premio. */
+  title: string;
+  /** Regla del premio, en una línea. */
+  body?: string;
+  /** La cifra del premio, ya formateada ("USD 300 / 200 / 100"). */
+  amount: string;
+  /** Icono del ámbito. */
+  icon?: IconName;
+  /** Logotipo del patrocinador, en lugar de icono. */
+  logo?: string;
+  logoAlt?: string;
+  /** Etiqueta del estado: qué pasa con el premio. */
+  state?: string | null;
+  /** El dato del estado: el nombre de quien lo lleva. */
+  value?: string | null;
+  /** Detalle del estado. */
+  detail?: string | null;
+  /** Acento de la celda. */
+  accent?: 'pro' | 'normal' | 'gold';
+}
+
+const {
+  index,
+  title,
+  body,
+  amount,
+  icon,
+  logo,
+  logoAlt,
+  state,
+  value,
+  detail,
+  accent = 'gold',
+} = Astro.props;
+
+/**
+ * Las clases `scope-*` traen `--scope-ink` (el color legible del ámbito,
+ * con su variante por tema). El oro no usa scope: cae al oro de la copa.
+ */
+const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope-normal' : '';
+---
+
+<article class:list={['cell', `cell--${accent}`, scopeClass]}>
+  <header class="cell__head">
+    <span class="cell__emblem">
+      {
+        logo ? (
+          <img src={logo} alt={logoAlt ?? ''} loading="lazy" />
+        ) : icon ? (
+          <Icon name={icon} size={20} />
+        ) : null
+      }
+    </span>
+    <span class="cell__index font-mono tabular">{index}</span>
+  </header>
+
+  <h3 class="cell__title">{title}</h3>
+  {body && <p class="cell__body">{body}</p>}
+
+  <div class="cell__data">
+    <p class="cell__amount font-mono">{amount}</p>
+    {state && <p class="cell__state font-mono">{state}</p>}
+    {value && <p class="cell__value font-mono">{value}</p>}
+    {detail && <p class="cell__detail font-mono">{detail}</p>}
+  </div>
+</article>
+
+<style>
+  .cell {
+    /* El oro de la copa es el acento por defecto (los premios por fecha y
+       los títulos de montaña). PRO y NORMAL traen su color de ámbito. */
+    --cell-accent: var(--copa-gold);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    /* Tapa el fondo de la grilla: lo que se ve entre celdas es el filete. */
+    background: var(--bg);
+  }
+
+  .cell--pro,
+  .cell--normal {
+    --cell-accent: var(--scope-ink);
+  }
+
+  .cell__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 2.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .cell__emblem {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+    color: var(--cell-accent);
+  }
+
+  /* El logotipo va a su proporción: la caja se ensancha, la altura no. */
+  .cell__emblem:has(img) {
+    width: auto;
+    min-width: 2.25rem;
+    padding: 0.375rem 0.625rem;
+    background: #fff;
+  }
+
+  .cell__emblem img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-height: 1.5rem;
+  }
+
+  .cell__index {
+    font-size: 0.6875rem;
+    color: var(--faint);
+  }
+
+  .cell__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 620;
+    font-stretch: 118%;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink-strong);
+  }
+
+  .cell__body {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .cell__data {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .cell__amount {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    color: var(--cell-accent);
+  }
+
+  .cell__state {
+    margin: 0.5rem 0 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .cell__value {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+
+  .cell__detail {
+    margin: 0.25rem 0 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+</style>
