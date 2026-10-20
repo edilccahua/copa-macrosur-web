@@ -21,6 +21,7 @@ from datetime import date as date_cls
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from starlette.middleware.gzip import GZipMiddleware
 
 from backend.app.core.cache import cache
 from backend.app.core.config import settings
@@ -477,3 +478,90 @@ async def test_home_se_cachea_y_se_invalida_al_mutar(
     assert res.status_code == 200, res.text
 
     assert cache.get("public:home") is None, "la mutación no invalidó el agregado"
+
+
+# --------------------------------------------------------------------------
+# Tarea 7 — la API comprime sus respuestas grandes
+# --------------------------------------------------------------------------
+
+
+async def test_json_comprimido(client, async_session: AsyncSession):
+    """Las respuestas grandes de la API van comprimidas.
+
+    El resumen de una fecha pesaba 64 KB sin comprimir: por el cable entre
+    Render y el navegador iban enteros. Con GZip bajan a ~9 KB.
+    """
+    await _sembrar_campeonato(async_session, corredores=40)
+
+    sin_comprimir = await client.get(
+        "/api/v1/public/standings?scope=PRO",
+        headers={"Accept-Encoding": "identity"},
+    )
+    assert sin_comprimir.status_code == 200
+    assert len(sin_comprimir.content) > 1000, (
+        "el payload de prueba no pasa el umbral: la prueba no probaría nada"
+    )
+
+    res = await client.get(
+        "/api/v1/public/standings?scope=PRO",
+        headers={"Accept-Encoding": "gzip"},
+    )
+    assert res.status_code == 200
+    assert res.headers.get("content-encoding") == "gzip"
+
+
+async def test_las_respuestas_pequenas_no_se_comprimen(client):
+    """`/health` es diminuto: comprimirlo sólo gastaría CPU."""
+    res = await client.get("/health", headers={"Accept-Encoding": "gzip"})
+    assert res.status_code == 200
+    assert res.headers.get("content-encoding") is None
+
+
+async def test_el_sse_no_se_comprime():
+    """La transmisión en vivo NO va comprimida.
+
+    Los eventos del cronómetro son pequeños y seguidos: comprimidos, zlib
+    agruparía los eventos y el panel del juez los vería a ráfagas en vez de
+    en vivo. Starlette excluye `text/event-stream` por defecto; este test lo
+    fija para que un cambio de versión no lo rompa en silencio.
+
+    No se puede pedir el canal por el cliente de pruebas: el generador SSE
+    nunca termina, así que la petición se quedaría colgada.
+    """
+    async def app_de_prueba(scope, receive, send):
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [(b"content-type", b"text/event-stream; charset=utf-8")],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b"event: timing-update\ndata: {}\n\n",
+                "more_body": False,
+            }
+        )
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/v1/stages/1/stream",
+        "query_string": b"",
+        "headers": [(b"accept-encoding", b"gzip")],
+    }
+    enviados: list[dict] = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        enviados.append(message)
+
+    middleware = GZipMiddleware(app_de_prueba, minimum_size=1000)
+    await middleware(scope, receive, send)
+
+    cabeceras = {k.decode(): v.decode() for k, v in enviados[0]["headers"]}
+    assert "content-encoding" not in cabeceras
+    assert enviados[1]["body"] == b"event: timing-update\ndata: {}\n\n"

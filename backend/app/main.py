@@ -9,6 +9,7 @@ if _REPO_ROOT not in sys.path:
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from backend.app.core.config import settings, origen_permitido
 from backend.app.core.db import init_db
@@ -95,6 +96,24 @@ cors_options = {
 # El regex de localhost NO se pasa al constructor: se aplica dentro de
 # `origen_permitido`, que es donde vive toda la política.
 app.add_middleware(SettingsAwareCORSMiddleware, **cors_options)
+
+# GZip: las respuestas grandes de la API viajaban enteras por el cable entre
+# Render y el navegador (el resumen de una fecha pesaba 64 KB). Comprimidas
+# bajan a ~9 KB y el coste es cero para el cliente: el navegador y el CDN
+# las descomprimen solos.
+#
+# `minimum_size=1000` deja fuera las respuestas diminutas (`/health`), donde
+# comprimir sólo gastaría CPU, y comprime las grandes.
+#
+# La transmisión en vivo (SSE) NO se comprime: sus eventos son pequeños y
+# seguidos, y comprimidos zlib los agruparía y el panel del juez los vería a
+# ráfagas en vez de en vivo. Starlette excluye `text/event-stream` por
+# defecto; el test `test_el_sse_no_se_comprime` lo fija.
+#
+# Se registra DESPUÉS del CORS y ANTES del limitador: `add_middleware` apila
+# al revés, así que el limitador sigue siendo el primero que ve la petición
+# (es él quien decide si la petición entra).
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Límites de entrada (cuota por IP, tope del cuerpo y tope del archivo).
 #
