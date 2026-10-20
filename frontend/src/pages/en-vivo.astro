@@ -5,42 +5,87 @@ import SiteFooter from '../components/SiteFooter.astro';
 import LiveLeaderboard from '../components/svelte/LiveLeaderboard.svelte';
 import { API_V1 } from '../lib/api';
 
-// Selecciona la fecha en curso (LIVE) o, si no hay, la próxima abierta / última finalizada
-let stageId = 3;
-let stageName = 'Fecha 3: Vuelta a los Poblados';
+interface StageBrief {
+  id: number;
+  stage_number: number;
+  name: string;
+  slug: string;
+  date: string;
+  status: string;
+}
+
+/**
+ * Sólo se retransmite lo que está EN VIVO de verdad. Antes la página elegía
+ * "LIVE o, si no, la siguiente con inscripciones abiertas" y se presented
+ * como una transmisión en vivo de una carrera que no había empezado.
+ */
+let liveStage: StageBrief | null = null;
+let nextStage: StageBrief | null = null;
+let apiError = false;
+
 try {
   const res = await fetch(`${API_V1}/stages`);
   if (res.ok) {
-    const stages = await res.json();
-    if (Array.isArray(stages) && stages.length) {
-      const current =
-        stages.find((s: any) => s.status === 'LIVE') ||
-        stages.find((s: any) => s.status === 'REGISTRATION_OPEN') ||
-        stages.filter((s: any) => s.status === 'FINISHED').slice(-1)[0] ||
-        stages[stages.length - 1];
-      stageId = current.id;
-      stageName = current.name;
-    }
+    const stages: StageBrief[] = await res.json();
+    liveStage = stages.find((s) => s.status === 'LIVE') ?? null;
+    nextStage =
+      stages.find((s) => s.status === 'REGISTRATION_OPEN') ??
+      stages.find((s) => s.status === 'UPCOMING') ??
+      null;
+  } else {
+    apiError = true;
   }
-} catch (e) {}
+} catch (e) {
+  apiError = true;
+}
 ---
 <Base title="Cronometraje En Vivo — Kúspide MTB">
   <SiteHeader />
 
   <main class="container page-content">
     <div class="page-header">
-      <div class="live-pill font-mono">
-        <span class="live-pulse-dot" aria-hidden="true"></span>
-        <span>[ TRANSMISIÓN EN VIVO // CANAL SSE ]</span>
-      </div>
+      {
+        liveStage ? (
+          <div class="live-pill font-mono">
+            <span class="live-pulse-dot" aria-hidden="true" />
+            <span>[ TRANSMISIÓN EN VIVO // CANAL SSE ]</span>
+          </div>
+        ) : (
+          <div class="live-pill live-pill--off font-mono">
+            <span>[ SIN TRANSMISIÓN EN ESTE MOMENTO ]</span>
+          </div>
+        )
+      }
       <h1 class="page-title">TIEMPOS Y LLEGADAS EN VIVO</h1>
       <p class="page-desc">
-        Transmisión directa de las marcaciones de los jueces de meta mediante Server-Sent Events (SSE). Los tiempos y deltas se actualizan instantáneamente sin recargar la página.
+        {
+          liveStage
+            ? 'Transmisión directa de las marcaciones de los jueces de meta mediante Server-Sent Events (SSE). Los tiempos y deltas se actualizan instantáneamente sin recargar la página.'
+            : 'El cronómetro en vivo se abre cuando hay una fecha en disputa. Mientras tanto, puedes consultar las clasificaciones y los resultados de las fechas ya disputadas.'
+        }
       </p>
     </div>
 
-    <!-- Isla Svelte 5 LiveLeaderboard -->
-    <LiveLeaderboard client:load stageId={stageId} stageName={stageName} />
+    {
+      liveStage ? (
+        <LiveLeaderboard client:load stageId={liveStage.id} stageName={liveStage.name} />
+      ) : (
+        <div class="offline-card">
+          {apiError && (
+            <p class="offline-text">No pudimos contactar al servidor de cronometraje. Vuelve a intentarlo en unos segundos.</p>
+          )}
+          {nextStage && (
+            <p class="offline-text">
+              La próxima fecha del campeonato es la <strong>{nextStage.name}</strong>. El cronómetro se
+              abrirá el día de la carrera.
+            </p>
+          )}
+          <a class="offline-link font-mono" href="/ranking-general">
+            VER CLASIFICACIONES →
+          </a>
+        </div>
+      )
+    }
   </main>
 
   <SiteFooter />
@@ -69,6 +114,44 @@ try {
     font-weight: 800;
     letter-spacing: 0.12em;
     margin-bottom: 1rem;
+  }
+
+  /* Sin transmisión no se enciende el punto rojo: sería una señal falsa. */
+  .live-pill--off {
+    color: var(--muted);
+  }
+
+  .offline-card {
+    padding: 1.5rem;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .offline-text {
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .offline-text + .offline-text {
+    margin-top: 0.75rem;
+  }
+
+  .offline-link {
+    display: inline-block;
+    margin-top: 1.25rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--invert-fg);
+    background: var(--invert-bg);
+    text-decoration: none;
+  }
+
+  .offline-link:hover {
+    background: var(--accent);
+    color: #fff;
   }
 
   .live-pulse-dot {

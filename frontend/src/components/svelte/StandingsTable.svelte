@@ -89,8 +89,25 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
 
+  /**
+   * Clave de la vista. La construye UNA sola función para que el valor
+   * inicial y el del efecto tengan EXACTAMENTE el mismo formato: antes el
+   * inicial tenía 4 segmentos y el del efecto 5, así que nunca coincidían y
+   * la tabla volvía a pedir los datos que el servidor ya había entregado
+   * (doble fetch y barra de progreso sobre contenido ya pintado).
+   */
+  function buildKey(
+    m: Mode,
+    s: number | null,
+    sc: string,
+    cat: number | null,
+    k: Kind
+  ): string {
+    return `${m}|${s ?? ''}|${sc}|${cat ?? ''}|${k}`;
+  }
+
   let lastKey = $state(
-    `${initialStageId ?? ''}|${initialScope}|${initialCategoryId ?? ''}|individual`
+    buildKey(initialMode, initialStageId, initialScope, initialCategoryId, initialKind)
   );
 
   // Ancla para el <tbody> (evita variable implícita en `bind:this`).
@@ -112,7 +129,7 @@
   // --- Datos -----------------------------------------------------------------
 
   $effect(() => {
-    const key = `${mode}|${stageId ?? ''}|${scope}|${categoryId ?? ''}|${kind}`;
+    const key = buildKey(mode, stageId, scope, categoryId, kind);
     if (key === lastKey) return;
     lastKey = key;
     void load(key);
@@ -299,22 +316,6 @@
     modos: en "acumulado" marca el corte (HASTA FECHA N) y en "fecha" la
     carrera que se está viendo.
   -->
-  <!--
-    Los enlaces de la carrera (su podio y su planilla) viven AQUÍ, sobre el
-    navegador de fechas y fuera de la caja: son de la fecha que se está
-    viendo, no de la tabla.
-  -->
-  {#if activeStage}
-    <div class="stageactions">
-      <a class="stagelink font-mono" href={`/fechas/${activeStage.slug}#podio`}>
-        PODIO POR CATEGORÍA ↑
-      </a>
-      <a class="stagelink font-mono" href={`${API_V1}/stages/${activeStage.id}/export-excel`}>
-        EXPORTAR PLANILLA [.XLSX] ↓
-      </a>
-    </div>
-  {/if}
-
   {#if activeStage}
     <div class="stagehead">
       <button
@@ -338,6 +339,24 @@
         <span class="stagehead__name font-mono">
           {activeStage?.name.replace(/^Fecha\s+\d+\s*:\s*/i, '').toUpperCase() ?? ''}
         </span>
+        <!--
+          Lo propio de la carrera (su podio y su planilla) va DENTRO de su
+          descripcion y en el mismo nivel que el selector de fecha. Solo en
+          modo "fecha": en "acumulado" no hay una carrera, hay un corte.
+        -->
+        {#if tableMode === 'fecha'}
+          <span class="stagehead__links">
+            <a class="stagelink font-mono" href={`/fechas/${activeStage?.slug}#podio`}>
+              PODIO POR CATEGORÍA ↑
+            </a>
+            <a
+              class="stagelink font-mono"
+              href={`${API_V1}/stages/${activeStage?.id}/export-excel`}
+            >
+              EXPORTAR PLANILLA [.XLSX] ↓
+            </a>
+          </span>
+        {/if}
       </div>
       <button
         type="button"
@@ -658,23 +677,25 @@
   }
 
   /* --- Cabecera de modo (patrón Tour de Francia) ---------------------------
-     Vive FUERA de la caja: primero la etapa (con flechas) y debajo las
-     pestañas FECHA / ACUMULADO, con el subrayado en el color del grupo. */
+     Vive FUERA de la caja y es un control de VISTA, no un filtro: por eso no
+     se parece al segmentado de abajo (pastilla invertida). Se lee como una
+     barra de pestañas: rótulo grande y negrita, el activo con una raya de
+     color del grupo que empata con el borde superior de la caja. */
   .modes {
     display: flex;
     align-items: flex-end;
-    gap: 1.75rem;
+    gap: 2rem;
   }
 
   .mode {
     position: relative;
-    padding: 0.15rem 0 0.6rem;
+    padding: 0.25rem 0 0.6rem;
     background: transparent;
     border: none;
     color: var(--muted);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
+    font-size: 0.875rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     cursor: pointer;
     transition: color var(--default-transition-duration) var(--default-transition-timing-function);
@@ -688,13 +709,16 @@
     color: var(--ink);
   }
 
+  /* La raya del activo es gruesa y se posa sobre el borde de la caja: la
+     pestaña queda unida al panel (el gesto clásico de "GENERAL / CLASIFICACIÓN
+     DE PASO" del Tour). */
   .mode.is-active::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: 2px;
+    bottom: -2px;
+    height: 3px;
     background: var(--scope-ink, var(--scope));
   }
 
@@ -806,13 +830,13 @@
     color: var(--muted);
   }
 
-  /* Enlaces de la carrera: podio y planilla oficial. */
-  .stageactions {
-    display: flex;
+  /* Enlaces de la carrera: podio y planilla oficial. Color FIJO (no siguen al
+     color del grupo): son un dato, no un acento. */
+  .stagehead__links {
+    display: inline-flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: 0.35rem 1.5rem;
-    padding-bottom: 0.6rem;
+    gap: 0.25rem 1.25rem;
   }
 
   .stagelink {
@@ -820,13 +844,15 @@
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--scope-ink, var(--ink));
+    color: var(--muted);
     text-decoration: none;
     border-bottom: var(--hairline) solid transparent;
-    transition: border-color var(--default-transition-duration) var(--default-transition-timing-function);
+    transition: color var(--default-transition-duration) var(--default-transition-timing-function),
+      border-color var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
   .stagelink:hover {
+    color: var(--ink);
     border-bottom-color: currentColor;
   }
 
@@ -1296,6 +1322,16 @@
 
   /* --- Móvil: celda apilada de 3 columnas --- */
   @media (max-width: 47.99em) {
+    /* En móvil la descripcion de la carrera ocupa varias lineas (con los
+       enlaces): las flechas se alinean con la primera. */
+    .stagehead {
+      align-items: flex-start;
+    }
+
+    .stagehead__nav {
+      margin-top: -0.3rem;
+    }
+
     .ribbon {
       padding: 0.6rem 0.9rem;
       gap: 0.35rem;

@@ -2,21 +2,23 @@
    motion.css — estado inicial del movimiento.
 
    POR QUÉ EXISTE ESTE ARCHIVO
-   Antes, el estado inicial del revelado lo aplicaba GSAP en tiempo de
-   ejecución, o sea DESPUÉS del primer pintado. Medido con
-   `tools/test-motion.mjs`: la página se pintaba completa durante 3-4
-   fotogramas y de golpe todas las tarjetas desaparecían y saltaban 28px.
+   El estado inicial del revelado lo aplica el CSS, en el PRIMER pintado, y
+   no JavaScript. Medido: si lo aplica JS, la página se pinta completa durante
+   3-4 fotogramas y de golpe todas las tarjetas desaparecen y saltan 28px.
    Eso era el "carga completo al milisegundo y se apila raro".
 
-   La solución es que el estado inicial viva en CSS, aplicado en el PRIMER
-   pintado. La clase `motion-ready` la pone un script en línea en el <head>
-   (ver Base.astro), antes de que se pinte el <body>.
+   La clase `motion-ready` la pone un script en línea en el <head> (ver
+   Showcase.astro), antes de que se pinte el <body>. AHORA SÓLO la ponen las
+   páginas de escaparate: antes la ponía Base.astro en todas, y las páginas
+   sin módulo de movimiento (p.ej. /eventos-especiales) se quedaban con el
+   contenido INVISIBLE hasta que venciera el temporizador de seguridad (4 s
+   de página en blanco).
 
    Dos seguros:
      1. La regla está dentro de `prefers-reduced-motion: no-preference`, así
         que quien pidió no moverse nunca ve contenido oculto, aunque el JS
         falle.
-     2. El script en línea quita la clase a los 3s si el módulo de movimiento
+     2. El script en línea quita la clase a los 6 s si el módulo de movimiento
         no llegó a arrancar (ver `window.__motionReady`).
    ========================================================================= */
 
@@ -57,6 +59,20 @@
   }
 
   html.motion-ready [data-hero-copy] {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(1.75rem);
+    filter: blur(0.5rem);
+  }
+
+  /* ── Navegación con el router ───────────────────────────────────────────
+     Al cambiar de página, los elementos que quedan POR DEBAJO del pliegue se
+     ocultan para revelarse al hacer scroll. Los que ya están a la vista NO
+     se ocultan: entran con el fundido de la transición y no hay un
+     fotograma en blanco. La clase la pone `site-shell.ts` en
+     `astro:after-swap`, en el mismo instante del intercambio: no hay
+     destello. */
+  .is-reveal-pending {
     opacity: 0;
     visibility: hidden;
     transform: translateY(1.75rem);

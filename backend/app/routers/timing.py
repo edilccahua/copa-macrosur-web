@@ -29,6 +29,84 @@ async def get_time_sync():
     return {"server_time_ms": int(time.time() * 1000)}
 
 
+@router.get("/stages/{stage_id}/judge-auth")
+async def judge_auth(
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    judge_pin: str = Depends(verify_judge_pin_header)
+):
+    """
+    Valida el PIN de juez de una fecha SIN registrar ninguna marcación.
+
+    La puerta del panel (`/admin/juez`) la usa para comprobar el PIN antes
+    de montar el panel: así el PIN nunca viaja en el código de la página
+    (antes venía hardcodeado en `initialJudgePin`, y cualquiera podía
+    leerlo en el código fuente y mandar marcaciones).
+    """
+    stmt_stage = select(Stage).where(Stage.id == stage_id)
+    stage = (await session.exec(stmt_stage)).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+    if stage.judge_pin != judge_pin:
+        raise HTTPException(status_code=403, detail="PIN de juez inválido para esta etapa.")
+
+    # Ojo: el PIN NO se devuelve. Sólo se confirma que es válido.
+    return {
+        "status": "ok",
+        "stage_id": stage.id,
+        "stage_number": stage.stage_number,
+        "stage_name": stage.name,
+        "slug": stage.slug,
+    }
+
+
+@router.post("/stages/{stage_id}/entries/{stage_entry_id}/start")
+async def start_entry(
+    stage_id: int,
+    stage_entry_id: int,
+    payload: Optional[WaveStartRequest] = None,
+    session: AsyncSession = Depends(get_session),
+    judge_pin: str = Depends(verify_judge_pin_header)
+):
+    """
+    Larga individual (contrarreloj o excepción): asigna la hora de partida a
+    UN corredor (specs/02 §1.2).
+    """
+    stmt_stage = select(Stage).where(Stage.id == stage_id)
+    stage = (await session.exec(stmt_stage)).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+    if stage.judge_pin != judge_pin:
+        raise HTTPException(status_code=403, detail="PIN de juez inválido para esta etapa.")
+
+    stmt_entry = select(StageEntry).where(
+        StageEntry.id == stage_entry_id, StageEntry.stage_id == stage_id
+    )
+    entry = (await session.exec(stmt_entry)).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Inscripción del corredor no encontrada.")
+
+    start_ms = payload.started_at_ms if (payload and payload.started_at_ms) else int(time.time() * 1000)
+    entry.start_time_ms = start_ms
+    entry.race_status = RaceStatusEnum.STARTED
+    session.add(entry)
+    await session.commit()
+
+    await sse_manager.broadcast(stage_id, "wave-started", {
+        "wave_id": None,
+        "wave_name": f"Largada individual · dorsal #{entry.bib_number}",
+        "started_at_ms": start_ms,
+        "category_ids": [entry.category_id]
+    })
+
+    return {
+        "status": "success",
+        "stage_entry_id": entry.id,
+        "bib_number": entry.bib_number,
+        "started_at_ms": start_ms
+    }
+
+
 @router.post("/stages/{stage_id}/waves/{wave_id}/start")
 async def start_wave(
     stage_id: int,

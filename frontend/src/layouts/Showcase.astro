@@ -3,6 +3,11 @@
  * Showcase.astro — layout de escaparate editorial.
  * Scroll suave con Lenis, GSAP ScrollTrigger y cinta métrica PageRuler.
  * Se utiliza EXCLUSIVAMENTE en la portada '/' y cabeceras de fechas.
+ *
+ * El módulo de movimiento NO se importa aquí: lo carga `site-shell.ts` con
+ * `import()` dinámico, y sólo en las páginas que lo piden. Así `/en-vivo` y
+ * `/admin/juez` no descargan GSAP ni Lenis (AGENTS.md §2) y, a la vez, al
+ * navegar con el router el movimiento se rearma para la página que entra.
  */
 import Base from './Base.astro';
 import PageRuler from '../components/PageRuler.astro';
@@ -19,7 +24,26 @@ interface Props {
 const { title, description, sections, ghostWord } = Astro.props;
 ---
 <Base title={title} description={description} ruler>
-  <div class="showcase">
+  <Fragment slot="head">
+    <!--
+      `motion-ready` le dice al CSS que esta página tiene movimiento y que el
+      estado inicial (oculto) lo aplica la hoja de estilos, no JavaScript:
+      sin destello. La red de seguridad quita la clase si el módulo de
+      movimiento no arrancó, para que nada quede invisible.
+    -->
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        if (root.classList.contains('motion-ready')) return;
+        root.classList.add('motion-ready');
+        setTimeout(function () {
+          if (!window.__motionReady) root.classList.remove('motion-ready');
+        }, 6000);
+      })();
+    </script>
+  </Fragment>
+
+  <div class="showcase" data-motion-page="showcase">
     <slot />
     <slot name="motion" />
     {ghostWord && <GhostWord text={ghostWord} />}
@@ -36,7 +60,3 @@ const { title, description, sections, ghostWord } = Astro.props;
     overflow-x: clip;
   }
 </style>
-
-<script>
-  import '../scripts/showcase-motion';
-</script>

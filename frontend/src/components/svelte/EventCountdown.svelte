@@ -9,16 +9,24 @@
     label?: string;
     /** La hora de largada en formato de lectura ("08:00 HRS"). */
     displayTime?: string;
+    /**
+     * Estado REAL de la fecha (de la BD). Antes el componente decidía solo:
+     * cuando pasaba la fecha se ponía "¡ETAPA EN DISPUTA!" aunque la carrera
+     * ya hubiera terminado. Ahora el estado lo dice la base de datos.
+     */
+    status?: 'UPCOMING' | 'REGISTRATION_OPEN' | 'LIVE' | 'FINISHED' | string;
   }
 
   let {
-    targetDate = '2026-10-25T08:00:00-05:00',
+    targetDate = '',
     label = 'LARGADA OFICIAL',
-    displayTime = '08:00 HRS'
+    displayTime = '08:00 HRS',
+    status = 'UPCOMING'
   }: Props = $props();
 
   function getDiffMs(): number {
     const target = new Date(targetDate).getTime();
+    if (Number.isNaN(target)) return 0;
     const now = Date.now();
     return Math.max(0, target - now);
   }
@@ -40,6 +48,17 @@
   let seconds = $derived(Math.floor((diff / 1000) % 60));
   let isPast = $derived(diff <= 0);
 
+  /** El estado que se muestra: lo manda la BD, no la fecha. */
+  let state = $derived<'countdown' | 'live' | 'finished' | 'passed'>(
+    status === 'LIVE'
+      ? 'live'
+      : status === 'FINISHED'
+        ? 'finished'
+        : isPast
+          ? 'passed'
+          : 'countdown'
+  );
+
   function pad(n: number): string {
     return String(n).padStart(2, '0');
   }
@@ -52,10 +71,18 @@
     <span class="countdown__time-target">{displayTime} · PE</span>
   </div>
 
-  {#if isPast}
+  {#if state === 'live'}
     <div class="countdown__live-badge">
       <span class="countdown__live-dot"></span>
       <span class="countdown__live-text">¡ETAPA EN DISPUTA!</span>
+    </div>
+  {:else if state === 'finished'}
+    <div class="countdown__live-badge countdown__live-badge--done">
+      <span class="countdown__live-text">ETAPA FINALIZADA</span>
+    </div>
+  {:else if state === 'passed'}
+    <div class="countdown__live-badge countdown__live-badge--done">
+      <span class="countdown__live-text">FECHA PASADA</span>
     </div>
   {:else}
     <div class="countdown__digits">

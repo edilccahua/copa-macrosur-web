@@ -9,8 +9,12 @@ import JudgeDashboard from '../../components/svelte/JudgeDashboard.svelte';
       <span class="judge-role font-mono">CRONOMETRAJE OFICIAL</span>
     </div>
 
-    <!-- PWA del Juez con IndexedDB y teclado táctil POS -->
-    <JudgeDashboard client:only="svelte" stageId={1} initialJudgePin="***REMOVED-JUDGE-PIN-F1***" />
+    <!--
+      PWA del Juez con IndexedDB, teclado táctil POS y wake lock.
+      El PIN NO se pasa como prop: lo pide la puerta del propio panel y se
+      guarda en el dispositivo. El sitio público no enlaza a esta página.
+    -->
+    <JudgeDashboard client:only="svelte" />
   </div>
 </Base>
 

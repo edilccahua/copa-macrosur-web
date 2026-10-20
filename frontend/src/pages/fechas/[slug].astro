@@ -210,7 +210,16 @@ function sectionNumber(key: string): string | null {
             <div class="hero-grid">
               {posterCard && (
                 <div class="hero-poster-box" data-reveal>
-                  <img src={posterCard} alt={displayName} class="hero-poster" />
+                  <!--
+                    Morph: este póster es el destino del que sale la tarjeta
+                    del timeline de la portada.
+                  -->
+                  <img
+                    src={posterCard}
+                    alt={displayName}
+                    class="hero-poster"
+                    transition:name={`poster-${slug}`}
+                  />
                   <a
                     href={posterFull}
                     target="_blank"

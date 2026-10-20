@@ -9,15 +9,30 @@
     type PendingTimingEvent
   } from '../../lib/judge-db';
 
-  interface Props {
-    stageId?: number;
-    initialJudgePin?: string;
+  /**
+   * El PIN NUNCA viene en el código de la página: se pide en la puerta y se
+   * guarda en el dispositivo. Antes venía hardcodeado en `initialJudgePin`
+   * y cualquiera podía leerlo en el código fuente y mandar marcaciones.
+   */
+  const PIN_STORAGE_KEY = 'kuspide_judge_pin';
+
+  type GateState = 'loading' | 'locked' | 'ready' | 'error';
+
+  interface JudgeStage {
+    id: number;
+    stage_number: number;
+    name: string;
+    slug: string;
   }
 
-  let { stageId = 1, initialJudgePin = '***REMOVED-JUDGE-PIN-F1***' }: Props = $props();
-
   // Estados reactivos ($state)
-  let judgePin = $state(initialJudgePin);
+  let gateState = $state<GateState>('loading');
+  let pinInput = $state<string>('');
+  let pinError = $state<string>('');
+  let stage = $state<JudgeStage | null>(null);
+  let stageError = $state<string>('');
+  /** El PIN en memoria: se usa como cabecera `X-Judge-Pin` en cada llamada. */
+  let judgePin = $state<string>('');
   let isAuthorized = $state(true);
   let bibInput = $state<string>('');
   let clockOffsetMs = $state<number>(0);
@@ -25,6 +40,97 @@
   let wakeLockActive = $state<boolean>(false);
   let unsyncedCount = $state<number>(0);
   let recentEvents = $state<PendingTimingEvent[]>([]);
+
+  // ── Puerta de acceso ──────────────────────────────────────────────────────
+
+  /**
+   * La fecha se resuelve sola: la que está EN VIVO, si no la siguiente con
+   * inscripciones abiertas, si no la última disputada. El juez no elige:
+   * elige el PIN.
+   */
+  function resolveStage(stages: any[]): JudgeStage | null {
+    if (!Array.isArray(stages) || stages.length === 0) return null;
+    const live = stages.find((s: any) => s.status === 'LIVE');
+    if (live) return live;
+    const open = stages.find((s: any) => s.status === 'REGISTRATION_OPEN');
+    if (open) return open;
+    const finished = stages.filter((s: any) => s.status === 'FINISHED');
+    return finished[finished.length - 1] ?? stages[stages.length - 1];
+  }
+
+  async function loadStage(): Promise<JudgeStage | null> {
+    try {
+      const res = await fetch(`${API_V1}/stages`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const resolved = resolveStage(await res.json());
+      stage = resolved;
+      return resolved;
+    } catch (e) {
+      stageError = 'No se pudo contactar al servidor de cronometraje.';
+      return null;
+    }
+  }
+
+  /** Comprueba el PIN contra el backend (sin registrar ninguna marcación). */
+  async function validatePin(pin: string, target: JudgeStage): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_V1}/stages/${target.id}/judge-auth`, {
+        headers: { 'X-Judge-Pin': pin }
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function storePin(pin: string): void {
+    try {
+      localStorage.setItem(PIN_STORAGE_KEY, pin);
+    } catch (e) {
+      /* sin almacenamiento: el PIN vive sólo en memoria */
+    }
+  }
+
+  function readStoredPin(): string {
+    try {
+      return localStorage.getItem(PIN_STORAGE_KEY) ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function forgetPin(): void {
+    try {
+      localStorage.removeItem(PIN_STORAGE_KEY);
+    } catch (e) {
+      /* nada que limpiar */
+    }
+    judgePin = '';
+    pinInput = '';
+    gateState = 'locked';
+  }
+
+  async function unlock(): Promise<void> {
+    const pin = pinInput.trim();
+    if (!pin) {
+      pinError = 'Escribe el PIN de la fecha.';
+      return;
+    }
+    if (!stage) {
+      pinError = stageError || 'La fecha no está disponible.';
+      return;
+    }
+    const ok = await validatePin(pin, stage);
+    if (!ok) {
+      pinError = 'PIN inválido para esta fecha.';
+      return;
+    }
+    pinError = '';
+    judgePin = pin;
+    storePin(pin);
+    gateState = 'ready';
+    startSession();
+  }
 
   // Cola de timestamps para Modo Ráfaga
   interface BurstStamp {
@@ -206,7 +312,16 @@
     recentEvents = all.slice(0, 10);
   }
 
-  onMount(() => {
+  /**
+   * Lo que sólo tiene sentido con la sesión abierta: calibrar el reloj,
+   * mantener la pantalla encendida, pedir almacenamiento persistente y
+   * escuchar la red.
+   */
+  let sessionStarted = false;
+  function startSession(): void {
+    if (sessionStarted) return;
+    sessionStarted = true;
+
     // 1. Calibrar reloj con el servidor
     fetch(`${API_V1}/timing/time-sync`)
       .then((r) => r.json())
@@ -235,6 +350,29 @@
     window.addEventListener('offline', () => (isOnline = false));
 
     refreshCounts();
+  }
+
+  onMount(() => {
+    // La puerta: se resuelve la fecha y se prueba el PIN que ya guarda el
+    // dispositivo. Si el PIN guardado ya no vale, se borra y se pide otro.
+    (async () => {
+      const target = await loadStage();
+      if (!target) {
+        gateState = 'error';
+        return;
+      }
+      const stored = readStoredPin();
+      if (stored) {
+        if (await validatePin(stored, target)) {
+          judgePin = stored;
+          gateState = 'ready';
+          startSession();
+          return;
+        }
+        forgetPin();
+      }
+      gateState = 'locked';
+    })();
 
     return () => {
       window.removeEventListener('online', trySync);
@@ -242,6 +380,67 @@
   });
 </script>
 
+<!-- ── Puerta de acceso ──────────────────────────────────────────────────────
+     El PIN se pide aquí, se valida contra el servidor y se guarda en el
+     dispositivo. El sitio público no enlaza a esta página: la URL la
+     comparte el organizador con el juez. -->
+{#if gateState === 'loading'}
+  <div class="judge-gate">
+    <div class="judge-gate-card">
+      <div class="judge-gate-title font-mono">ABRIENDO EL PANEL DE CRONOMETRAJE</div>
+      <div class="judge-gate-text">Resolviendo la fecha en curso…</div>
+    </div>
+  </div>
+{:else if gateState === 'error'}
+  <div class="judge-gate">
+    <div class="judge-gate-card">
+      <div class="judge-gate-title font-mono">SIN CONEXIÓN CON EL SERVIDOR</div>
+      <div class="judge-gate-text">
+        {stageError || 'No se pudo contactar al servidor de cronometraje.'}
+      </div>
+      <button class="judge-gate-submit font-mono" onclick={() => location.reload()}>
+        REINTENTAR
+      </button>
+    </div>
+  </div>
+{:else if gateState === 'locked'}
+  <div class="judge-gate">
+    <div class="judge-gate-card">
+      <div class="judge-gate-title font-mono">PANEL OFICIAL DEL JUEZ</div>
+      <div class="judge-gate-stage font-mono">
+        FECHA {stage?.stage_number ?? '—'} · {stage?.name ?? ''}
+      </div>
+      <div class="judge-gate-text">
+        Introduce el PIN de esta fecha. El dispositivo lo recuerda para el resto
+        del campeonato; puedes borrarlo cuando quieras.
+      </div>
+      <form
+        class="judge-gate-form"
+        onsubmit={(e) => {
+          e.preventDefault();
+          void unlock();
+        }}
+      >
+        <input
+          class="judge-gate-input font-mono"
+          type="password"
+          inputmode="text"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="PIN"
+          bind:value={pinInput}
+        />
+        <button class="judge-gate-submit font-mono" type="submit" disabled={!pinInput.trim()}>
+          ENTRAR
+        </button>
+      </form>
+      {#if pinError}
+        <div class="judge-gate-error font-mono">{pinError}</div>
+      {/if}
+    </div>
+  </div>
+{:else}
 <div class="judge-container">
   <!-- Cabecera de Estado del Juez -->
   <div class="judge-header">
@@ -255,6 +454,9 @@
     <div class="queue-status font-mono">
       Pendientes: <strong>{unsyncedCount}</strong>
     </div>
+    <button class="judge-lock font-mono" onclick={forgetPin} title="Borrar el PIN de este dispositivo">
+      [ SALIR ]
+    </button>
   </div>
 
   <!-- Teclado Numérico Directo -->
@@ -342,6 +544,7 @@
       </div>
     </div>
   </div>
+{/if}
 {/if}
 
 <style>
@@ -589,5 +792,101 @@
     border: none;
     font-weight: 700;
     cursor: pointer;
+  }
+
+  /* ── Puerta de acceso ─────────────────────────────────────────────────── */
+
+  .judge-gate {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: var(--bg, #fbfbfd);
+  }
+
+  .judge-gate-card {
+    width: 100%;
+    max-width: 24rem;
+    padding: 1.5rem;
+    background: var(--bg-raised, #fff);
+    border: var(--hairline, 1px) solid var(--line, rgba(16, 16, 20, 0.16));
+  }
+
+  .judge-gate-title {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--ink, #101014);
+  }
+
+  .judge-gate-stage {
+    margin-top: 0.5rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: #ff5500;
+  }
+
+  .judge-gate-text {
+    margin-top: 0.875rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--muted, rgba(16, 16, 20, 0.62));
+  }
+
+  .judge-gate-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+
+  .judge-gate-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.75rem;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink, #101014);
+    background: var(--bg, #fbfbfd);
+    border: var(--hairline, 1px) solid var(--line, rgba(16, 16, 20, 0.16));
+  }
+
+  .judge-gate-submit {
+    flex: 0 0 auto;
+    padding: 0.75rem 1rem;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #ffffff;
+    background: #101014;
+    border: none;
+    cursor: pointer;
+  }
+
+  .judge-gate-submit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .judge-gate-error {
+    margin-top: 0.75rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: #ef4444;
+  }
+
+  .judge-lock {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--muted, rgba(16, 16, 20, 0.62));
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .judge-lock:hover {
+    color: #ef4444;
   }
 </style>
