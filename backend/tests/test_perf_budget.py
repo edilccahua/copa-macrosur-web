@@ -1,7 +1,7 @@
 """
-Presupuesto de rendimiento: caché, agregado de portada y compresión.
+Presupuesto de rendimiento: caché, agregado de portada, compresión y N+1.
 
-Estas pruebas fijan tres cosas que se midieron contra la producción real
+Estas pruebas fijan cuatro cosas que se midieron contra la producción real
 (Render en Oregon + Neon + Cloudflare Pages):
 
   · **Tarea 5** — la caché en memoria se invalida cuando algo cambia de
@@ -11,14 +11,21 @@ Estas pruebas fijan tres cosas que se midieron contra la producción real
     eran siete: siete esperas de red en el SSR de Cloudflare).
   · **Tarea 7** — la API comprime sus respuestas grandes (GZip) y la
     transmisión en vivo NO se comprime (el SSE se.secuencia en el tiempo).
+  · **Tarea 8** — los endpoints de lectura NO hacen un N+1: una consulta
+    por cada fila de la tabla. Medido contra producción, `/api/v1/stages`
+    tardaba 983 ms y `/stages/{slug}/summary` 701 ms, y no era la red: era
+    SQL (una consulta extra por cada corredor, por cada segmento de
+    Strava y por cada fila de la clasificación).
 
 La caché en memoria es GLOBAL al proceso, así que el fixture `client` la
 vacía antes de cada prueba: si no, una clasificación cacheada por un test
 se vería en el siguiente sin tocar la base de datos.
 """
 import uuid
-from datetime import date as date_cls
+from datetime import date as date_cls, timedelta
+from typing import Any, Dict
 
+import pytest_asyncio
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.middleware.gzip import GZipMiddleware
@@ -27,7 +34,9 @@ from backend.app.core.cache import cache
 from backend.app.core.config import settings
 from backend.app.models.entities import (
     Category,
+    ChampionshipStanding,
     Checkpoint,
+    PaymentStatusEnum,
     RaceStatusEnum,
     Rider,
     Stage,
@@ -44,7 +53,7 @@ PIN_JUEZ = "1234"
 
 # Prefijos que ``invalidate_public`` tiene que vaciar: todo lo que el
 # público puede leer por la API.
-PREFIJOS_PUBLICOS = ("public:", "stages:", "stage:summary:", "stage:list:")
+PREFIJOS_PUBLICOS = ("public:", "stages:", "stage:summary:")
 
 
 # --------------------------------------------------------------------------
@@ -565,3 +574,468 @@ async def test_el_sse_no_se_comprime():
     cabeceras = {k.decode(): v.decode() for k, v in enviados[0]["headers"]}
     assert "content-encoding" not in cabeceras
     assert enviados[1]["body"] == b"event: timing-update\ndata: {}\n\n"
+
+
+# --------------------------------------------------------------------------
+# Tarea 8 — cero N+1 en los endpoints de lectura
+# --------------------------------------------------------------------------
+#
+# Un N+1 es UNA consulta por cada fila de la tabla: con 40 corredores el
+# endpoint hace 40 consultas de más y la latencia se multiplica. El
+# contador engancha el evento `before_cursor_execute` del engine de pruebas
+# y cuenta las sentencias SQL que ejecuta la petición.
+#
+# El límite es "un número pequeño" (8): con seis filas ya se distingue un
+# N+1 de una consulta con JOIN, y no es frágil si mañana se añade una
+# consulta a un endpoint.
+
+
+@pytest_asyncio.fixture
+async def query_counter(async_session):
+    """Contador de sentencias SQL de la petición que se mida.
+
+    `{"n": 0}` lleva el número de consultas; `{"sql": [...]}` las sentencias
+    literales, para poder decir QUÉ se repite cuando el test falla.
+
+    El enganche es al motor de la sesión de pruebas (el `sync_engine` de
+    `test_engine`): se toma del propio bind de la sesión y no de un
+    `import`, para no depender de que el módulo de `conftest` se haya
+    importado una sola vez.
+    """
+    from sqlalchemy import event
+
+    counter: Dict[str, Any] = {"n": 0, "sql": []}
+
+    def _before(conn, cursor, statement, parameters, context, executemany):
+        counter["n"] += 1
+        counter["sql"].append(statement)
+
+    motor = async_session.get_bind()
+    event.listen(motor, "before_cursor_execute", _before)
+    try:
+        yield counter
+    finally:
+        event.remove(motor, "before_cursor_execute", _before)
+
+
+def _reiniciar_contador(counter: Dict[str, Any]) -> None:
+    """Olvida lo que se ejecutó durante la siembra."""
+    counter["n"] = 0
+    counter["sql"] = []
+
+
+def _consultas_sobre(counter: Dict[str, Any], tabla: str) -> int:
+    """Cuántas consultas han tocado una tabla concreta."""
+    return len([sql for sql in counter["sql"] if tabla in sql.lower()])
+
+
+async def _sembrar_campeonato_para_n_plus_1(
+    session: AsyncSession,
+    *,
+    fechas: int = 6,
+    corredores: int = 20,
+    categorias: int = 6,
+    equipos: int = 3,
+    pago: PaymentStatusEnum = PaymentStatusEnum.PAID,
+) -> Dict[str, Any]:
+    """Un campeonato con las filas suficientes para que un N+1 se vea.
+
+    Cada fecha tiene sus inscritos, sus tiempos y sus puestos; cada corredor
+    tiene su clasificación acumulada en las categorías en las que corrió
+    (la clave de `championship_standings` es corredor + categoría).
+    """
+    cats = []
+    for i in range(categorias):
+        cat = Category(name=f"CATEGORIA {i}", short_code=f"C{i:02d}")
+        session.add(cat)
+        await session.flush()
+        cats.append(cat)
+
+    teams = []
+    for i in range(equipos):
+        team = Team(name=f"TEAM {i}", slug=f"team-{i}")
+        session.add(team)
+        await session.flush()
+        teams.append(team)
+
+    stages = []
+    for f in range(fechas):
+        stage = Stage(
+            stage_number=f + 1,
+            name=f"Fecha {f + 1}",
+            title=f"Fecha {f + 1}",
+            slug=f"fecha-{f + 1}",
+            date=date_cls(2026, 5, 17) + timedelta(days=f),
+            status=StageStatusEnum.FINISHED,
+            distance_km=40.0,
+            elevation_gain_m=300,
+            laps=1,
+        )
+        session.add(stage)
+        await session.flush()
+        stages.append(stage)
+
+    riders = []
+    for i in range(corredores):
+        rider = Rider(
+            dni=f"9{i:07d}",
+            full_name=f"CICLISTA {i:03d}",
+            slug=f"ciclista-{i:03d}",
+            team_id=teams[i % len(teams)].id,
+        )
+        session.add(rider)
+        await session.flush()
+        riders.append(rider)
+
+    # Inscripciones: cada corredor corre en cada fecha (en una categoría que
+    # rota). El dorsal es único dentro de la fecha.
+    for f, stage in enumerate(stages):
+        puesto: Dict[int, int] = {}
+        for i, rider in enumerate(riders):
+            cat = cats[(i + f) % len(cats)]
+            puesto[cat.id] = puesto.get(cat.id, 0) + 1
+            session.add(
+                StageEntry(
+                    stage_id=stage.id,
+                    rider_id=rider.id,
+                    category_id=cat.id,
+                    team_id=rider.team_id,
+                    bib_number=i + 1,
+                    payment_status=pago,
+                    race_status=RaceStatusEnum.FINISHED,
+                    start_time_ms=1_700_000_000_000,
+                    finish_elapsed_ms=3_600_000 + i * 30_000,
+                    category_rank=puesto[cat.id],
+                    overall_rank=i + 1,
+                    points_earned=max(1, 11 - puesto[cat.id]),
+                )
+            )
+
+    # Clasificación acumulada: un corredor, una fila por categoría.
+    for rider in riders:
+        for cat in cats:
+            session.add(
+                ChampionshipStanding(
+                    rider_id=rider.id,
+                    category_id=cat.id,
+                    total_points=10,
+                    first_places_count=1,
+                    last_stage_rank=1,
+                    total_elapsed_ms=3_600_000,
+                    stages_completed=1,
+                    current_rank=1,
+                    rank_delta=0,
+                )
+            )
+
+    await session.commit()
+    return {
+        "categorias": cats,
+        "equipos": teams,
+        "fechas": stages,
+        "corredores": riders,
+    }
+
+
+async def _sembrar_segmentos_de_strava(
+    session: AsyncSession, stage: Stage, *, segmentos: int = 6
+) -> None:
+    """Segmentos de Strava de la fecha, cada uno con sus intentos.
+
+    Es el caso que más duele: la ficha de una fecha tenía 25 segmentos y
+    hacía una consulta por cada uno.
+    """
+    for s in range(segmentos):
+        segment = StravaSegment(
+            stage_id=stage.id,
+            strava_segment_id=f"{stage.id}-{s}",
+            name=f"TRAMO {s}",
+            distance_m=1000.0 + s * 10,
+            average_grade=5.0 if s % 2 == 0 else -4.0,
+        )
+        session.add(segment)
+        await session.flush()
+        for e in range(3):
+            session.add(
+                StravaEffort(
+                    segment_id=segment.id,
+                    athlete_name_raw=f"ATLETA {e}",
+                    elapsed_time_sec=300 + e * 30,
+                    measured_on=stage.date.isoformat(),
+                    athlete_gender="M" if e % 2 == 0 else "F",
+                    is_kom_qom=False,
+                )
+            )
+    await session.commit()
+
+
+async def test_perfil_corredor_no_hace_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """El perfil de un corredor no hace una consulta por cada fila.
+
+    Antes: por cada fila de la clasificación acumulada del corredor se
+    pedía su categoría con un `SELECT` aparte (y el `refresh` del corredor
+    cargaba equipo y clasificaciones por separado).
+    """
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=6, corredores=20, categorias=6, equipos=3
+    )
+    corredor = datos["corredores"][0]
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/riders/{corredor.slug}")
+    assert res.status_code == 200, res.text
+
+    # El dato sigue siendo el mismo: seis clasificaciones y seis fechas.
+    cuerpo = res.json()
+    assert len(cuerpo["standings"]) == 6
+    assert len(cuerpo["history"]) == 6
+    assert cuerpo["rider"]["slug"] == corredor.slug
+
+    assert query_counter["n"] <= 8, (
+        f"Hace {query_counter['n']} consultas para un corredor: {query_counter['sql']}"
+    )
+
+
+async def test_el_numero_de_consultas_no_crece_con_las_filas(
+    client, async_session: AsyncSession, query_counter
+):
+    """La firma del N+1: más filas NO pueden significar más consultas.
+
+    Es la prueba que no depende del umbral: con el doble de clasificaciones
+    acumuladas, el endpoint tiene que hacer las MISMAS consultas.
+    """
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=2, corredores=1, categorias=2, equipos=1
+    )
+    corredor = datos["corredores"][0]
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/riders/{corredor.slug}")
+    assert res.status_code == 200, res.text
+    consultas_pocas = query_counter["n"]
+    assert len(res.json()["standings"]) == 2
+
+    # El corredor pasa a tener clasificaciones en más categorías: las filas
+    # crecen, las consultas NO pueden crecer con ellas.
+    for i in range(2, 6):
+        cat = Category(name=f"CATEGORIA {i}", short_code=f"C{i:02d}")
+        async_session.add(cat)
+        await async_session.flush()
+        async_session.add(
+            ChampionshipStanding(
+                rider_id=corredor.id,
+                category_id=cat.id,
+                total_points=10,
+                first_places_count=1,
+                last_stage_rank=1,
+                total_elapsed_ms=3_600_000,
+                stages_completed=1,
+                current_rank=1,
+                rank_delta=0,
+            )
+        )
+    await async_session.commit()
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/riders/{corredor.slug}")
+    assert res.status_code == 200, res.text
+    consultas_muchas = query_counter["n"]
+    assert len(res.json()["standings"]) == 6
+
+    assert consultas_muchas == consultas_pocas, (
+        f"el número de consultas crece con las filas: {consultas_pocas} -> {consultas_muchas}"
+    )
+
+
+async def test_perfil_equipo_no_hace_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """El perfil de un equipo no hace dos consultas por cada corredor.
+
+    Antes: por cada corredor de la plantilla se ejecutaba la MISMA consulta
+    de sus inscripciones dos veces (una para los puntos y otra para las
+    categorías).
+    """
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=2, corredores=20, categorias=3, equipos=1
+    )
+    equipo = datos["equipos"][0]
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/teams/{equipo.slug}")
+    assert res.status_code == 200, res.text
+
+    cuerpo = res.json()
+    assert len(cuerpo["roster"]) == 20
+
+    assert query_counter["n"] <= 8, (
+        f"Hace {query_counter['n']} consultas para un equipo: {query_counter['sql']}"
+    )
+
+
+async def test_resultados_de_fecha_no_hacen_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """Los resultados de una fecha no hacen una consulta por cada corredor.
+
+    Antes: cada inscripción recargaba corredor, categoría y equipo con un
+    `refresh` (cuatro consultas por fila).
+    """
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=1, corredores=20, categorias=3, equipos=3
+    )
+    fecha = datos["fechas"][0]
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/stages/{fecha.slug}/results")
+    assert res.status_code == 200, res.text
+
+    total = sum(len(filas) for filas in res.json()["categories"].values())
+    assert total == 20
+
+    assert query_counter["n"] <= 8, (
+        f"Hace {query_counter['n']} consultas para los resultados: {query_counter['sql']}"
+    )
+
+
+async def test_ficha_de_fecha_no_hace_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """La ficha de una fecha no hace una consulta por cada segmento.
+
+    Antes: los intentos de Strava se pedían de uno en uno (25 segmentos en
+    la fecha real) y los extremos recargaban corredor, categoría y equipo.
+    """
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=1, corredores=20, categorias=3, equipos=3
+    )
+    fecha = datos["fechas"][0]
+    await _sembrar_segmentos_de_strava(async_session, fecha, segmentos=6)
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/stages/{fecha.slug}")
+    assert res.status_code == 200, res.text
+
+    cuerpo = res.json()
+    assert len(cuerpo["strava_segments"]) == 6
+
+    # Los segmentos se cargan de una vez: ni uno por segmento.
+    assert _consultas_sobre(query_counter, "strava_segments") <= 1
+    assert query_counter["n"] <= 12, (
+        f"Hace {query_counter['n']} consultas para la ficha: {query_counter['sql']}"
+    )
+
+
+async def test_live_summary_no_hace_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """El resumen en vivo no hace una consulta por cada corredor."""
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=1, corredores=20, categorias=3, equipos=3
+    )
+    fecha = datos["fechas"][0]
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/stages/{fecha.id}/live-summary")
+    assert res.status_code == 200, res.text
+    assert len(res.json()["leaderboard"]) == 20
+
+    assert query_counter["n"] <= 8, (
+        f"Hace {query_counter['n']} consultas para el live-summary: {query_counter['sql']}"
+    )
+
+
+async def test_pagos_pendientes_no_hacen_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """La lista de pagos pendientes no hace una consulta por cada inscripción."""
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session,
+        fechas=1,
+        corredores=20,
+        categorias=3,
+        equipos=3,
+        pago=PaymentStatusEnum.PENDING,
+    )
+    assert datos["fechas"]
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(
+        "/api/v1/admin/pending-payments",
+        headers={"X-Admin-Key": settings.ADMIN_API_KEY},
+    )
+    assert res.status_code == 200, res.text
+    assert len(res.json()) == 20
+
+    assert query_counter["n"] <= 8, (
+        f"Hace {query_counter['n']} consultas para los pagos: {query_counter['sql']}"
+    )
+
+
+async def test_clasificacion_individual_no_hace_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """La clasificación individual no hace una consulta por cada fila."""
+    await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=1, corredores=10, categorias=3, equipos=3
+    )
+
+    _reiniciar_contador(query_counter)
+    res = await client.get("/api/v1/public/standings/individual")
+    assert res.status_code == 200, res.text
+    assert len(res.json()) == 30
+
+    assert query_counter["n"] <= 8, (
+        f"Hace {query_counter['n']} consultas para la clasificación: {query_counter['sql']}"
+    )
+
+
+async def test_el_excel_no_hace_n_plus_1(
+    client, async_session: AsyncSession, query_counter
+):
+    """La exportación a Excel no hace una consulta por cada fila."""
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=1, corredores=20, categorias=3, equipos=3
+    )
+    fecha = datos["fechas"][0]
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/stages/{fecha.id}/export-excel")
+    assert res.status_code == 200, res.text
+
+    assert query_counter["n"] <= 8, (
+        f"Hace {query_counter['n']} consultas para el Excel: {query_counter['sql']}"
+    )
+
+
+async def test_el_resumen_de_fecha_carga_los_segmentos_una_sola_vez(
+    client, async_session: AsyncSession, query_counter
+):
+    """El resumen de la fecha comparte la carga de Strava.
+
+    `compute_stage_strava` y `compute_stage_mountain_titles` cargaban los
+    MISMOS segmentos y los MISMOS intentos por separado: cuatro consultas
+    que se podían leer una sola vez.
+    """
+    datos = await _sembrar_campeonato_para_n_plus_1(
+        async_session, fechas=1, corredores=20, categorias=3, equipos=3
+    )
+    fecha = datos["fechas"][0]
+    await _sembrar_segmentos_de_strava(async_session, fecha, segmentos=6)
+
+    _reiniciar_contador(query_counter)
+    res = await client.get(f"/api/v1/stages/{fecha.slug}/summary")
+    assert res.status_code == 200, res.text
+
+    assert _consultas_sobre(query_counter, "strava_segments") == 1, (
+        "los segmentos de Strava se cargan más de una vez: {0}".format(
+            query_counter["sql"]
+        )
+    )
+    assert _consultas_sobre(query_counter, "strava_efforts") == 1, (
+        "los intentos de Strava se cargan más de una vez: {0}".format(
+            query_counter["sql"]
+        )
+    )

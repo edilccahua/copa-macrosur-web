@@ -374,8 +374,52 @@ async def compute_stage_team_podium(
     return sorted(merged.values(), key=lambda t: (-t.points, t.team_name))[:3]
 
 
+async def load_stage_strava_data(
+    session: AsyncSession, stage_id: int
+) -> tuple[List[StravaSegment], List[StravaEffort], List[int]]:
+    """Los segmentos, los intentos y los corredores inscritos de la fecha.
+
+    `compute_stage_strava` y `compute_stage_mountain_titles` necesitan EXACTAMENTE
+    lo mismo. Cargarlo una vez y compartirlo evita cuatro consultas de sobra en
+    cada ficha de fecha (y dos en la portada, que también los necesita).
+    """
+    segments = (
+        await session.exec(
+            select(StravaSegment)
+            .where(StravaSegment.stage_id == stage_id)
+            .order_by(StravaSegment.id)
+        )
+    ).all()
+
+    efforts: List[StravaEffort] = []
+    if segments:
+        efforts = (
+            await session.exec(
+                select(StravaEffort)
+                .where(StravaEffort.segment_id.in_([segment.id for segment in segments]))
+                .order_by(StravaEffort.segment_id, StravaEffort.elapsed_time_sec)
+            )
+        ).all()
+
+    # Los corredores inscritos en esta fecha: un intento de un corredor que
+    # no compitio no es de esta carrera.
+    stage_rider_ids = (
+        await session.exec(
+            select(StageEntry.rider_id).where(StageEntry.stage_id == stage_id)
+        )
+    ).all()
+    rider_ids = [r for r in stage_rider_ids if r is not None]
+
+    return segments, efforts, rider_ids
+
+
 async def compute_stage_strava(
-    session: AsyncSession, stage: Stage
+    session: AsyncSession,
+    stage: Stage,
+    *,
+    segments: Optional[List[StravaSegment]] = None,
+    efforts: Optional[List[StravaEffort]] = None,
+    rider_ids: Optional[List[int]] = None,
 ) -> List[StravaSegmentSummaryRead]:
     """Segmentos Strava de la fecha con sus 10 mejores tiempos y el KOM.
 
@@ -386,36 +430,15 @@ async def compute_stage_strava(
          se muestran los cinco mas relevantes.
 
     El flag `is_kom_qom` de la BD es la autoridad del KOM (specs/02 §4).
+
+    `segments`, `efforts` y `rider_ids` se pueden pasar ya cargados (ver
+    `load_stage_strava_data`): la ficha de la fecha los usa dos veces y no
+    tiene que leerlos dos veces.
     """
-    segments = (
-        await session.exec(
-            select(StravaSegment)
-            .where(StravaSegment.stage_id == stage.id)
-            .order_by(StravaSegment.id)
-        )
-    ).all()
+    if segments is None or efforts is None or rider_ids is None:
+        segments, efforts, rider_ids = await load_stage_strava_data(session, stage.id)
     if not segments:
         return []
-
-    # Los esfuerzos de TODOS los segmentos se cargan de una vez: consultarlos
-    # uno por uno es un N+1 (una consulta extra por cada segmento).
-    segment_ids = [segment.id for segment in segments]
-    efforts = (
-        await session.exec(
-            select(StravaEffort)
-            .where(StravaEffort.segment_id.in_(segment_ids))
-            .order_by(StravaEffort.segment_id, StravaEffort.elapsed_time_sec)
-        )
-    ).all()
-
-    # Los corredores inscritos en esta fecha: un intento de un corredor que
-    # no compitio no es de esta carrera.
-    stage_rider_ids = (
-        await session.exec(
-            select(StageEntry.rider_id).where(StageEntry.stage_id == stage.id)
-        )
-    ).all()
-    rider_ids = [r for r in stage_rider_ids if r is not None]
 
     by_segment: Dict[int, List[StravaEffort]] = {}
     for effort in efforts:
@@ -483,7 +506,12 @@ async def compute_stage_strava(
 
 
 async def compute_stage_mountain_titles(
-    session: AsyncSession, stage: Stage
+    session: AsyncSession,
+    stage: Stage,
+    *,
+    segments: Optional[List[StravaSegment]] = None,
+    efforts: Optional[List[StravaEffort]] = None,
+    rider_ids: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
     """Los cuatro títulos de montaña de la fecha.
 
@@ -500,6 +528,10 @@ async def compute_stage_mountain_titles(
     de un corredor que compitió en ella. Si el tramo no tiene intentos de la
     jornada se recurre al mejor intento registrado **del mismo género**. El
     segmento que cubre la carrera entera no puede ser un título: es la ruta.
+
+    `segments`, `efforts` y `rider_ids` se pueden pasar ya cargados (ver
+    `load_stage_strava_data`): son los mismos datos que necesita
+    `compute_stage_strava`, y la ficha de la fecha los usa de las dos formas.
     """
     empty = {
         "kom": None,
@@ -507,13 +539,8 @@ async def compute_stage_mountain_titles(
         "kamikaze_male": None,
         "kamikaze_female": None,
     }
-    segments = (
-        await session.exec(
-            select(StravaSegment)
-            .where(StravaSegment.stage_id == stage.id)
-            .order_by(StravaSegment.id)
-        )
-    ).all()
+    if segments is None or efforts is None or rider_ids is None:
+        segments, efforts, rider_ids = await load_stage_strava_data(session, stage.id)
     if not segments:
         return empty
 
@@ -529,21 +556,6 @@ async def compute_stage_mountain_titles(
     if not candidates:
         return empty
 
-    segment_ids = [segment.id for segment in candidates]
-    efforts = (
-        await session.exec(
-            select(StravaEffort)
-            .where(StravaEffort.segment_id.in_(segment_ids))
-            .order_by(StravaEffort.segment_id, StravaEffort.elapsed_time_sec)
-        )
-    ).all()
-
-    stage_rider_ids = (
-        await session.exec(
-            select(StageEntry.rider_id).where(StageEntry.stage_id == stage.id)
-        )
-    ).all()
-    rider_ids = [r for r in stage_rider_ids if r is not None]
     stage_date = stage.date.isoformat() if stage.date else None
 
     # El género del intento viene de Strava; si falta, se deduce del corredor
@@ -782,8 +794,10 @@ async def compute_stage_extremes(
     """
     entries = (
         await session.exec(
-            select(StageEntry)
+            select(StageEntry, Rider, Category, Team)
             .join(Category, StageEntry.category_id == Category.id)
+            .outerjoin(Rider, StageEntry.rider_id == Rider.id)
+            .outerjoin(Team, StageEntry.team_id == Team.id)
             .where(
                 StageEntry.stage_id == stage.id,
                 StageEntry.race_status == RaceStatusEnum.FINISHED,
@@ -799,8 +813,9 @@ async def compute_stage_extremes(
 
     per_lap_km = float(stage.distance_km or 0)
 
-    def _speed(entry) -> float:
+    def _speed(fila) -> float:
         """Velocidad media (km/h) sobre la distancia realmente recorrida."""
+        entry = fila[0]
         elapsed = entry.finish_elapsed_ms or 0
         if elapsed <= 0:
             return 0.0
@@ -810,22 +825,22 @@ async def compute_stage_extremes(
     scratch_entry = max(entries, key=_speed)
     farolito_entry = min(entries, key=_speed)
 
-    async def _to_read(entry) -> Optional[PodiumEntryRead]:
-        if entry is None:
+    def _to_read(fila) -> Optional[PodiumEntryRead]:
+        if fila is None:
             return None
-        await session.refresh(entry, ["rider", "category", "team"])
+        entry, rider, _category, team = fila
         return PodiumEntryRead(
             rank=entry.category_rank or 0,
             bib_number=entry.bib_number,
-            rider_name=entry.rider.full_name if entry.rider else "",
-            rider_slug=entry.rider.slug if entry.rider else "",
-            team_name=entry.team.name if entry.team else "LIBRE",
-            team_slug=entry.team.slug if entry.team else None,
+            rider_name=rider.full_name if rider else "",
+            rider_slug=rider.slug if rider else "",
+            team_name=team.name if team else "LIBRE",
+            team_slug=team.slug if team else None,
             formatted_time=format_ms_to_time(entry.finish_elapsed_ms or 0),
             points_earned=entry.points_earned or 0,
         )
 
     return {
-        "scratch": await _to_read(scratch_entry),
-        "farolito": await _to_read(farolito_entry),
+        "scratch": _to_read(scratch_entry),
+        "farolito": _to_read(farolito_entry),
     }

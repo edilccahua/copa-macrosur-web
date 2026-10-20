@@ -11,7 +11,8 @@ from backend.app.core.db import get_session
 from backend.app.core.security import verify_judge_pin_header
 from backend.app.core.sse_manager import sse_manager
 from backend.app.models.entities import (
-    Stage, StartWave, Checkpoint, StageEntry, TimingEvent, RaceStatusEnum
+    Stage, StartWave, Checkpoint, StageEntry, TimingEvent, RaceStatusEnum,
+    Rider, Category, Team,
 )
 from backend.app.models.schemas import (
     TimeSyncResponse, TimingEventCreate, BatchSyncRequest, BatchSyncResponse, WaveStartRequest
@@ -181,11 +182,22 @@ async def record_timing_event(
     if (await session.exec(stmt_existing)).first():
         return {"status": "ignored", "message": "Evento ya registrado (UUID duplicado)."}
 
-    # 2. Verificar StageEntry y Checkpoint
-    stmt_entry = select(StageEntry).where(StageEntry.id == event_in.stage_entry_id)
-    entry = (await session.exec(stmt_entry)).first()
-    if not entry:
+    # 2. Verificar StageEntry y Checkpoint.
+    # La inscripción se trae con corredor, categoría y equipo en la MISMA
+    # consulta: el aviso por SSE los necesita y recargarlos después (un
+    # `refresh` con tres relaciones) costaba cuatro consultas en el camino
+    # crítico del juez.
+    stmt_entry = (
+        select(StageEntry, Rider, Category, Team)
+        .outerjoin(Rider, StageEntry.rider_id == Rider.id)
+        .outerjoin(Category, StageEntry.category_id == Category.id)
+        .outerjoin(Team, StageEntry.team_id == Team.id)
+        .where(StageEntry.id == event_in.stage_entry_id)
+    )
+    fila = (await session.exec(stmt_entry)).first()
+    if fila is None:
         raise HTTPException(status_code=404, detail="Inscripción de corredor no encontrada.")
+    entry, rider, category, team = fila
 
     stmt_cp = select(Checkpoint).where(Checkpoint.id == event_in.checkpoint_id)
     checkpoint = (await session.exec(stmt_cp)).first()
@@ -243,14 +255,13 @@ async def record_timing_event(
         await recalculate_team_standings(session, entry.stage_id)
 
     # Emitir SSE
-    await session.refresh(entry, ["rider", "category", "team"])
     await sse_manager.broadcast(entry.stage_id, "timing-update", {
         "event_type": "finish" if checkpoint.is_finish_line else "split",
         "stage_id": entry.stage_id,
         "bib_number": entry.bib_number,
-        "rider_name": entry.rider.full_name if entry.rider else "",
-        "team_name": entry.team.name if entry.team else "LIBRE",
-        "category_name": entry.category.name if entry.category else "",
+        "rider_name": rider.full_name if rider else "",
+        "team_name": team.name if team else "LIBRE",
+        "category_name": category.name if category else "",
         "elapsed_ms": elapsed_ms,
         "formatted_time": format_ms_to_time(elapsed_ms),
         "provisional_category_rank": entry.category_rank,
@@ -327,23 +338,26 @@ async def get_live_summary(stage_id: int, session: AsyncSession = Depends(get_se
     if not stage:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
 
-    # Corredores finalistas
+    # Corredores finalistas: corredor, categoría y equipo salen en la misma
+    # consulta (antes cada inscripción recargaba las tres relaciones).
     stmt_finished = (
-        select(StageEntry)
+        select(StageEntry, Rider, Category, Team)
+        .outerjoin(Rider, StageEntry.rider_id == Rider.id)
+        .outerjoin(Category, StageEntry.category_id == Category.id)
+        .outerjoin(Team, StageEntry.team_id == Team.id)
         .where(StageEntry.stage_id == stage_id, StageEntry.race_status == RaceStatusEnum.FINISHED)
         .order_by(StageEntry.category_id, StageEntry.category_rank)
     )
     entries = (await session.exec(stmt_finished)).all()
 
     leaderboard = []
-    for e in entries:
-        await session.refresh(e, ["rider", "category", "team"])
+    for e, rider, category, team in entries:
         leaderboard.append({
             "entry_id": e.id,
             "bib_number": e.bib_number,
-            "rider_name": e.rider.full_name if e.rider else "",
-            "team_name": e.team.name if e.team else "LIBRE",
-            "category_name": e.category.name if e.category else "",
+            "rider_name": rider.full_name if rider else "",
+            "team_name": team.name if team else "LIBRE",
+            "category_name": category.name if category else "",
             "elapsed_ms": e.finish_elapsed_ms,
             "formatted_time": format_ms_to_time(e.finish_elapsed_ms or 0),
             "category_rank": e.category_rank,

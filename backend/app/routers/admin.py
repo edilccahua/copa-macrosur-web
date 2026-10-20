@@ -10,7 +10,7 @@ from backend.app.core.limits import detalle_excede_tope
 from backend.app.core.security import verify_admin_key
 from backend.app.models.entities import (
     Stage, StageEntry, PaymentStatusEnum, FeedbackTicket, TicketStatusEnum,
-    StravaSegment, StravaEffort, Rider
+    StravaSegment, StravaEffort, Rider, Category, Team
 )
 from backend.app.models.schemas import StravaSyncPayload, LiveToggle
 from backend.app.services.gpx_service import parse_gpx_in_memory
@@ -242,23 +242,28 @@ async def get_pending_payments(
     session: AsyncSession = Depends(get_session),
     admin_key: str = Depends(verify_admin_key)
 ):
+    # Corredor, categoría, fecha y equipo salen en la misma consulta: antes
+    # cada inscripción recargaba las cuatro relaciones (un N+1).
     stmt = (
-        select(StageEntry)
+        select(StageEntry, Rider, Category, Stage, Team)
+        .outerjoin(Rider, StageEntry.rider_id == Rider.id)
+        .outerjoin(Category, StageEntry.category_id == Category.id)
+        .outerjoin(Stage, StageEntry.stage_id == Stage.id)
+        .outerjoin(Team, StageEntry.team_id == Team.id)
         .where(StageEntry.payment_status == PaymentStatusEnum.PENDING)
         .order_by(StageEntry.id.desc())
     )
     entries = (await session.exec(stmt)).all()
     results = []
-    for e in entries:
-        await session.refresh(e, ["rider", "category", "stage", "team"])
+    for e, rider, category, stage, team in entries:
         results.append({
             "entry_id": e.id,
             "bib_number": e.bib_number,
-            "stage_name": e.stage.name if e.stage else "",
-            "rider_name": e.rider.full_name if e.rider else "",
-            "rider_dni": e.rider.dni if e.rider else "",
-            "category_name": e.category.name if e.category else "",
-            "team_name": e.team.name if e.team else "LIBRE",
+            "stage_name": stage.name if stage else "",
+            "rider_name": rider.full_name if rider else "",
+            "rider_dni": rider.dni if rider else "",
+            "category_name": category.name if category else "",
+            "team_name": team.name if team else "LIBRE",
             "voucher_url": e.payment_voucher_url
         })
     return results

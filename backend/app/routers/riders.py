@@ -16,20 +16,25 @@ async def search_riders(
     limit: int = Query(50, ge=1, le=1000, description="Máximo de resultados"),
     session: AsyncSession = Depends(get_session)
 ):
-    stmt = select(Rider)
+    # El equipo del corredor se trae en la MISMA consulta: recargarlo por
+    # cada fila era un N+1 (con 50 resultados, 50 consultas de más).
+    stmt = (
+        select(Rider, Team)
+        .outerjoin(Team, Rider.team_id == Team.id)
+        .order_by(Rider.id)
+    )
     if q:
         stmt = stmt.where(Rider.full_name.ilike(f"%{q}%") | Rider.dni.ilike(f"%{q}%"))
     stmt = stmt.limit(limit)
     riders = (await session.exec(stmt)).all()
 
     output = []
-    for r in riders:
-        await session.refresh(r, ["team"])
+    for r, team in riders:
         output.append({
             "id": r.id,
             "full_name": r.full_name,
             "slug": r.slug,
-            "team_name": r.team.name if r.team else "LIBRE",
+            "team_name": team.name if team else "LIBRE",
             "gender": r.gender
         })
     return output
@@ -37,12 +42,25 @@ async def search_riders(
 
 @router.get("/{slug}")
 async def get_rider_profile(slug: str, session: AsyncSession = Depends(get_session)):
-    stmt = select(Rider).where(Rider.slug == slug)
-    rider = (await session.exec(stmt)).first()
-    if not rider:
-        raise HTTPException(status_code=404, detail="Ciclista no encontrado.")
+    """La ficha pública de un corredor.
 
-    await session.refresh(rider, ["team", "standings"])
+    Las tres consultas que necesita el perfil (corredor y equipo, clasificación
+    acumulada con su categoría, e historial de fechas) se hacen UNA cada una:
+    antes el `refresh` del corredor cargaba el equipo y las clasificaciones
+    por separado, y la categoría de cada clasificación se pedía con un
+    `SELECT` POR FILA (un N+1).
+    """
+    # El corredor y su equipo salen juntos: el `team` del corredor es la
+    # relación que se proyectaba fila a fila.
+    stmt = (
+        select(Rider, Team)
+        .outerjoin(Team, Rider.team_id == Team.id)
+        .where(Rider.slug == slug)
+    )
+    fila = (await session.exec(stmt)).first()
+    if fila is None:
+        raise HTTPException(status_code=404, detail="Ciclista no encontrado.")
+    rider, team = fila
 
     # Enmascarar DNI: ej. '***4567'
     masked_dni = f"***{rider.dni[-4:]}" if len(rider.dni) >= 4 else "***"
@@ -72,10 +90,18 @@ async def get_rider_profile(slug: str, session: AsyncSession = Depends(get_sessi
             "points_earned": entry.points_earned
         })
 
-    # Ranking individual acumulado
+    # Ranking individual acumulado: la categoría de cada fila viene en la
+    # misma consulta (antes era un `SELECT` por cada clasificación).
+    stmt_standings = (
+        select(ChampionshipStanding, Category)
+        .outerjoin(Category, ChampionshipStanding.category_id == Category.id)
+        .where(ChampionshipStanding.rider_id == rider.id)
+        .order_by(ChampionshipStanding.id)
+    )
+    standings_res = await session.exec(stmt_standings)
+
     standings_info = []
-    for st in rider.standings:
-        cat = (await session.exec(select(Category).where(Category.id == st.category_id))).first()
+    for st, cat in standings_res.all():
         standings_info.append({
             "category_name": cat.name if cat else "",
             "total_points": st.total_points,
@@ -92,8 +118,8 @@ async def get_rider_profile(slug: str, session: AsyncSession = Depends(get_sessi
             "full_name": rider.full_name,
             "slug": rider.slug,
             "masked_dni": masked_dni,
-            "team_name": rider.team.name if rider.team else "LIBRE",
-            "team_slug": rider.team.slug if rider.team else None,
+            "team_name": team.name if team else "LIBRE",
+            "team_slug": team.slug if team else None,
             "gender": rider.gender,
             "avatar_url": rider.avatar_url
         },

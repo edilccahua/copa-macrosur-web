@@ -41,7 +41,7 @@ import type { PrizeLeader } from '../components/PrizeScale.astro';
  */
 type PodiumRow = { name: string; points: number; slug?: string };
 
-/** Una fila del podio aggregated por la API, en la forma de la tarjeta. */
+/** Una fila del podio agregado por la API, en la forma de la tarjeta. */
 function aPodiumRow(fila: { rider_name: string; total_points: number; rider_slug?: string | null }): PodiumRow {
   return {
     name: fila.rider_name,
