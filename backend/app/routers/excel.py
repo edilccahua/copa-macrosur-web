@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Response, Query, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from backend.app.core.cache import cache
 from backend.app.core.config import settings
 from backend.app.core.db import get_session
 from backend.app.core.limits import detalle_excede_tope
@@ -40,6 +41,12 @@ async def import_excel_endpoint(
         file_bytes=content,
         is_legacy_format=is_legacy
     )
+
+    # La ingesta cambia la lista de inscritos y los resultados: la
+    # clasificación, el calendario y el resumen que el público tiene
+    # cacheados ya no valen.
+    cache.invalidate_public()
+
     return result
 
 

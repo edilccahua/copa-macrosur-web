@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
+from backend.app.core.cache import cache
 from backend.app.core.db import get_session
 from backend.app.core.security import verify_judge_pin_header
 from backend.app.core.sse_manager import sse_manager
@@ -99,6 +100,10 @@ async def start_entry(
         "category_ids": [entry.category_id]
     })
 
+    # La largada cambia el estado de la carrera: lo que el público tiene
+    # cacheado (clasificación, calendario, resumen de la fecha) ya no vale.
+    cache.invalidate_public()
+
     return {
         "status": "success",
         "stage_entry_id": entry.id,
@@ -153,6 +158,10 @@ async def start_wave(
         "started_at_ms": start_ms,
         "category_ids": wave.category_ids
     })
+
+    # La largada cambia el estado de la carrera: lo que el público tiene
+    # cacheado (clasificación, calendario, resumen de la fecha) ya no vale.
+    cache.invalidate_public()
 
     return {"status": "success", "wave_id": wave_id, "started_at_ms": start_ms}
 
@@ -247,6 +256,10 @@ async def record_timing_event(
         "provisional_category_rank": entry.category_rank,
         "checkpoint_name": checkpoint.name
     })
+
+    # Una marcación (sobre todo si cruzó meta) cambia los puntos y los
+    # puestos: la clasificación cacheada del público deja de ser válida.
+    cache.invalidate_public()
 
     return {
         "status": "success",

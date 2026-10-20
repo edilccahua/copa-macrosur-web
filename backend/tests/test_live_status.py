@@ -8,6 +8,7 @@ from datetime import date, datetime
 import pytest
 
 import backend.app.services.live_service as live_service
+from backend.app.core.cache import cache
 from backend.app.core.config import settings
 from backend.app.models.entities import Stage
 from backend.app.services.live_service import (
@@ -89,6 +90,11 @@ async def test_live_status_endpoint_reads_lima_clock(client, async_session, monk
     assert res.json()["state"] == STATE_BEFORE_START
 
     monkeypatch.setattr(live_service, "now_lima", lambda: at(8, 0))
+    # La caché en memoria está ENCENDIDA también en los tests (para poder
+    # probar su invalidación). Este test simula el paso del reloj, así que
+    # hay que vaciar la caché entre las dos consultas: si no, la segunda
+    # leería el estado cacheado de la primera.
+    cache.clear()
     res = await client.get("/api/v1/public/live-status")
     assert res.status_code == 200
     body = res.json()
