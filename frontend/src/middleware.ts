@@ -25,9 +25,15 @@ import type { APIContext } from 'astro';
  *    dejar las rutas con query fuera de la caché — también sería válida,
  *    pero se pierde la caché justo en la página más pesada del portal.)
  *
- * La revalidación va en segundo plano (`waitUntil`): el visitante que
- * llega con la caché caducada no espera al render, y el que llega sin
- * caché tampoco se queda esperando a que se guarde la copia.
+ * La escritura en el edge va en segundo plano (`waitUntil`): el visitante
+ * que llega SIN caché no se queda esperando a que se guarde la copia.
+ *
+ * OJO CON LO QUE NO PASA: la Cache API del edge NO sirve una entrada
+ * caducada. `cache.match()` no la devuelve (la entrada caducada ya no
+ * existe), así que a los 60 s el visitante vuelve a esperar el render, con
+ * normalidad. El `stale-while-revalidate` de la cabecera `Cache-Control` lo
+ * aprovecha el NAVEGADOR (que puede seguir pintando la copia vieja mientras
+ * revalida en segundo plano), no el edge.
  */
 
 /** Rutas EXACTAS que se pueden cachear en el borde. */

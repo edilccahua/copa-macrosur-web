@@ -47,16 +47,20 @@ class MemoryCache:
         """Invalida TODO lo que el público puede leer.
 
         Se llama después de cualquier mutación (una marcación del juez, la
-        apertura de la transmisión, una ingesta de Excel): con la caché de
-        120 s sin invalidar, el público veía datos viejos hasta dos minutos.
+        apertura de la transmisión, una ingesta de Excel, una pre-inscripción):
+        con la caché de 120 s sin invalidar, el público veía datos viejos
+        hasta dos minutos.
+
+        Los prefijos son los REALES de cada lectura: `stages:` cubre
+        `stages:list` y `stage:summary:` cubre el resumen de cada fecha.
         """
-        for prefix in ("public:", "stages:", "stage:summary:", "stage:list:"):
+        for prefix in ("public:", "stages:", "stage:summary:"):
             self.delete_prefix(prefix)
 
     def keys(self) -> List[str]:
         """Las claves vivas. Las caducadas se descartan al listarlas.
 
-        Es el inspección que usan las pruebas: si la invalidación falla, la
+        Es la inspección que usan las pruebas: si la invalidación falla, la
         clave sigue viva y el test lo ve.
         """
         ahora = time.time()

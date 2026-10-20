@@ -37,34 +37,67 @@ async def list_teams(session: AsyncSession = Depends(get_session)):
 
 @router.get("/{slug}")
 async def get_team_profile(slug: str, session: AsyncSession = Depends(get_session)):
-    stmt = select(Team).where(Team.slug == slug)
-    team = (await session.exec(stmt)).first()
-    if not team:
+    """La ficha pública de un equipo.
+
+    La plantilla se resuelve con DOS consultas en vez de dos por corredor:
+    antes, por cada corredor de la plantilla se ejecutaba la MISMA consulta
+    de sus inscripciones dos veces (una para los puntos y otra para las
+    categorías).
+    """
+    # El equipo y su clasificación acumulada salen en la misma consulta.
+    stmt = (
+        select(Team, TeamChampionshipStanding)
+        .outerjoin(TeamChampionshipStanding, Team.id == TeamChampionshipStanding.team_id)
+        .where(Team.slug == slug)
+    )
+    fila = (await session.exec(stmt)).first()
+    if fila is None:
         raise HTTPException(status_code=404, detail="Equipo no encontrado.")
+    team, stand = fila
 
-    # Standing
-    stmt_stand = select(TeamChampionshipStanding).where(TeamChampionshipStanding.team_id == team.id)
-    stand = (await session.exec(stmt_stand)).first()
+    # Plantilla de ciclistas del equipo con sus puntos y sus categorías: una
+    # sola consulta, con `JOIN` a las inscripciones y a su categoría.
+    #
+    # El `OUTER JOIN` conserva a los corredores del equipo que todavía no
+    # han corrido ninguna fecha (aparecen con 0 puntos y sin categorías).
+    stmt_plantilla = (
+        select(Rider, StageEntry, Category)
+        .outerjoin(StageEntry, StageEntry.rider_id == Rider.id)
+        .outerjoin(Category, StageEntry.category_id == Category.id)
+        .where(Rider.team_id == team.id)
+        .order_by(Rider.id, StageEntry.id)
+    )
+    plantilla = (await session.exec(stmt_plantilla)).all()
 
-    # Plantilla de ciclistas activos
-    stmt_riders = select(Rider).where(Rider.team_id == team.id)
-    riders = (await session.exec(stmt_riders)).all()
-
+    # Se agrupa en Python: una fila por corredor, con la suma de sus puntos y
+    # el conjunto de sus categorías.
     roster = []
-    for r in riders:
-        # Puntos sumados por el corredor
-        stmt_entries = select(StageEntry, Category).join(Category).where(StageEntry.rider_id == r.id)
-        entries_res = await session.exec(stmt_entries)
-        r_points = sum(e.points_earned for e, c in entries_res.all())
-        cats = list({c.name for e, c in (await session.exec(stmt_entries)).all()})
+    puntos_por_corredor: dict[int, int] = {}
+    categorias_por_corredor: dict[int, List[str]] = {}
+    for rider, entry, cat in plantilla:
+        if rider.id not in puntos_por_corredor:
+            puntos_por_corredor[rider.id] = 0
+            categorias_por_corredor[rider.id] = []
+            roster.append(rider)
+        # Una inscripción sin categoría no computa: es lo que hacía el JOIN
+        # interior de antes (y evita que un dato roto altere los puntos).
+        if entry is not None and cat is not None:
+            puntos_por_corredor[rider.id] += entry.points_earned or 0
+            if cat.name not in categorias_por_corredor[rider.id]:
+                categorias_por_corredor[rider.id].append(cat.name)
 
-        roster.append({
-            "rider_id": r.id,
-            "full_name": r.full_name,
-            "slug": r.slug,
-            "gender": r.gender,
-            "categories": cats,
-            "points_contributed": r_points
+    plantilla_final = []
+    for rider in roster:
+        plantilla_final.append({
+            "rider_id": rider.id,
+            "full_name": rider.full_name,
+            "slug": rider.slug,
+            "gender": rider.gender,
+            # Las categorías se ordenan por nombre: antes salían en el orden
+            # arbitrario de un `set`, que cambiaba en cada arranque del
+            # proceso.
+            "categories": sorted(categorias_por_corredor[rider.id]),
+            "points_contributed": puntos_por_corredor[rider.id]
         })
 
     return {
@@ -87,5 +120,5 @@ async def get_team_profile(slug: str, session: AsyncSession = Depends(get_sessio
             "total_elapsed_ms": stand.total_elapsed_ms if stand else 0,
             "formatted_total_time": format_ms_to_time(stand.total_elapsed_ms) if stand else "-"
         },
-        "roster": roster
+        "roster": plantilla_final
     }

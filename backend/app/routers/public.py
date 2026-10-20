@@ -26,6 +26,29 @@ from backend.app.services.standings_service import (
 
 router = APIRouter(prefix="/public", tags=["Public Portal"])
 
+# Claves y TTL de la caché en memoria del portal público.
+CLAVE_HOME = "public:home"
+CLAVE_LIVE_STATUS = "public:live_status"
+TTL_HOME = 60
+TTL_LIVE_STATUS = 15
+
+
+async def _live_status_cacheado(session: AsyncSession) -> Dict[str, Any]:
+    """El estado de la transmisión, cacheado 15 s.
+
+    El TTL es corto a propósito: la portada anuncia el enlace "en vivo" y el
+    estado cambia de verdad el día de la carrera. El agregado de la portada
+    (60 s) lo usa con SU propio TTL, no con el del agregado: si no, el
+    enlace "en vivo" aparecería (o desaparecería) con hasta un minuto de
+    retraso.
+    """
+    cached = cache.get(CLAVE_LIVE_STATUS)
+    if cached is not None:
+        return cached
+    res = await resolve_live_status(session)
+    cache.set(CLAVE_LIVE_STATUS, res, ttl_seconds=TTL_LIVE_STATUS)
+    return res
+
 
 def _podium_de_corredores(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Las tres primeras filas de una clasificación, en la forma de la portada.
@@ -79,9 +102,9 @@ async def get_home_bundle(session: AsyncSession = Depends(get_session)):
     NO lleva el PIN del juez (es una credencial) ni la geometría de la ruta
     (pesa ~58 KB por fecha y ninguna página la consume).
     """
-    cached = cache.get("public:home")
+    cached = cache.get(CLAVE_HOME)
     if cached is not None:
-        return cached
+        return _home_con_live_status(cached, await _live_status_cacheado(session))
 
     stages = (await session.exec(select(Stage).order_by(Stage.stage_number))).all()
 
@@ -95,7 +118,6 @@ async def get_home_bundle(session: AsyncSession = Depends(get_session)):
     normal_rows = await compute_standings(session, stage_limit=corte, scope="NORMAL")
     team_rows = await compute_team_standings(session, stage_limit=corte)
 
-    live_status = await resolve_live_status(session)
     remontada = await compute_claro_remontada(session)
 
     if disputed:
@@ -108,9 +130,8 @@ async def get_home_bundle(session: AsyncSession = Depends(get_session)):
             "kamikaze_female": None,
         }
 
-    res = {
+    bundle = {
         "stages": [StagePublicRead.model_validate(stage) for stage in stages],
-        "live_status": live_status,
         "pro_podium": _podium_de_corredores(pro_rows),
         "normal_podium": _podium_de_corredores(normal_rows),
         "teams_podium": _podium_de_equipos(team_rows),
@@ -120,8 +141,26 @@ async def get_home_bundle(session: AsyncSession = Depends(get_session)):
     # 60 s: lo bastante corto para que una marcación del juez se vea pronto
     # (y la invalidación explícita la baja a cero), lo bastante largo para
     # que la portada no golpee la base de datos en cada visita.
-    cache.set("public:home", res, ttl_seconds=60)
-    return res
+    cache.set(CLAVE_HOME, bundle, ttl_seconds=TTL_HOME)
+    return _home_con_live_status(bundle, await _live_status_cacheado(session))
+
+
+def _home_con_live_status(bundle: Dict[str, Any], live_status: Dict[str, Any]) -> Dict[str, Any]:
+    """El agregado de la portada con el estado de la transmisión al día.
+
+    El `live_status` NO se congela dentro del agregado cacheado: se resuelve
+    con su propio TTL (15 s), que es el del endpoint `/public/live-status`.
+    El orden de las claves es el de siempre.
+    """
+    return {
+        "stages": bundle["stages"],
+        "live_status": live_status,
+        "pro_podium": bundle["pro_podium"],
+        "normal_podium": bundle["normal_podium"],
+        "teams_podium": bundle["teams_podium"],
+        "remontada": bundle["remontada"],
+        "mountain_titles": bundle["mountain_titles"],
+    }
 
 
 @router.get("/live-status")
@@ -131,13 +170,11 @@ async def get_live_status(session: AsyncSession = Depends(get_session)):
     La apertura es automática a las 08:00 de Lima el día de la carrera; el
     cierre es manual del organizador. La portada y `/en-vivo` leen esto para
     no mostrar un enlace "en vivo" cuando no hay carrera.
+
+    El TTL es de 15 s y es el mismo que usa el `live_status` embebido en el
+    agregado de la portada: los dos leen el MISMO valor de la caché.
     """
-    cached = cache.get("public:live_status")
-    if cached is not None:
-        return cached
-    res = await resolve_live_status(session)
-    cache.set("public:live_status", res, ttl_seconds=15)
-    return res
+    return await _live_status_cacheado(session)
 
 
 @router.get("/remontada")
@@ -237,10 +274,13 @@ async def get_individual_standings(
     category_id: Optional[int] = Query(None, description="Filtro opcional por ID de categoría"),
     session: AsyncSession = Depends(get_session)
 ):
+    # El equipo del corredor viene en la misma consulta: antes se recargaba
+    # por cada fila de la clasificación (un N+1).
     stmt = (
-        select(ChampionshipStanding, Rider, Category)
+        select(ChampionshipStanding, Rider, Category, Team)
         .join(Rider, ChampionshipStanding.rider_id == Rider.id)
         .join(Category, ChampionshipStanding.category_id == Category.id)
+        .outerjoin(Team, Rider.team_id == Team.id)
         .order_by(ChampionshipStanding.category_id, ChampionshipStanding.current_rank)
     )
     if category_id:
@@ -248,15 +288,14 @@ async def get_individual_standings(
 
     res = await session.exec(stmt)
     rows = []
-    for stand, rider, cat in res.all():
-        await session.refresh(rider, ["team"])
+    for stand, rider, cat, team in res.all():
         rows.append({
             "standing_id": stand.id,
             "rider_id": rider.id,
             "rider_name": rider.full_name,
             "rider_slug": rider.slug,
-            "team_name": rider.team.name if rider.team else "LIBRE",
-            "team_slug": rider.team.slug if rider.team else None,
+            "team_name": team.name if team else "LIBRE",
+            "team_slug": team.slug if team else None,
             "category_id": cat.id,
             "category_name": cat.name,
             "current_rank": stand.current_rank,
@@ -357,6 +396,12 @@ async def submit_pre_registration(
     )
     session.add(entry)
     await session.commit()
+
+    # La inscripción cambia un dato que el público tiene cacheado: el
+    # contador de inscritos de la ficha de la fecha y el resto de las
+    # lecturas. Sin esta invalidación, el contador quedaba caducado hasta
+    # 120 s.
+    cache.invalidate_public()
 
     return {
         "status": "success",

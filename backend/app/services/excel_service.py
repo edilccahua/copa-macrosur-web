@@ -310,7 +310,12 @@ async def import_riders_from_excel(
 
 
 async def export_stage_results_to_excel(session: AsyncSession, stage_id: int) -> bytes:
-    """Genera en memoria un libro .xlsx con las 3 hojas reglamentarias."""
+    """Genera en memoria un libro .xlsx con las 3 hojas reglamentarias.
+
+    Cada hoja se resuelve con UNA consulta: corredor, categoría y equipo
+    salen con `JOIN` en la misma sentencia. Antes cada fila recargaba sus
+    relaciones con un `refresh` (una consulta por fila y por hoja).
+    """
     wb = openpyxl.Workbook()
     # Hoja 1: Resultados_Fecha
     ws1 = wb.active
@@ -318,20 +323,22 @@ async def export_stage_results_to_excel(session: AsyncSession, stage_id: int) ->
     ws1.append(["PUESTO", "DORSAL", "CICLISTA", "DNI", "TEAM", "CATEGORIA", "TIEMPO OFICIAL", "PUNTOS"])
 
     stmt1 = (
-        select(StageEntry)
+        select(StageEntry, Rider, Category, Team)
+        .outerjoin(Rider, StageEntry.rider_id == Rider.id)
+        .outerjoin(Category, StageEntry.category_id == Category.id)
+        .outerjoin(Team, StageEntry.team_id == Team.id)
         .where(StageEntry.stage_id == stage_id)
         .order_by(StageEntry.category_id, StageEntry.category_rank)
     )
     res1 = await session.exec(stmt1)
-    for entry in res1.all():
-        await session.refresh(entry, ["rider", "category", "team"])
+    for entry, rider, category, team in res1.all():
         ws1.append([
             entry.category_rank or "-",
             entry.bib_number,
-            entry.rider.full_name if entry.rider else "",
-            entry.rider.dni if entry.rider else "",
-            entry.team.name if entry.team else "LIBRE",
-            entry.category.name if entry.category else "",
+            rider.full_name if rider else "",
+            rider.dni if rider else "",
+            team.name if team else "LIBRE",
+            category.name if category else "",
             format_ms_to_time(entry.finish_elapsed_ms or 0) if entry.finish_elapsed_ms else "DNF/DNS",
             entry.points_earned
         ])
@@ -340,21 +347,24 @@ async def export_stage_results_to_excel(session: AsyncSession, stage_id: int) ->
     ws2 = wb.create_sheet("Ranking_Acumulado_Individual")
     ws2.append(["PUESTO", "DELTA", "CICLISTA", "CATEGORIA", "TEAM", "TOTAL PUNTOS", "VICTORIAS", "TIEMPO ACUMULADO"])
 
-    stmt2 = select(Rider, Category).join(Category)
-    # Leer standings
     from backend.app.models.entities import ChampionshipStanding
-    stmt_stand = select(ChampionshipStanding).order_by(ChampionshipStanding.category_id, ChampionshipStanding.current_rank)
+    # El club de esta hoja es el del CORREDOR (no el de la inscripción).
+    stmt_stand = (
+        select(ChampionshipStanding, Rider, Category, Team)
+        .outerjoin(Rider, ChampionshipStanding.rider_id == Rider.id)
+        .outerjoin(Category, ChampionshipStanding.category_id == Category.id)
+        .outerjoin(Team, Rider.team_id == Team.id)
+        .order_by(ChampionshipStanding.category_id, ChampionshipStanding.current_rank)
+    )
     res2 = await session.exec(stmt_stand)
-    for st in res2.all():
-        await session.refresh(st, ["rider"])
-        cat = (await session.exec(select(Category).where(Category.id == st.category_id))).first()
+    for st, rider, cat, team in res2.all():
         delta_str = f"▲ +{st.rank_delta}" if st.rank_delta > 0 else (f"▼ {st.rank_delta}" if st.rank_delta < 0 else "=")
         ws2.append([
             st.current_rank,
             delta_str,
-            st.rider.full_name if st.rider else "",
+            rider.full_name if rider else "",
             cat.name if cat else "",
-            st.rider.team.name if (st.rider and st.rider.team) else "LIBRE",
+            team.name if team else "LIBRE",
             st.total_points,
             st.first_places_count,
             format_ms_to_time(st.total_elapsed_ms)
@@ -364,10 +374,13 @@ async def export_stage_results_to_excel(session: AsyncSession, stage_id: int) ->
     ws3 = wb.create_sheet("Ranking_Equipos")
     ws3.append(["PUESTO", "DELTA", "EQUIPO", "TOTAL PUNTOS", "OROS (1°)", "PLATAS (2°)", "BRONCES (3°)", "CORREDORES"])
     from backend.app.models.entities import TeamChampionshipStanding
-    stmt_team = select(TeamChampionshipStanding).order_by(TeamChampionshipStanding.current_rank)
+    stmt_team = (
+        select(TeamChampionshipStanding, Team)
+        .outerjoin(Team, TeamChampionshipStanding.team_id == Team.id)
+        .order_by(TeamChampionshipStanding.current_rank)
+    )
     res3 = await session.exec(stmt_team)
-    for ts in res3.all():
-        team = (await session.exec(select(Team).where(Team.id == ts.team_id))).first()
+    for ts, team in res3.all():
         delta_str = f"▲ +{ts.rank_delta}" if ts.rank_delta > 0 else (f"▼ {ts.rank_delta}" if ts.rank_delta < 0 else "=")
         ws3.append([
             ts.current_rank,
