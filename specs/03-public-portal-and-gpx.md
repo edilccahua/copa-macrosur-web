@@ -987,22 +987,29 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
     lee la misma clasificación.
   - El recuento de fechas sale de `GET /api/v1/public/remontada`
     (`stages_counted` / `total_stages`).
-- **La página es UNA tabla, con una sola gramática** (20-Oct-2026). Los ocho
-  premios —los dos acumulados, el de cada categoría, el Premio CLARO y los
-  cuatro títulos de montaña— son celdas de la misma grilla (`PrizeCell`), con
-  la anatomía fija de la tabla de principios de la referencia
-  (`copiaartcraft/src/pages/apps.astro`, y `/apps` en vivo):
-  `emblema · índice` → `titular` → `regla de una línea` → `cifra y estado`.
+- **La página son CUATRO secciones y UNA sola gramática** (20-Oct-2026).
+  Secciones: `01 · Acumulado del campeonato` (PRO | NORMAL),
+  `02 · Premio por fecha` (CADA CATEGORÍA | la nota de reparto),
+  `03 · Premio CLARO` (el premio | la nota de entrega) y
+  `04 · Títulos de montaña` (KOM | QOM | EL KAMIKAZE | LA KAMIKAZE).
+  Todas se construyen con `PrizeCell`, la celda de la tabla de principios de
+  la referencia (`copiaartcraft/src/pages/apps.astro`, y `/apps` en vivo):
+  `emblema · índice` → `titular` → `regla` → `el premio y su estado`.
   - La grilla dibuja los filetes con `gap: 1px` sobre su propio fondo y las
     celdas lo tapan con el fondo de la página: por eso es **una rejilla**, no
-    un mosaico de cajas. Cuatro columnas en la banda ancha, dos en tablet, una
-    en móvil.
+    un mosaico de cajas. Dos columnas en las secciones 01-03, cuatro en la 04.
+  - **El premio se DIBUJA, no se resume.** Una escala con tres peldaños se
+    lee como un podio: la medalla, el puesto y su cifra
+    (`🥇 1º … USD 300`), con la cifra a la derecha de la fila. Es la misma
+    lectura que usa `PodiumPanel` en las clasificaciones. La tira plana
+    ("USD 300 / 200 / 100") queda sólo en el rótulo de la sección, como
+    resumen.
   - El emblema es un cuadro de 2.25 rem con el icono del ámbito (o el
-    logotipo del patrocinador, a su proporción). La cifra va en
-    monoespaciada y en el color del ámbito (el oro de la copa para el resto).
-  - **Sin panels, sin notas y sin párrafos que repitan lo que dice la celda.**
-    La cabecera es el masthead de la referencia (titular grande + bajada) y
-    debajo va la tabla. No hay nada más.
+    logotipo del patrocinador, a su proporción). La cifra va en monoespaciada
+    y en el color del ámbito (el oro de la copa para el resto).
+  - **Sin panels, sin notas sueltas y sin párrafos que repitan lo que dice la
+    celda.** La cabecera es el masthead de la referencia (titular grande +
+    bajada) y debajo van las tablas.
 - **La portada sigue con su propia tarjeta compacta** (`PrizeScale`), que
   comparte escala con `PodiumPanel`: es toda monoespaciada, con el rótulo a
   `.6875 rem` en versalitas, el cuerpo a `--text-sm` en la sans del sitio y
