@@ -14,7 +14,7 @@ Reglas de dominio (specs/01 §3.1, specs/03 §1.2):
     motor de scoring: el PDF oficial manda y aquí no se recalcula.
   · Una fecha no disputada no tiene cifras: los agregados返回 `None`, no 0.
 """
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from sqlalchemy import Integer, func
 from sqlmodel import select
