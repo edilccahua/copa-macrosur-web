@@ -83,7 +83,7 @@ const ticks = Array.from({ length: 101 }, (_, i) => i);
       /* La banda empieza DEBAJO de la cabecera. Antesoccupaba también los
          últimos 3,75 rem de la barra (z-index 40 contra 20 de la cabecera) y
          se comía los clics del CTA "INSCRIPCIÓN" y del conmutador de tema. */
-      inset-block: var(--nav-height, 3.0625rem) 0;
+      inset-block: var(--header-offset, 3.0625rem) 0;
       right: 0;
       width: 3.75rem;
       z-index: 40;

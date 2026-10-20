@@ -94,6 +94,53 @@ for (const width of [768, 900, 1024, 1280]) {
   ok(golpe.temaOk, `${width}px · el conmutador de tema es clicable`);
 }
 
+// 5: lo PEGAJOSO no puede tapar la cabecera
+// La barra de sección es `sticky`. Si su desplazamiento (`top`) es menor que
+// el alto REAL de la cabecera (barra + hairline), queda pegada ENCIMA del
+// menú; si su z-index es mayor, se pinta encima. Lo que sí es correcto es que
+// pase POR DEBAJO del menú mientras todavía no se ha pegado.
+for (const [width, height] of [[1280, 800], [390, 780]]) {
+  await page.setViewportSize({ width, height });
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+
+  const datos = await page.evaluate(async () => {
+    const hdr = document.getElementById('site-header');
+    const lbl = document.querySelector('.section-label');
+    if (!hdr || !lbl) return null;
+
+    // Estado pegado: se baja hasta que la barra se ancla.
+    window.scrollTo(0, 1600);
+    await new Promise((r) => setTimeout(r, 500));
+    const pegada = Math.round(lbl.getBoundingClientRect().top);
+
+    return {
+      hdrBottom: Math.round(hdr.getBoundingClientRect().bottom),
+      topCss: getComputedStyle(lbl).top,
+      pegada,
+      zLabel: Number(getComputedStyle(lbl).zIndex),
+      zHeader: Number(getComputedStyle(hdr).zIndex)
+    };
+  });
+
+  ok(datos !== null, `${width}px · hay barra de sección que comprobar`);
+  if (datos) {
+    const topCss = Number.parseFloat(datos.topCss);
+    ok(
+      topCss >= datos.hdrBottom,
+      `${width}px · la barra de sección se ancla DEBAJO del menú (top ${datos.topCss} ≥ ${datos.hdrBottom}px)`
+    );
+    ok(
+      datos.pegada >= datos.hdrBottom,
+      `${width}px · al anclarse queda bajo el menú (${datos.pegada}px ≥ ${datos.hdrBottom}px)`
+    );
+    ok(
+      datos.zLabel < datos.zHeader,
+      `${width}px · la barra de sección va por debajo del menú (z ${datos.zLabel} < ${datos.zHeader})`
+    );
+  }
+}
+
 await browser.close();
 console.log(fallos.length === 0 ? '\nTodo en verde.' : `\n${fallos.length} comprobación(es) fallida(s).`);
 process.exit(fallos.length === 0 ? 0 : 1);

@@ -276,4 +276,9 @@
   --container-page: 79.875rem;
   --nav-height: 3.0625rem;
   --nav-height-mobile: 4rem;
+  /* Alto TOTAL de la cabecera: la barra MÁS su hairline inferior. Todo lo
+     pegajoso (la barra de sección, la cabecera de la tabla) tiene que
+     desplazarse estealto para quedar DEBAJO del menú, no encima. */
+  --header-offset: calc(var(--nav-height) + var(--hairline));
+  --header-offset-mobile: calc(var(--nav-height-mobile) + var(--hairline));
 }

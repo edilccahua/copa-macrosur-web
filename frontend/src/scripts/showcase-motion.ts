@@ -88,8 +88,12 @@ let rulerCleanup: (() => void) | null = null;
  * del menú: el router de Astro no desplaza al ancla.
  */
 function scrollToElement(target: Element): void {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue('--nav-height');
-  const headerOffset = Number.parseFloat(raw) || 49;
+  // El alto de la cabecera se MIDE (cambia con el breakpoint) en vez de
+  // leer el token: `getPropertyValue('--nav-height')` devuelve "3.0625rem",
+  // y `parseFloat` de eso da 3, no 49. Con 3 px de margen, el destino
+  // quedaba tapado por el menú.
+  const header = document.getElementById('site-header');
+  const headerOffset = header ? Math.round(header.getBoundingClientRect().height) : 50;
   const offset = -(headerOffset + 8);
 
   if (lenisInstance) {

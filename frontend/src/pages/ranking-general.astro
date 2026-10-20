@@ -119,14 +119,14 @@ const initialCategoryId = catArg ? catArg.id : null;
     box-sizing: border-box;
     min-width: 0;
     padding-top: 2.5rem;
-    scroll-margin-top: calc(var(--nav-height, 3.0625rem) + 1rem);
+    scroll-margin-top: calc(var(--header-offset, 3.0625rem) + 1rem);
   }
 
   @media (max-width: 47.99em) {
     .page-content {
-      /* El navbar sticky mide 3rem en móvil: la cinta nunca queda debajo. */
+      /* La cabecera sticky: la cinta nunca queda debajo. */
       padding-top: calc(1.5rem + env(safe-area-inset-top));
-      scroll-margin-top: calc(var(--nav-height-mobile, 3rem) + 0.75rem);
+      scroll-margin-top: calc(var(--header-offset-mobile, 4rem) + 0.75rem);
     }
   }
 

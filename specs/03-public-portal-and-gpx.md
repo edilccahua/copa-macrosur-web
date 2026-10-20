@@ -126,7 +126,34 @@ rutas, la marca nunca marcada, el ancla de FECHAS desplazando, y en móvil: el
 cajón superpuesto, sin salto de layout, con la página actual marcada y el
 foco dentro) y `frontend/tools/check-shell.mjs`.
 
-### 0.0.2 Puerta del panel del juez
+### 0.0.2 Capas: lo pegajoso NUNCA tapa la cabecera
+
+La cabecera es `position: sticky; top: 0; z-index: 20`. Todo lo que también
+sea pegajoso tiene que quedar **debajo** de ella:
+
+| Elemento | Desplazamiento | z-index |
+| :--- | :--- | :--- |
+| Barra de sección (`SectionLabel`) | `var(--header-offset)` / `var(--header-offset-mobile)` | **19** (uno menos que la cabecera) |
+| Cabecera de la tabla (`StandingsTable` `thead`) | `var(--header-offset)` | 10 |
+| Regulador lateral (`PageRuler`) | `inset-block: var(--header-offset) 0` | 40 (arranca bajo la cabecera) |
+| Cajón móvil (`SiteHeader`) | `top: var(--header-offset-mobile)` | 2 (dentro de la cabecera) |
+
+Los tokens `--header-offset` y `--header-offset-mobile` son el **alto total** de
+la cabecera (la barra **más** su hairline inferior), no sólo el alto de la
+barra. Antes se usaba el alto de la barra y la barra de sección se colaba un
+píxel por debajo del borde del menú, y en móvil (`top: 0`) **tapaba el menú
+entero** de forma permanente.
+
+Regla: **el z-index de un elemento pegajoso va por debajo del de la cabecera**
+(20). Así, aunque el navegador recalcule el `sticky` a mitad de un scroll
+—con el scroll suave de Lenis eso pasa— o el elemento pase por su posición
+natural, el menú gana siempre.
+
+Regresión: `frontend/tools/check-shell.mjs` comprueba, a 1280 px y a 390 px,
+que la barra de sección se ancla por debajo de la cabecera (`top` ≥ alto real)
+y que su z-index es menor que el de la cabecera.
+
+### 0.0.3 Puerta del panel del juez
 
 - El PIN **no viaja en el código**: `/admin/juez` pide el PIN y lo valida
   contra `GET /api/v1/stages/{id}/judge-auth` (200/403; **nunca devuelve el

@@ -1065,7 +1065,8 @@
 
   .dt thead th {
     position: sticky;
-    top: var(--nav-height, 3.0625rem);
+    /* Bajo la cabecera COMPLETA (barra + hairline), no sólo la barra. */
+    top: var(--header-offset, 3.0625rem);
     z-index: 10;
     padding: 0.7rem 0.9rem;
     font-size: 0.625rem;

@@ -344,11 +344,11 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
 
   .hdr__drawer {
     position: fixed;
-    top: var(--nav-height-mobile, 3rem);
+    top: var(--header-offset-mobile, 4rem);
     left: 0;
     right: 0;
     z-index: 2;
-    max-height: calc(100dvh - var(--nav-height-mobile, 3rem));
+    max-height: calc(100dvh - var(--header-offset-mobile, 4rem));
     overflow-y: auto;
     /* El scroll del cajón no se encadena con el de la página. */
     overscroll-behavior: contain;

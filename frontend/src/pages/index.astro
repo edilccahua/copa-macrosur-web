@@ -266,8 +266,8 @@ const countdownTarget = nextStage
     /* Altura estimada de la tarjeta para anclar la línea base de la cordillera */
     --hero-next-height: 14rem;
     /* Ocupa el primer viewport completo, descontando la cabecera */
-    min-height: calc(100vh - var(--nav-height-mobile, 4rem));
-    min-height: calc(100svh - var(--nav-height-mobile, 4rem));
+    min-height: calc(100vh - var(--header-offset-mobile, 4rem));
+    min-height: calc(100svh - var(--header-offset-mobile, 4rem));
     text-align: center;
   }
 
@@ -590,8 +590,8 @@ const countdownTarget = nextStage
   @media (min-width: 48em) {
     .hero {
       --hero-next-height: 5.5rem;
-      min-height: calc(100vh - var(--nav-height, 3rem));
-      min-height: calc(100svh - var(--nav-height, 3rem));
+      min-height: calc(100vh - var(--header-offset, 3.0625rem));
+      min-height: calc(100svh - var(--header-offset, 3.0625rem));
     }
 
     .hero__content {
