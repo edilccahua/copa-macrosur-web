@@ -1,35 +1,23 @@
 ---
 /**
- * eventos-especiales.astro — Página editorial de carreras especiales y clásicas de ruta.
- * Estilo GetArtCraft: Bento grid de tarjetas técnicas, bordes finos y enlaces directos de WhatsApp.
+ * eventos-especiales.astro — las clásicas de ruta y los eventos especiales.
+ *
+ * Página editorial con la gramática de `copiaartcraft/src/pages/apps.astro`:
+ * masthead con titular de acento serif, rótulo de sección pegajoso y lineup
+ * de tarjetas `AppCard`.
+ *
+ * Sin datos literales: si la API no responde, la página lo dice (specs/03
+ * §0.2). Antes había un arreglo hardcodeado que tapaba la caída del backend.
  */
 import Showcase from '../layouts/Showcase.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
+import PageHeader from '../components/PageHeader.astro';
+import RouteEventCard, { type RouteEvent } from '../components/RouteEventCard.astro';
 import { API_V1 } from '../lib/api';
 
-interface ExtraEventData {
-  id: number;
-  name: string;
-  short_name?: string;
-  slug: string;
-  event_type: string;
-  edition?: string;
-  dates_text: string;
-  start_location?: string;
-  start_time?: string;
-  distance_text?: string;
-  description?: string;
-  poster_url?: string;
-  whatsapp_contact?: string;
-  registration_fee_text?: string;
-  status: string;
-}
-
-// Sin datos literales: si la API no responde, la página lo dice (specs/03
-// §0.2). Antes había un arreglo hardcodeado que tapaba la caída del backend.
-let events: ExtraEventData[] = [];
+let events: RouteEvent[] = [];
 let apiError = false;
 
 try {
@@ -44,95 +32,39 @@ try {
   apiError = true;
 }
 ---
+
 <Showcase
   title="Eventos Especiales y Clásicas de Ruta — Copa MacroSur MTB"
+  ghostWord="Ruta"
   sections={[{ label: 'Calendario', id: 'eventos' }]}
 >
   <SiteHeader />
 
   <main class="page-content container">
-    <header class="page-header" data-draw>
-      <div class="page-tag font-mono" data-draw-eyebrow>[ KÚSPIDE XTREME SPORTS // EVENTOS DE RUTA ]</div>
-      <h1 class="page-title">CLÁSICAS & EVENTOS ESPECIALES</h1>
-      <p class="page-desc">
-        Competiciones de ruta y pruebas independientes organizadas por Kúspide Xtreme Sports en la región Arequipa.
-        Eventos no puntuables para el ranking acumulado de la Copa MacroSur MTB, pero con premiación independiente,
-        trazados sobre asfalto y cupos exclusivos.
-      </p>
-    </header>
+    <PageHeader
+      eyebrow="Kúspide Xtreme Sports // Eventos de ruta"
+      before="Clásicas & "
+      accent="eventos"
+      after=" especiales"
+      lead="Competiciones de ruta y pruebas independientes organizadas por Kúspide Xtreme Sports en la región Arequipa. Eventos no puntuables para el ranking acumulado de la Copa MacroSur MTB, pero con premiación independiente, trazados sobre asfalto y cupos exclusivos."
+    />
 
     <section class="events-section" id="eventos">
       <SectionLabel number="01" label="CALENDARIO DE RUTA & ESPECIALES" kicker="AREQUIPA 2026" />
 
       {apiError && (
-        <p class="page-desc">No pudimos cargar el calendario de eventos. Vuelve a intentarlo en unos segundos.</p>
+        <p class="events-error font-mono">
+          [ NO PUDIMOS CARGAR EL CALENDARIO DE EVENTOS — VUELVE A INTENTARLO EN UNOS SEGUNDOS ]
+        </p>
       )}
 
-      <div class="events-grid">
-        {events.map((ev) => {
-          const posterFull = ev.poster_url?.replace('-card.webp', '-full.webp') || ev.poster_url;
-          const waUrl = `https://wa.me/51${ev.whatsapp_contact || '994382248'}?text=${encodeURIComponent(`Hola, deseo solicitar información e inscribirme a ${ev.name}`)}`;
-
-          return (
-            <article class="event-card" data-reveal>
-              <div class="event-poster-wrap">
-                <img src={ev.poster_url} alt={ev.name} class="event-poster" loading="lazy" />
-                <a href={posterFull} target="_blank" rel="noopener noreferrer" class="poster-zoom font-mono">
-                  [ VER AFICHE COMPLETO ↗ ]
-                </a>
-              </div>
-
-              <div class="event-info">
-                <div class="event-meta-top font-mono">
-                  <span class="event-edition">{ev.edition || 'ESPECIAL'}</span>
-                  <span class="event-status status-tag">[{ev.status === 'FINISHED' ? 'Finalizada' : 'Próximamente'}]</span>
-                </div>
-
-                <h2 class="event-name">{ev.name}</h2>
-
-                <div class="specs-list font-mono">
-                  <div class="spec-row">
-                    <span class="spec-label">FECHA:</span>
-                    <span class="spec-value">{ev.dates_text}</span>
-                  </div>
-                  {ev.start_location && (
-                    <div class="spec-row">
-                      <span class="spec-label">PARTIDA:</span>
-                      <span class="spec-value">{ev.start_location} {ev.start_time ? `(${ev.start_time})` : ''}</span>
-                    </div>
-                  )}
-                  {ev.distance_text && (
-                    <div class="spec-row">
-                      <span class="spec-label">DISTANCIA:</span>
-                      <span class="spec-value">{ev.distance_text}</span>
-                    </div>
-                  )}
-                  {ev.registration_fee_text && (
-                    <div class="spec-row">
-                      <span class="spec-label">COSTO:</span>
-                      <span class="spec-value">{ev.registration_fee_text}</span>
-                    </div>
-                  )}
-                </div>
-
-                <p class="event-desc">{ev.description}</p>
-
-                <div class="event-actions">
-                  <a href={waUrl} target="_blank" rel="noopener noreferrer" class="btn btn--solid font-mono">
-                    <span>CONTACTAR POR WHATSAPP</span>
-                    <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                      <path d="M3 8h10M9 4l4 4-4 4"/>
-                    </svg>
-                  </a>
-                  <a href={posterFull} target="_blank" rel="noopener noreferrer" class="btn btn--ghost font-mono">
-                    <span>AMPLIAR AFICHE</span>
-                  </a>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      <ol class="lineup">
+        {events.map((ev, i) => (
+          <li>
+            <RouteEventCard event={ev} index={String(i + 1).padStart(2, '0')} />
+          </li>
+        ))}
+      </ol>
     </section>
   </main>
 
@@ -145,213 +77,33 @@ try {
     padding-bottom: 5rem;
   }
 
-  .page-header {
-    margin-bottom: 3.5rem;
-    max-width: 50rem;
-  }
-
-  .page-tag {
-    font-size: var(--text-xs, 0.6875rem);
-    letter-spacing: 0.14em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-
-  .page-title {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(2rem, 5vw, 3.25rem);
-    font-weight: 650;
-    letter-spacing: -0.03em;
-    line-height: 1.05;
-    color: var(--ink-strong);
-    margin: 0 0 1rem 0;
-  }
-
-  .page-desc {
-    font-size: var(--text-base, 1rem);
-    line-height: 1.6;
-    color: var(--muted);
-  }
-
   .events-section {
     margin-top: 2rem;
   }
 
-  .events-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
-    margin-top: 1.5rem;
-  }
-
-  @media (min-width: 48rem) {
-    .events-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  .event-card {
-    display: flex;
-    flex-direction: column;
+  .events-error {
+    margin: 1.5rem 0 0;
+    padding: 1rem 1.25rem;
     border: var(--hairline) solid var(--line);
     background: var(--bg-raised);
-    overflow: hidden;
-  }
-
-  .event-poster-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 4 / 5;
-    background: #101317;
-    overflow: hidden;
-    border-bottom: var(--hairline) solid var(--line);
-  }
-
-  .event-poster {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: top center;
-    transition: transform 0.4s ease;
-  }
-
-  .event-card:hover .event-poster {
-    transform: scale(1.02);
-  }
-
-  .poster-zoom {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 0.5rem;
     font-size: 0.6875rem;
-    letter-spacing: 0.08em;
-    text-align: center;
-    color: #ffffff;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(4px);
-    text-decoration: none;
-    transition: background 0.15s ease;
-  }
-
-  .poster-zoom:hover {
-    background: var(--accent);
-  }
-
-  .event-info {
-    padding: 1.75rem;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-  }
-
-  .event-meta-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .event-edition {
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .status-tag {
+    letter-spacing: 0.12em;
     color: var(--muted);
   }
 
-  .event-name {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: 1.5rem;
-    font-weight: 620;
-    line-height: 1.15;
-    color: var(--ink-strong);
-    margin: 0 0 1.25rem 0;
+  /* El lineup de la referencia: dos columnas a partir de 768px. */
+  .lineup {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1.25rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .specs-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1.25rem;
-    border-bottom: var(--hairline) solid var(--line);
-  }
-
-  .spec-row {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .spec-label {
-    color: var(--faint);
-    min-width: 5.5rem;
-  }
-
-  .spec-value {
-    color: var(--ink);
-    font-weight: 500;
-  }
-
-  .event-desc {
-    font-size: 0.875rem;
-    line-height: 1.55;
-    color: var(--muted);
-    margin-bottom: 1.75rem;
-    flex-grow: 1;
-  }
-
-  .event-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-
-  @media (min-width: 30rem) {
-    .event-actions {
-      flex-direction: row;
+  @media (min-width: 48em) {
+    .lineup {
+      grid-template-columns: repeat(2, 1fr);
     }
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1.125rem;
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-decoration: none;
-    border-radius: var(--radius, 0);
-    border: var(--hairline) solid transparent;
-    transition: background 0.15s ease, border-color 0.15s ease;
-  }
-
-  .btn--solid {
-    background: var(--invert-bg);
-    color: var(--invert-fg);
-  }
-
-  .btn--solid:hover {
-    background: var(--accent);
-    color: #ffffff;
-  }
-
-  .btn--ghost {
-    background: transparent;
-    color: var(--ink);
-    border-color: var(--line);
-  }
-
-  .btn--ghost:hover {
-    border-color: var(--line-strong);
-    background: var(--bg-surface);
   }
 </style>

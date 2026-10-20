@@ -225,6 +225,7 @@ const stages = await getStages();
   // Transmisión en vivo: estado y cierre manual (specs/02 §6).
   const liveStateEl = document.getElementById('live-state');
   const liveSelect = document.getElementById('live-stage') as HTMLSelectElement | null;
+  const liveCloseBtn = document.getElementById('live-close') as HTMLButtonElement | null;
   const liveMsg = document.getElementById('live-msg');
 
   const LIVE_LABELS: Record<string, string> = {
@@ -243,6 +244,7 @@ const stages = await getStages();
       const label = LIVE_LABELS[data.state] ?? data.state;
       liveStateEl.innerText = `ESTADO: ${label}${data.stage ? ' · ' + data.stage.name : ''}`;
       if (data.stage && liveSelect) liveSelect.value = String(data.stage.id);
+      if (liveCloseBtn) liveCloseBtn.disabled = data.state === 'no_race_today';
     } catch (e) {
       liveStateEl.innerText = 'ESTADO: no se pudo consultar el servidor.';
     }
@@ -412,6 +414,15 @@ const stages = await getStages();
 
   .live-admin-actions .btn-action {
     flex: 1 1 10rem;
+  }
+
+  .btn-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-action--danger:disabled:hover {
+    background: var(--status-down, #ef4444);
   }
 
   .action-msg {

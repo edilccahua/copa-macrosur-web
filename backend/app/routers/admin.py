@@ -12,7 +12,7 @@ from backend.app.models.entities import (
 from backend.app.models.schemas import StravaSyncPayload, LiveToggle
 from backend.app.services.gpx_service import parse_gpx_in_memory
 from backend.app.services.excel_service import normalize_name
-from backend.app.services.live_service import resolve_live_status, utc_now
+from backend.app.services import live_service
 from backend.app.services.storage import upload_file_to_r2
 
 router = APIRouter(prefix="", tags=["Admin"])
@@ -38,12 +38,20 @@ async def set_stage_live(
     if not stage:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
 
-    stage.live_closed_at = None if payload.active else utc_now()
+    # Cerrar una fecha futura la dejaría apagada el día de la carrera. El
+    # cierre solo tiene sentido mientras la carrera de hoy está en curso.
+    if not payload.active and stage.date != live_service.now_lima().date():
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se puede cerrar la transmisión el día de la carrera.",
+        )
+
+    stage.live_closed_at = None if payload.active else live_service.utc_now()
     session.add(stage)
     await session.commit()
     await session.refresh(stage)
 
-    return await resolve_live_status(session)
+    return await live_service.resolve_live_status(session)
 
 
 @router.post("/stages/{stage_id}/upload-gpx")

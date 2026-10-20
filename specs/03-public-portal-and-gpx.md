@@ -423,6 +423,11 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
   acumulado PRO y NORMAL (300/200/100 USD), premio por fecha en cada una de
   las 11 categorías (100/50/30 USD) y premios especiales. Enlaza a `/premios`.
   Ver §1.7.
+- **Sección 04 · Transmisión:** tarjeta editorial con el póster de la fecha,
+  meta a cuadros y señal de llegadas. El enlace a `/en-vivo` **solo se activa**
+  en estado `live` (día de carrera desde las 08:00 de Lima hasta que el admin
+  cierra); fuera de esa ventana muestra el modo informativo "revisa esta
+  sección el día de la carrera" y la próxima fecha. Ver `specs/02` §6.
 
 ### 1.1.1 La banda de la derecha: regulador + índice de secciones
 
@@ -442,6 +447,42 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
   hay que reservar. Por encima de 96em el margen ya basta y queda el 4.5rem de
   siempre. Medido: sin colisión a 1024 / 1280 / 1440 / 1600 / 1920 px.
 
+### 1.1.2 Las anclas internas (`/#sección`)
+
+> **Corregido el 20 de Octubre de 2026.** Las anclas del menú y del índice de
+> secciones fallaban: la primera funcionaba y las siguientes no ("ni se
+> mueve"). Regresión: `frontend/tools/check-anchors.mjs`
+> (`npm run test:anchors`).
+
+**Causa 1 — el clic se atendía dos veces.** El router de Astro
+(`ClientRouter`) también intercepta los clics en `<a>` y, si el evento **no**
+está cancelado, lanza una navegación. Para un ancla eso significa **pedir la
+página y cambiarla entera**: el elemento de destino y la instancia de Lenis
+desaparecen a mitad del recorrido, y el salto nativo del navegador deja el
+destino **bajo la cabecera fija** (medido: 900 en vez de 842).
+
+Astro sólo se aparta si ve `ev.defaultPrevented` (`ClientRouter.astro`, lista
+de casos en los que no navega), y su manejador está registrado **antes** que
+el nuestro. Por eso el manejador de anclas va en **fase de captura**: su
+`preventDefault()` llega primero y el router se aparta. El ancla se resuelve
+aquí, sin recargar nada.
+
+**Causa 2 — se rompía el historial del router.** `history.pushState({}, ...)`
+para poner el ancla en la URL **borra** el estado que Astro guarda en cada
+entrada (`{ index, scrollX, scrollY }`). `index` es lo que Astro usa para
+saber si el usuario va hacia delante o hacia atrás (`onPopState`:
+`nextIndex > currentHistoryIndex`): al perder esa cuenta, el botón "atrás"
+clasifica mal las navegaciones, el `index` acaba siendo `NaN` y el router se
+vuelve errático.
+
+La URL se actualiza con **`replaceState`**, conservando el estado que Astro
+guarda: la URL refleja la sección (se puede compartir) sin crear una entrada
+nueva ni tocar el índice del router.
+
+**Medido** (antes → después): el 1er clic caía en 900 (bajo la cabecera) →
+842 · `history.state.index` era `undefined` → `0` · el ancla "Clasificación" se
+quedaba en 784 en vez de 2883 → 2883.
+
 ### 1.2 Página de Fecha Individual (`/fechas/[slug]`)
 > Ruta **dinámica en SSR**: el `slug` se resuelve contra la API en cada request. Si la fecha no existe, la respuesta es `404`; si el backend no responde, `503`. **La página no contiene ningún dato literal**: todo viene de `GET /api/v1/stages/{slug}/summary` (ver §1.4).
 >
@@ -454,10 +495,10 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
 3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha. Los "no finalizados" son solo los abandonos de una fecha **ya disputada**: en una fecha con inscripción abierta, `REGISTERED` significa "aún no compite" y se rotula así.
    - **Los puntos del PDF oficial y los del motor se muestran los dos** cuando
      difieren (Z Xtreme: 554 publicados, 555 tras el recálculo). Ver §1.7.1.
-4. **Leaderboard de podio por categoría** (`StageLeaderboard`): una fila por categoría con **solo el título de la categoría** (sin recuadro de código corto) y los tres ganadores con su club. **Sin dorsal, sin tiempo y sin puntos**: el detalle completo está en el ranking, en modo FECHA (`/ranking-general?modo=fecha&tabla=PRO&fecha={n}`). El título **no va en blanco como el resto del texto**: usa la tipografía display en mayúsculas y el acento de su grupo (`PRO` / `NORMAL` / `E-BIKE`, tokens `.scope-*` de `tokens.css`), de modo que se lee de un vistazo a qué categoría pertenece cada bloque; al pasar el ratón el título toma el color vivo del grupo. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
+4. **Leaderboard de podio por categoría** (`StageLeaderboard`): **agrupado por grupo**. Las once categorías ya no se listan en una grilla plana con el título de cada una teñido: se agrupan en **tres bloques — PRO / NORMAL / E-BIKE** (el orden lo fija `SCOPE_ORDER` del backend) y dentro de cada bloque las categorías van en una grilla de `auto-fill minmax(14rem, 1fr)` con una hairline inferior. El **título de la categoría va en tinta** (tipografía display, mayúsculas, `font-weight: 620` + `font-stretch: 118%`) y el **color del grupo aparece una sola vez por bloque**, en la etiqueta del rótulo de grupo (`.group__name`, tokens `.scope-*` de `tokens.css`). Antes eran once títulos en tres colores a la vez —un arcoíris—; ahora son tres etiquetas. Cada categoría muestra los tres ganadores con su club, **sin dorsal, sin tiempo y sin puntos**: el detalle completo está en el ranking, en modo FECHA (`/ranking-general?modo=fecha&tabla=PRO&fecha={n}`). El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
    - **El puesto se dibuja con una MEDALLA, no con un número.** Es la insignia de leaderboard de Strava (`icon-at-pr-01/02/03`), reproducida con su geometría exacta: silueta de "bolsillo" con la cinta y el puesto **calado al vacío** dentro del disco (`fill-rule="evenodd"`). La pieza vive en `src/assets/medals/medal-N.svg` (canónica, `currentColor`) y en `public/icons/medals/medal-N.svg` (plana, para reutilizar fuera de Astro); la genera `frontend/tools/build-medals.mjs`. El "2" y el "3" son los trazados literales de Strava; el "1" está dibujado con la misma construcción. Los tonos (`--medal-1/2/3`) son el oro, la plata y el bronce exactos de Strava. El componente `MedalIcon.astro` la inserta **en línea** (no como `<img>`) para que herede el color del tema y para que el número calado deje ver el fondo real de la página.
-5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales, **medalla del lugar** (en lugar del índice numérico), nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce). Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
-6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo). Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro.
+5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales en media **16/10** (la proporción de la referencia; con 16/6 la caja quedaba vacía y desproporcionada), **medalla del lugar** e **índice `01`/`02`/`03`** en la cabeza (ya no la palabra "CLUB", repetida tres veces), nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce) y va en la **franja superior de 2px**, que es el mecanismo de `BentoCard::before` — **nunca en una barra lateral**. Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
+6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo), con la gramática de tarjeta común de §1.2.1: rótulo, nombre del corredor, dorsal y club en monoespaciada, y el tiempo en grande. Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro. Las dos tarjetas son **simétricas**: no se muestra la velocidad en una y un texto en la otra (la velocidad del ganador ya está en las cifras de la jornada, y la del scratch no es la del ganador por definición —el ganador es el de mayor velocidad sobre la distancia recorrida, no el de menor tiempo—).
 7. **Perfil de etapa** (`StageProfile.astro` + `backend/scripts/build_stage_profile.py`):
    - El perfil **no se dibuja en el navegador**: lo genera un script de Python
      como SVG con la tipografía del sistema (Geist Mono para las cifras, Archivo
@@ -484,7 +525,7 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
    2. **Cruce con los pilotos.** Solo cuenta el intento de un corredor inscrito en esa fecha. El cruce usa `strava_athlete_id` (fiable) y, como respaldo, el nombre normalizado.
    3. **Selección.** Se descarta el segmento que cubre ≥80% de la etapa —**es la ruta, no un tramo**— y se muestran los **cinco** más relevantes: primero las subidas y bajadas más empinadas, luego los más largos.
 
-   Cada segmento muestra su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava.
+   Cada segmento muestra su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava. La tarjeta es **neutra**: el tipo (SUBIDA / BAJADA / PLANO) se dice con la palabra y el ícono, y el **naranja de Strava no se usa** (era un tercer color en una vista que ya tenía el oro y el plata).
 
    Los **títulos de montaña** van en su propia sección, antes de los segmentos, y son **cuatro**:
 
@@ -496,10 +537,86 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
    | **La Kamikaze** | el mismo descenso | damas |
 
    El **QOM nunca puede ser un varón**: se elige entre los intentos con `strava_efforts.athlete_gender = 'F'` (o, si falta, con el género del corredor enlazado). Si no hay intentos de damas, el QOM es `null` y su tarjeta no se pinta. Los Kamikaze se resuelven igual: el mejor tiempo del género en el descenso de la jornada. Se prefiere un tramo con intentos **de la fecha**; si el descenso más empinado solo guarda tiempos de otros años, se elige el siguiente descenso que sí tenga intentos de la carrera.
+
+   Las cuatro tarjetas de título son **neutras** y del mismo tipo: rótulo con el ícono (subida o descenso), el género en monoespaciada a la derecha **sin recuadro**, el nombre, el tramo y las cifras. No hay barra vertical de color, ni borde punteado para distinguir los Kamikaze, ni tinte propio por género (el magenta que se usaba para "damas" es el color de la Copa de Equipos en este sistema: colisión semántica).
 9. **La E-BIKE no compite por el título de la fecha.** El E-BIKE OPEN conserva su propio leaderboard de categoría, pero un e-bike no puede ser el scratch ni el KOM/QOM de la jornada.
 10. **El ganador es el de mayor VELOCIDAD**, no el de menor tiempo: en un circuito por vueltas no todos completan lo mismo, y el tiempo más bajo puede ser el de quien dio menos vueltas. En Z Xtreme el scratch pasa de SERGIO PINEDA (2 vueltas, 23.7 km/h) a RONALD LUZA (3 vueltas, 26.7 km/h).
-11. **Premios de la jornada:** título, patrocinador, descripción del premio y **ganador** resuelto desde `SpecialAward.winner_rider_id`. El logotipo del patrocinador sale de `sponsor_logo_url`.
+11. **Premios de la jornada:** tarjeta `PrizeScale` con la escala **por fecha** (100 / 50 / 30 USD en cada una de las 11 categorías). Los **títulos de montaña** (KOM/QOM/Kamikaze) tienen su propia sección, con **USD 15** y un solo ganador por título. El **Premio CLARO es acumulado** y NO aparece en la ficha de una fecha: se entrega al cerrar las cuatro.
 12. **Numeración de secciones:** consecutiva y sin huecos. Los bloques que no aplican a una fecha (sin podio, sin equipos, sin Strava, sin premios) se omiten enteros.
+
+### 1.2.1 Sistema de tarjetas: una sola gramografía, sin adornos
+
+> **Añadido el 20 de Octubre de 2026.** Las fichas de carrera y de evento se
+> rehícen por una razón concreta: las tarjetas se habían ido pareciendo entre
+> sí hasta ser **la misma caja** (hairline + `--bg-raised` + padding) con una
+> cosa dentro, y cada bloque había inventado su propio adorno para
+> distinguirse —una barra vertical de color de 3px, un borde punteado, un
+> chip con borde, un tinte de marca. Ese es el patrón de la "tarjeta
+> generada", y no es el de la referencia.
+
+**Reglas (aplican a `/fechas/[slug]`, `/eventos-especiales` y `/premios`):**
+
+1. **El acento de color va ARRIBA, nunca en un lateral.** El mecanismo real
+   de `copiaartcraft` es `BentoCard::before` / `AppCard`: una franja de 2px en
+   el borde superior, del color del elemento (el oro del 1º, el plata del 2º).
+   La barra vertical de 3px (`box-shadow: inset 3px 0 0 0 …`) **queda
+   prohibida**: no existe en la referencia (`copiaartcraft/src/` sólo tiene
+   `border-left` en los separadores de grupos del menú y un `inset 0 0 0 2px`
+   en forma de anillo en `/pricing`).
+2. **Una sola gramografía de tarjeta.** Los bloques de datos de la ficha
+   (extremos, títulos de montaña y segmentos Strava) usan la misma clase
+   `.card`: superficie, hairline, cabeza (ícono + rótulo + metadato), nombre
+   en display, cuerpo y pie. La **escala de premios de la jornada** usa
+   `PrizeScale`. Lo que cambia entre bloques es el **contenido**, no el estilo.
+3. **El color se reserva a la jerarquía.** En la ficha, el único color es el
+   de las **medallas** (oro / plata / bronce) y el de los **premios**. Los
+   títulos de montaña, los segmentos Strava y la escala de premios son
+   neutros: el tipo se dice con la palabra y el ícono.
+   > **20-Oct-2026:** se retiró la franja de acento de 2px del borde superior
+   > de las tarjetas de premios (`PrizeScale`) y de la tarjeta de transmisión:
+   > repetían la señal en cada bloque. La tarjeta mantiene el hairline.
+4. **Sin bordes punteados, sin chips con borde, sin pesos 800.** La escala
+   tipográfica de la casa es `620` + `font-stretch: 118%` (o
+   `var(--font-weight-medium)`); los pesos 700/800 que aparecían en los
+   titulares de Strava y de los premios se sustituyen por los de la escala.
+5. **Sin colores de marca ajenos.** El naranja de Strava (`#fc4c02`) y el azul
+   genérico `--accent` como adorno desaparecen de las tarjetas. El azul de
+   `--accent` queda para lo que es una acción (el hover del botón sólido).
+6. **El logotipo del patrocinador se muestra a su proporción.** Es una foto
+   (un trofeo, una camiseta): `object-fit: contain`, nunca recortada a un
+   cuadrado.
+7. **El botón es único.** `frontend/src/components/Button.astro` es **la**
+   definición de `.btn` del sitio. Antes cada página definía la suya con
+   medidas distintas (el de `eventos-especiales` y el de `fechas/[slug]` no
+   coincidían). El encabezado de página también es único:
+   `frontend/src/components/PageHeader.astro` (eyebrow + `DisplayTitle` +
+   bajada), que sustituye al bloque `.page-header / .page-tag / .page-title /
+   .page-desc` reescrito en cada página.
+8. **El titular de la ficha usa `DisplayTitle`:** la sans para el nombre y
+   **una palabra en Instrument Serif itálica** —la última del nombre ("La
+   Joya *Extreme*", "El Retorno a los Poblados *2*"), que es donde la
+   referencia pone el acento ("Thirteen apps. One *craft*").
+
+### 1.2.2 Eventos de ruta y clásicas (`/eventos-especiales`)
+
+- Página de las **clásicas de ruta y los eventos especiales** que organiza
+  Kúspide Xtreme Sports, fuera del campeonato puntuable. Lee
+  `GET /api/v1/public/extra-events`; sin datos literales (si la API no
+  responde, la página lo dice).
+- La tarjeta es **`RouteEventCard.astro`**, una adaptación literal de
+  `copiaartcraft/src/components/AppCard.astro`: media **16/10** (los carteles
+  son verticales 4:5 y se recortan por arriba, que es donde está el título
+  del evento), índice `01`/`02` + edición, recuadro con la inicial, nombre,
+  texto, estado, **etiquetas** con los datos duros (fecha, plaza, distancia,
+  costo) y `Inscribirme por WhatsApp →`, con el enlace al afiche completo
+  aparte.
+- **Lo que se eliminó** de la versión anterior: la lista de rótulo/valor
+  (`FECHA:` / `PARTIDA:` / `DISTANCIA:` / `COSTO:`), la banda con
+  `backdrop-filter` sobre el póster, el botón `AMPLIAR AFICHE` (la misma
+  acción que el overlay) y el fondo `#101317` hardcodeado dentro de una caja
+  clara. Ahora hay **una** acción principal y un enlace secundario.
+- Cabecera con `PageHeader` (titular con acento serif) y `GhostWord`
+  ("Ruta"). Una sola sección, con su rótulo pegajoso.
 
 **Fuera de alcance (documentado, no implementado):** la galería fotográfica de Cloudflare R2 con lightbox queda pendiente: `Stage.gallery_r2_prefix` es `NULL` en las cuatro fechas y no hay endpoint que la sirva. Requiere primero sembrar las fotos en el bucket.
 
@@ -831,7 +948,9 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 
 - Página de presentación de los premios de la edición, desarrollada con el
   sistema de tarjetas del sitio (`PrizeScale`, adaptación de `BentoCard` /
-  `StageTeamCard`, con `MedalIcon` para los puestos).
+  `StageTeamCard`, con `MedalIcon` para los puestos). La cabecera usa el
+  `PageHeader` compartido (ver §1.2.1) y el logotipo del patrocinador se
+  muestra a su proporción, sin recortar.
 - **Esquema de la edición 2026** (fijado por el organizador):
 
   | Ámbito | 1º | 2º | 3º | Se paga a |
@@ -849,12 +968,34 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   `docs/PREMIOS-PENDIENTE.md`.
 - La portada reproduce la misma escala en la sección `03 · Premios` y enlaza
   a esta página.
-- Los **premios especiales** (Premio Especial Coca, Rey de la Montaña) salen
-  de `special_awards`, también en dólares: USD 100 y USD 150 más el distintivo.
-  Se muestran con su ganador cuando `winner_rider_id` está resuelto, y con
-  "GANADOR POR ANUNCIAR" mientras no lo esté.
-- La portada (`/`) muestra los mismos premios especiales, leídos de la API: no
-  los escribe a mano (antes el texto del panel no coincidía con la BD).
+- **Premio CLARO (USD 100) — la remontada, ACUMULADO.** Se entrega al cerrar
+  las cuatro fechas y **no aparece en la ficha de una fecha**
+  (`special_awards.stage_id = NULL`). Se resuelve con
+  `compute_claro_remontada` (`backend/app/services/special_prizes_service.py`)
+  y se publica en `GET /api/v1/public/remontada`.
+  - Solo compiten los corredores que **terminaron todas las fechas
+    disputadas** (cuando se cierre la cuarta, las cuatro).
+  - Se compara el **puesto en su categoría** de la primera fecha disputada
+    con el de la última; gana quien más puestos sube.
+  - Desempate: mejor puesto en la última, luego mejor puesto en la primera.
+  - Mientras falten fechas es **ganador provisional**; la página lo dice y
+    muestra el recorrido (`FECHA 1: 28º → FECHA 2: 8º · +20 puestos · categoría`).
+  - La explicación se limita a la regla: terminó todas, sube más puestos entre
+    la primera y la última; se entrega al cerrar el campeonato.
+  - `special_awards` guarda una instantánea del ganador en `winner_rider_id`;
+    la fuente viva es el endpoint.
+  - El logo de Claro es un recurso de prueba en
+    `frontend/public/images/sponsors/claro.svg`; para publicar hace falta la
+    autorización del patrocinador.
+- **Títulos de montaña: USD 15 cada uno, un solo ganador.** KOM, QOM, El
+  Kamikaze y La Kamikaze se entregan **en cada fecha**, con los segmentos
+  seleccionados de la ruta oficial (la subida más empinada y el descenso más
+  pronunciado). Se resuelven con `compute_stage_mountain_titles` y se muestran
+  en la ficha de la fecha y en `/premios`. No viven en `special_awards`: se
+  calculan.
+- La portada (`/`) muestra el Premio CLARO con su ganador provisional y
+  cuatro tarjetas de montaña a **USD 15**, leídas de la API: no los escribe a
+  mano.
 
 ### 1.7.1 Reglas de integridad de los datos de una fecha
 

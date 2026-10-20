@@ -15,10 +15,17 @@ import StageStatsRow from '../../components/StageStatsRow.astro';
 import StageLeaderboard from '../../components/StageLeaderboard.astro';
 import StageTeamCard from '../../components/StageTeamCard.astro';
 import SectionLabel from '../../components/bento/SectionLabel.astro';
+import DisplayTitle from '../../components/DisplayTitle.astro';
+import Button from '../../components/Button.astro';
 import EventCountdown from '../../components/svelte/EventCountdown.svelte';
 import Icon from '../../components/Icon.astro';
+import PrizeScale from '../../components/PrizeScale.astro';
 import { getStageSummary, type StageSummary } from '../../lib/api';
 import { toDisplayTime, toStartInstant } from '../../lib/datetime';
+import { PER_DATE_PRIZES, PRIZE_CATEGORIES, PRIZE_CURRENCY } from '../../data/prizes';
+import { MOUNTAIN_TITLES } from '../../data/mountain-titles';
+
+const MOUNTAIN_PRIZE_USD = MOUNTAIN_TITLES[0]?.amountUsd ?? 15;
 
 const { slug } = Astro.params;
 
@@ -44,6 +51,19 @@ const displayName = String(stage?.title || stage?.name || '').replace(
   /^Fecha\s+\d+\s*:\s*/i,
   '',
 );
+
+/**
+ * El titular usa la primitiva del sistema (`DisplayTitle`): la sans para el
+ * nombre y **una palabra en Instrument Serif itálica**. La palabra acentuada
+ * es la última del nombre —"La Joya *Extreme*", "Kúspide Z Xtreme *III*"—,
+ * que es donde la referencia pone el acento ("Thirteen apps. One *craft*").
+ */
+const titleWords = displayName.split(' ').filter(Boolean);
+const titleAccent = titleWords.length > 1 ? titleWords.pop()! : displayName;
+const titleBefore = titleWords.join(' ');
+/** El espacio va explícito: `DisplayTitle` concatena las tres partes sin
+ *  separarlas. */
+const titlePrefix = titleBefore ? `${titleBefore} ` : '';
 
 // La distancia y el desnivel se leen de las dos medidas de la BD: por vuelta
 // Y total. Mezclarlas fue el bug que mostraba +840 m en un sitio y +280 m en
@@ -108,13 +128,15 @@ const segments = [...(summary?.strava ?? [])].sort((a, b) => {
  * Los cuatro títulos de montaña de la fecha, en el orden en que se muestran.
  * El KOM y el QOM son la misma subida: el mejor varón y la mejor dama. Los
  * Kamikaze son el mejor varón y la mejor dama en el descenso de la jornada.
+ *
+ * Sin color: el tipo se dice con la palabra y el ícono (subida / descenso).
+ * El color lo reservan las medallas.
  */
 const mountainTitles = [
   {
     key: 'kom',
     label: 'KING OF THE MOUNTAIN',
     scope: 'VARÓN',
-    accent: 'scope-pro',
     icon: 'mountain' as const,
     data: summary?.kom ?? null,
   },
@@ -122,7 +144,6 @@ const mountainTitles = [
     key: 'qom',
     label: 'QUEEN OF THE MOUNTAIN',
     scope: 'DAMAS',
-    accent: 'scope-team',
     icon: 'mountain' as const,
     data: summary?.qom ?? null,
   },
@@ -130,7 +151,6 @@ const mountainTitles = [
     key: 'kamikaze-male',
     label: 'EL KAMIKAZE',
     scope: 'VARÓN',
-    accent: 'scope-pro',
     icon: 'descent' as const,
     data: summary?.kamikaze_male ?? null,
   },
@@ -138,7 +158,6 @@ const mountainTitles = [
     key: 'kamikaze-female',
     label: 'LA KAMIKAZE',
     scope: 'DAMAS',
-    accent: 'scope-team',
     icon: 'descent' as const,
     data: summary?.kamikaze_female ?? null,
   },
@@ -148,45 +167,60 @@ const mountainTitles = [
  * Numeración de las secciones: consecutiva y sin huecos, aunque una fecha no
  * tenga podio, equipos, extremos o Strava. Los bloques que no aplican se
  * omiten enteros; los que aplican se numeran seguidos.
+ *
+ * Cada sección lleva además un `id`: es el ancla del índice lateral
+ * (`PageIndex`), el aparato de la referencia.
  */
-const sections: { key: string; label: string; present: boolean }[] = [
-  { key: 'stats', label: 'CIFRAS DE LA JORNADA', present: true },
+const sections: { key: string; id: string; label: string; present: boolean }[] = [
+  { key: 'stats', id: 'cifras', label: 'CIFRAS DE LA JORNADA', present: true },
   {
     key: 'podium',
-    label: 'PODIO OFICIAL POR CATEGORÍA',
+    id: 'podio-categorias',
+    label: 'PODIO POR CATEGORÍA',
     present: (summary?.podium.length ?? 0) > 0,
   },
   {
     key: 'teams',
-    label: 'PODIO DE CLUBES DE LA FECHA',
+    id: 'clubes',
+    label: 'PODIO DE CLUBES',
     present: (summary?.teams.length ?? 0) > 0,
   },
   {
     key: 'extremes',
-    label: 'ESTADÍSTICAS EXTREMAS DE LA JORNADA',
+    id: 'extremos',
+    label: 'EXTREMOS DE LA JORNADA',
     present: Boolean(summary?.extremes.scratch || summary?.extremes.farolito),
   },
   {
     key: 'route',
-    label: 'PERFIL TÉCNICO Y RUTA DE CARRERA',
+    id: 'ruta',
+    label: 'PERFIL Y RUTA',
     present: Boolean(summary?.route_profile),
   },
   {
     key: 'titles',
-    label: 'TÍTULOS DE MONTAÑA (KOM / QOM)',
+    id: 'titulos',
+    label: 'TÍTULOS DE MONTAÑA',
     present: mountainTitles.length > 0,
   },
   {
     key: 'strava',
-    label: 'SEGMENTOS OFICIALES STRAVA',
+    id: 'strava',
+    label: 'SEGMENTOS STRAVA',
     present: segments.length > 0,
   },
   {
-    key: 'awards',
+    key: 'prizes',
+    id: 'premios',
     label: 'PREMIOS DE LA JORNADA',
-    present: (summary?.awards.length ?? 0) > 0,
+    present: true,
   },
 ];
+
+/** Las secciones presentes, para el índice lateral de la referencia. */
+const indexSections = sections
+  .filter((s) => s.present)
+  .map((s) => ({ label: s.label, id: s.id }));
 
 /** Número de sección (01, 02, …) de una clave, o null si la sección no va. */
 function sectionNumber(key: string): string | null {
@@ -196,7 +230,11 @@ function sectionNumber(key: string): string | null {
 }
 ---
 
-<Showcase title={`${displayName} — Copa MacroSur MTB`} ghostWord={stage ? `FECHA ${stage.stage_number}` : undefined}>
+<Showcase
+  title={`${displayName} — Copa MacroSur MTB`}
+  ghostWord={stage ? `FECHA ${stage.stage_number}` : undefined}
+  sections={indexSections}
+>
   <SiteHeader />
 
   <main class="container stage-page">
@@ -210,8 +248,10 @@ function sectionNumber(key: string): string | null {
               No existe ninguna fecha con el identificador «{slug}». Revisa el calendario del campeonato.
             </p>
             <div class="hero-buttons">
-              <a href="/" class="btn btn--solid">Ir al inicio →</a>
-              <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
+              <Button variant="solid" href="/" label="Ir al inicio">
+                <span aria-hidden="true">→</span>
+              </Button>
+              <Button variant="ghost" href="/ranking-general" label="Ranking Acumulado" />
             </div>
           </div>
         </section>
@@ -224,7 +264,9 @@ function sectionNumber(key: string): string | null {
               El servicio de resultados no respondió en este momento. Vuelve a intentarlo en unos segundos.
             </p>
             <div class="hero-buttons">
-              <a href="/" class="btn btn--solid">Ir al inicio →</a>
+              <Button variant="solid" href="/" label="Ir al inicio">
+                <span aria-hidden="true">→</span>
+              </Button>
             </div>
           </div>
         </section>
@@ -295,7 +337,7 @@ function sectionNumber(key: string): string | null {
                   {stage.short_name ? ` // ${stage.short_name.toUpperCase()}` : ''} · CAMPEONATO OFICIAL ]
                 </div>
 
-                <h1 class="stage-title">{displayName}</h1>
+                <DisplayTitle size="page" before={titlePrefix} accent={titleAccent} />
 
                 <div class="stage-meta font-mono">
                   <span>
@@ -321,24 +363,27 @@ function sectionNumber(key: string): string | null {
 
                 <div class="hero-buttons">
                   {stage.status === 'FINISHED' ? (
-                    <a
+                    <Button
+                      variant="solid"
                       href={`/ranking-general?modo=fecha&tabla=PRO&fecha=${stage.stage_number}`}
-                      class="btn btn--solid"
+                      label="Ver Resultados"
                     >
-                      Ver Resultados →
-                    </a>
+                      <span aria-hidden="true">→</span>
+                    </Button>
                   ) : (
-                    <a href="/inscripciones" class="btn btn--solid">Inscripción Oficial →</a>
+                    <Button variant="solid" href="/inscripciones" label="Inscripción Oficial">
+                      <span aria-hidden="true">→</span>
+                    </Button>
                   )}
                   {stage.strava_route_url && (
-                    <a
+                    <Button
+                      variant="ghost"
                       href={stage.strava_route_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="btn btn--ghost"
+                      label="Ruta en Strava"
+                      external
                     >
-                      Ruta en Strava ↗
-                    </a>
+                      <span aria-hidden="true">↗</span>
+                    </Button>
                   )}
                 </div>
 
@@ -361,14 +406,14 @@ function sectionNumber(key: string): string | null {
           </section>
 
           {/* ── Cifras de la jornada ─────────────────────────────────── */}
-          <section class="stats-section">
+          <section class="stats-section" id="cifras">
             <SectionLabel number={sectionNumber('stats')!} label="CIFRAS DE LA JORNADA" />
             <StageStatsRow stats={stats!} />
           </section>
 
           {/* ── Leaderboard por categoría ────────────────────────────── */}
           {summary.podium.length > 0 && (
-            <section class="podium-section">
+            <section class="podium-section" id="podio-categorias">
               <SectionLabel number={sectionNumber('podium')!} label="PODIO OFICIAL POR CATEGORÍA" />
               <StageLeaderboard id="podio" podium={summary.podium} />
             </section>
@@ -376,7 +421,7 @@ function sectionNumber(key: string): string | null {
 
           {/* ── Podio de clubes de la fecha ──────────────────────────── */}
           {summary.teams.length > 0 && (
-            <section class="teams-section">
+            <section class="teams-section" id="clubes">
               <SectionLabel number={sectionNumber('teams')!} label="PODIO DE CLUBES DE LA FECHA" />
               <StageTeamCard teams={summary.teams} />
             </section>
@@ -384,53 +429,43 @@ function sectionNumber(key: string): string | null {
 
           {/* ── Extremos de la jornada ───────────────────────────────── */}
           {(summary.extremes.scratch || summary.extremes.farolito) && (
-            <section class="extremes-section">
+            <section class="extremes-section" id="extremos">
               <SectionLabel number={sectionNumber('extremes')!} label="ESTADÍSTICAS EXTREMAS DE LA JORNADA" />
               <div class="extremes-grid">
                 {summary.extremes.scratch && (
-                  <div class="extreme-card scratch-card" data-reveal>
-                    <div class="card-tag font-mono">
-                      <Icon name="bolt" size={13} class="card-tag__icon" />
-                      SCRATCH · MÁS RÁPIDO EN META
-                    </div>
-                    <div class="extreme-name">{summary.extremes.scratch.rider_name}</div>
-                    <div class="extreme-sub font-mono">
+                  <article class="card" data-reveal>
+                    <header class="card__head">
+                      <Icon name="bolt" size={13} class="card__icon" />
+                      <span class="card__label font-mono">SCRATCH</span>
+                      <span class="card__meta font-mono">MÁS RÁPIDO EN META</span>
+                    </header>
+                    <p class="card__name">{summary.extremes.scratch.rider_name}</p>
+                    <p class="card__sub font-mono">
                       DORSAL #{summary.extremes.scratch.bib_number} //{' '}
                       {summary.extremes.scratch.team_name}
-                    </div>
-                    <div class="extreme-foot">
-                      <span class="extreme-time font-mono">
-                        {summary.extremes.scratch.formatted_time}
-                      </span>
-                      <span class="extreme-speed font-mono">
-                        <Icon name="pace" size={13} />
-                        {stats!.winner_avg_speed_kmh ?? '—'} KM/H
-                      </span>
-                    </div>
-                  </div>
+                    </p>
+                    <p class="card__value font-mono">
+                      {summary.extremes.scratch.formatted_time}
+                    </p>
+                  </article>
                 )}
 
                 {summary.extremes.farolito && (
-                  <div class="extreme-card farolito-card" data-reveal>
-                    <div class="card-tag font-mono">
-                      <Icon name="endurance" size={13} class="card-tag__icon" />
-                      FAROLITO · MÁXIMA PERSISTENCIA
-                    </div>
-                    <div class="extreme-name">{summary.extremes.farolito.rider_name}</div>
-                    <div class="extreme-sub font-mono">
+                  <article class="card" data-reveal>
+                    <header class="card__head">
+                      <Icon name="endurance" size={13} class="card__icon" />
+                      <span class="card__label font-mono">FAROLITO</span>
+                      <span class="card__meta font-mono">MÁXIMA PERSISTENCIA</span>
+                    </header>
+                    <p class="card__name">{summary.extremes.farolito.rider_name}</p>
+                    <p class="card__sub font-mono">
                       DORSAL #{summary.extremes.farolito.bib_number} //{' '}
                       {summary.extremes.farolito.team_name}
-                    </div>
-                    <div class="extreme-foot">
-                      <span class="extreme-time font-mono">
-                        {summary.extremes.farolito.formatted_time}
-                      </span>
-                      <span class="extreme-speed font-mono">
-                        <Icon name="clock" size={13} />
-                        MÁS LARGO EN META
-                      </span>
-                    </div>
-                  </div>
+                    </p>
+                    <p class="card__value font-mono">
+                      {summary.extremes.farolito.formatted_time}
+                    </p>
+                  </article>
                 )}
               </div>
             </section>
@@ -438,7 +473,7 @@ function sectionNumber(key: string): string | null {
 
           {/* ── Perfil de etapa ──────────────────────────────────────── */}
           {summary.route_profile && (
-            <section class="route-section">
+            <section class="route-section" id="ruta">
               <SectionLabel number={sectionNumber('route')!} label="PERFIL TÉCNICO Y RUTA DE CARRERA" />
               <StageProfile
                 slug={String(slug)}
@@ -452,35 +487,34 @@ function sectionNumber(key: string): string | null {
 
           {/* ── Títulos de montaña (KOM / QOM / Kamikaze) ─────────────── */}
           {mountainTitles.length > 0 && (
-            <section class="titles-section">
+            <section class="titles-section" id="titulos">
               <SectionLabel number={sectionNumber('titles')!} label="TÍTULOS DE MONTAÑA (KOM / QOM)" />
 
               <p class="titles-note">
                 El <strong>KOM</strong> y el <strong>QOM</strong> premian al mejor escalador y a la mejor
                 escaladora en la subida más exigente de la jornada. El <strong>Kamikaze</strong> premia a
-                quien baja más rápido el descenso más pronunciado.
+                quien baja más rápido el descenso más pronunciado. Cada título se entrega en esta
+                fecha, con <strong>un solo ganador</strong> y <strong>USD {MOUNTAIN_PRIZE_USD}</strong>.
               </p>
 
               <div class="titles">
                 {mountainTitles.map((title) => (
-                  <article class={`title title--${title.key} ${title.accent}`}>
-                    <div class="title__label font-mono">
-                      <Icon name={title.icon} size={13} class="title__icon" />
-                      {title.label}
-                      <span class="title__scope">{title.scope}</span>
-                    </div>
-                    <div class="title__name">{title.data!.athlete_name}</div>
-                    <div class="title__segment">{title.data!.segment_name}</div>
-                    <div class="title__meta font-mono">
-                      <Icon name="clock" size={12} />
+                  <article class={`card title-card title--${title.key}`}>
+                    <header class="card__head">
+                      <Icon name={title.icon} size={13} class="card__icon" />
+                      <span class="card__label font-mono">{title.label}</span>
+                      <span class="card__meta font-mono">
+                        {title.scope} · USD {MOUNTAIN_PRIZE_USD}
+                      </span>
+                    </header>
+                    <p class="card__name">{title.data!.athlete_name}</p>
+                    <p class="card__sub">{title.data!.segment_name}</p>
+                    <p class="card__sub font-mono">
                       {title.data!.formatted_time} // {title.data!.average_grade}% //{' '}
                       {title.data!.distance_km} KM
-                    </div>
+                    </p>
                     {title.data!.location && (
-                      <div class="title__place font-mono">
-                        <Icon name="map" size={12} />
-                        {title.data!.location}
-                      </div>
+                      <p class="card__sub font-mono">{title.data!.location}</p>
                     )}
                   </article>
                 ))}
@@ -490,46 +524,48 @@ function sectionNumber(key: string): string | null {
 
           {/* ── Segmentos Strava ─────────────────────────────────────── */}
           {segments.length > 0 && (
-            <section class="strava-section">
+            <section class="strava-section" id="strava">
               <SectionLabel number={sectionNumber('strava')!} label="SEGMENTOS OFICIALES STRAVA" />
 
               <div class="strava-grid">
                 {segments.map((seg) => (
-                  <div class="strava-card" data-kind={seg.kind} data-reveal>
-                    <div class="strava-header font-mono">
-                      <span class="strava-logo">
-                        <Icon
-                          name={seg.kind === 'CLIMB' ? 'mountain' : seg.kind === 'DESCENT' ? 'descent' : 'ruler'}
-                          size={13}
-                        />
+                  <article class="card strava-card" data-kind={seg.kind} data-reveal>
+                    <header class="card__head">
+                      <Icon
+                        name={seg.kind === 'CLIMB' ? 'mountain' : seg.kind === 'DESCENT' ? 'descent' : 'ruler'}
+                        size={13}
+                        class="card__icon"
+                      />
+                      <span class="card__label font-mono">
                         {seg.kind === 'CLIMB'
                           ? 'SUBIDA'
                           : seg.kind === 'DESCENT'
                             ? 'BAJADA'
                             : 'PLANO'}
                       </span>
-                      <span class="strava-grade">{seg.average_grade}% PEND. MEDIA</span>
-                    </div>
-                    <div class="strava-name">{seg.name}</div>
-                    <div class="strava-dist font-mono">
-                      <Icon name="ruler" size={12} />
+                      <span class="card__meta font-mono">{seg.average_grade}% PEND. MEDIA</span>
+                    </header>
+
+                    <p class="card__name">{seg.name}</p>
+
+                    <p class="card__sub font-mono">
                       {seg.distance_km} KM
                       {seg.elevation_max_m != null && ` · ${seg.elevation_max_m} MSNM`}
                       {seg.location && ` · ${seg.location}`}
-                    </div>
+                    </p>
+
                     {seg.kom ? (
-                      <div class="strava-kom font-mono">
-                        <span class="kom-label">RÉCORD KOM:</span> {seg.kom.athlete_name} ({seg.kom.formatted_time})
-                      </div>
+                      <p class="card__record font-mono">
+                        RÉCORD KOM: {seg.kom.athlete_name} ({seg.kom.formatted_time})
+                      </p>
                     ) : seg.efforts.length > 0 ? (
-                      <div class="strava-kom strava-kom--best font-mono">
-                        <span class="kom-label">MEJOR TIEMPO REGISTRADO:</span> {seg.efforts[0].athlete_name} ({seg.efforts[0].formatted_time})
-                      </div>
+                      <p class="card__record card__record--muted font-mono">
+                        MEJOR TIEMPO REGISTRADO: {seg.efforts[0].athlete_name} ({seg.efforts[0].formatted_time})
+                      </p>
                     ) : (
-                      <div class="strava-kom strava-kom--empty font-mono">
-                        <Icon name="users" size={12} />
+                      <p class="card__record card__record--muted font-mono">
                         SIN INTENTOS DE LA FECHA DE CARRERA
-                      </div>
+                      </p>
                     )}
 
                     {seg.efforts.length > 0 && (
@@ -546,7 +582,7 @@ function sectionNumber(key: string): string | null {
 
                     {seg.strava_segment_id && (
                       <a
-                        class="strava-link font-mono"
+                        class="card__link font-mono"
                         href={`https://www.strava.com/segments/${seg.strava_segment_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -554,34 +590,32 @@ function sectionNumber(key: string): string | null {
                         VER EN STRAVA ↗
                       </a>
                     )}
-                  </div>
+                  </article>
                 ))}
               </div>
             </section>
           )}
 
           {/* ── Premios de la jornada ────────────────────────────────── */}
-          {summary.awards.length > 0 && (
-            <section class="awards-section">
-              <SectionLabel number={sectionNumber('awards')!} label="PREMIOS DE LA JORNADA" />
-              <div class="awards-grid">
-                {summary.awards.map((a) => (
-                  <div class="award-box" data-reveal>
-                    {a.sponsor_logo_url && (
-                      <img src={a.sponsor_logo_url} alt={a.sponsor_name ?? a.title} class="award-img" />
-                    )}
-                    <div class="award-content">
-                      <h3 class="award-heading">{a.title}</h3>
-                      {a.sponsor_name && <p class="award-sponsor font-mono">PATROCINADOR: {a.sponsor_name}</p>}
-                      {a.prize_description && <p class="award-text">{a.prize_description}</p>}
-                      {a.metric_value && <p class="award-text">{a.metric_value}</p>}
-                      {a.winner_name && <p class="award-winner font-mono">GANADOR: {a.winner_name}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          <section class="prizes-section" id="premios">
+            <SectionLabel
+              number={sectionNumber('prizes')!}
+              label="PREMIOS DE LA JORNADA"
+              kicker={`${PRIZE_CURRENCY} 100 / 50 / 30 · CADA CATEGORÍA`}
+            />
+
+            <div class="stage-prizes">
+              <PrizeScale
+                label="POR FECHA"
+                title="CADA CATEGORÍA"
+                body="El podio de cada una de las 11 categorías en esta fecha."
+                tiers={PER_DATE_PRIZES}
+                currency={PRIZE_CURRENCY}
+                accent="gold"
+                tags={[`${PRIZE_CATEGORIES.length} CATEGORÍAS`, '4 FECHAS']}
+              />
+            </div>
+          </section>
         </>
       )
     }
@@ -796,43 +830,6 @@ function sectionNumber(key: string): string | null {
     gap: 1rem;
   }
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.625rem 1.125rem;
-    font-size: 0.75rem;
-    font-weight: var(--font-weight-medium, 500);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    border: var(--hairline) solid transparent;
-    border-radius: var(--radius, 0);
-    white-space: nowrap;
-    text-decoration: none;
-    transition: background var(--default-transition-duration) var(--default-transition-timing-function);
-  }
-
-  .btn--solid {
-    background: var(--invert-bg);
-    color: var(--invert-fg);
-  }
-
-  .btn--solid:hover {
-    background: var(--accent, #ff5500);
-    color: #ffffff;
-  }
-
-  .btn--ghost {
-    border-color: var(--line);
-    color: var(--ink);
-    background: transparent;
-  }
-
-  .btn--ghost:hover {
-    border-color: var(--line-strong);
-    background: var(--bg-sunken);
-  }
-
   .live-badge {
     display: inline-block;
     margin-top: 1.5rem;
@@ -850,84 +847,130 @@ function sectionNumber(key: string): string | null {
     max-width: 22rem;
   }
 
-  /* ── Extremos ────────────────────────────────────────────────────── */
-  .extremes-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    margin-bottom: 3.5rem;
-  }
+  /* ══ Tarjeta editorial ═══════════════════════════════════════════════
+     UNA sola gramografía de tarjeta para los cuatro bloques de datos de la
+     ficha (extremos, títulos de montaña, segmentos Strava y premios):
+     superficie, hairline, cabeza con rótulo y metadato, nombre, cuerpo y
+     pie.
 
-  .extreme-card {
-    border: var(--hairline) solid var(--line);
+     Lo que desaparece: la barra vertical de color (`inset 3px`), el borde
+     punteado para marcar una variante y los chips con borde. El acento lo
+     llevan las MEDALLAS, que son jerarquía, no decoración, y el tipo de cada
+     bloque se dice con la palabra y el ícono. */
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem;
     background: var(--bg-raised);
-    padding: 2rem;
+    border: var(--hairline) solid var(--line);
   }
 
-  .card-tag {
+  .card__head {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.5rem;
+    min-height: 1.25rem;
+    padding-bottom: 0.625rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .card__icon {
+    flex: 0 0 auto;
+    color: var(--ink);
+  }
+
+  .card__label {
     font-size: 0.6875rem;
     font-weight: var(--font-weight-medium, 500);
     letter-spacing: 0.14em;
-    color: var(--faint);
-    margin-bottom: 0.75rem;
-  }
-
-  .card-tag__icon {
-    flex: 0 0 auto;
-    color: var(--accent);
-  }
-
-  .extreme-foot {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .extreme-speed {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.6875rem;
-    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--muted);
   }
 
-  .extreme-name {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: 1.5rem;
+  .card__meta {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  .card__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
     font-weight: 620;
     font-stretch: 118%;
     letter-spacing: -0.03em;
-    line-height: 1.02;
+    line-height: 1.15;
     color: var(--ink-strong);
-    margin-bottom: 0.25rem;
   }
 
-  .extreme-sub {
-    font-size: 0.75rem;
+  .card__sub {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
     color: var(--muted);
-    margin-bottom: 1.25rem;
   }
 
-  .extreme-time {
+  .card__record {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-strong);
+  }
+
+  .card__record--muted {
+    color: var(--faint);
+  }
+
+  .card__value {
+    margin: 0.25rem 0 0;
     font-size: 2rem;
     font-weight: var(--font-weight-medium, 500);
     font-variant-numeric: tabular-nums;
     color: var(--ink);
+    line-height: 1.1;
+  }
+
+  .card__link {
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: var(--hairline) solid var(--line-strong);
+    padding-bottom: 0.1rem;
+  }
+
+  .card__link:hover {
+    color: var(--ink-strong);
+  }
+
+  /* ── Extremos ────────────────────────────────────────────────────── */
+  .extremes-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 3.5rem;
   }
 
   /* ── Títulos de montaña ──────────────────────────────────────────── */
-  /* El color del título distingue el género: azul para varones, rosa para
-     damas (las clases `scope-pro` / `scope-team` ya definen los tokens del
-     ranking). El icono y la etiqueta distinguen subida de descenso. */
   .titles-section {
     margin-top: 2rem;
+  }
+
+  .prizes-section {
+    margin-top: 2rem;
+  }
+
+  .stage-prizes {
+    max-width: 30rem;
+    margin-top: 1.5rem;
   }
 
   .titles-note {
@@ -950,75 +993,6 @@ function sectionNumber(key: string): string | null {
     margin-top: 1.25rem;
   }
 
-  .title {
-    padding: 1.25rem 1.5rem;
-    border: var(--hairline) solid var(--line);
-    background: var(--bg-raised);
-    box-shadow: inset 3px 0 0 0 var(--scope, var(--line-strong));
-  }
-
-  .title--kamikaze-male,
-  .title--kamikaze-female {
-    border-style: dashed;
-  }
-
-  .title__label {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.6rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--scope-ink, var(--faint));
-    margin-bottom: 0.5rem;
-  }
-
-  .title__icon {
-    flex: 0 0 auto;
-  }
-
-  .title__scope {
-    margin-left: auto;
-    padding: 0.125rem 0.375rem;
-    border: var(--hairline) solid currentColor;
-    font-size: 0.5625rem;
-    letter-spacing: 0.1em;
-    white-space: nowrap;
-    opacity: 0.8;
-  }
-
-  .title__name {
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: 620;
-    letter-spacing: -0.02em;
-    color: var(--ink-strong);
-    line-height: 1.15;
-  }
-
-  .title__segment {
-    margin-top: 0.25rem;
-    font-size: var(--text-sm);
-    color: var(--muted);
-  }
-
-  .title__meta,
-  .title__place {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    margin-top: 0.5rem;
-    font-size: 0.6875rem;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .title__place {
-    color: var(--faint);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
   /* ── Strava ──────────────────────────────────────────────────────── */
   .strava-grid {
     display: grid;
@@ -1028,83 +1002,10 @@ function sectionNumber(key: string): string | null {
     margin-bottom: 3.5rem;
   }
 
-  .strava-card {
-    border: var(--hairline) solid var(--line);
-    background: var(--bg-raised);
-    padding: 1.25rem 1.5rem;
-  }
-
-  .strava-card[data-kind='CLIMB'] {
-    box-shadow: inset 3px 0 0 0 var(--podium-1, #a97a12);
-  }
-
-  .strava-card[data-kind='DESCENT'] {
-    box-shadow: inset 3px 0 0 0 var(--podium-2, #6f7784);
-  }
-
-  .strava-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    font-size: 0.6875rem;
-    color: #fc4c02; /* Strava Orange */
-    font-weight: 800;
-    margin-bottom: 0.5rem;
-  }
-
-  .strava-logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-  }
-
-  .strava-dist {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    flex-wrap: wrap;
-  }
-
-  .strava-kom--empty {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    color: var(--faint);
-    font-weight: 400;
-    letter-spacing: 0.08em;
-  }
-
-  .strava-name {
-    font-size: 1.125rem;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
-  }
-
-  .strava-dist {
-    font-size: 0.75rem;
-    color: var(--muted);
-    margin-bottom: 0.5rem;
-  }
-
-  .strava-kom {
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: var(--ink);
-  }
-
-  .kom-label {
-    color: var(--muted);
-    font-weight: 400;
-  }
-
-  .strava-kom--best {
-    color: var(--muted);
-  }
-
   .strava-board {
     list-style: none;
-    margin: 0.875rem 0 0;
-    padding: 0;
+    margin: 0.5rem 0 0;
+    padding: 0.75rem 0 0;
     border-top: var(--hairline) solid var(--line);
   }
 
@@ -1116,6 +1017,10 @@ function sectionNumber(key: string): string | null {
     padding: 0.35rem 0;
     border-bottom: var(--hairline) solid var(--line);
     font-size: 0.6875rem;
+  }
+
+  .board-row:last-child {
+    border-bottom: 0;
   }
 
   .board-rank {
@@ -1134,78 +1039,38 @@ function sectionNumber(key: string): string | null {
     font-variant-numeric: tabular-nums;
   }
 
-  .strava-link {
-    display: inline-block;
-    margin-top: 0.875rem;
-    font-size: 0.6875rem;
-    letter-spacing: 0.1em;
-    color: var(--ink);
-    text-decoration: none;
-    border-bottom: var(--hairline) solid var(--line-strong);
-    padding-bottom: 0.1rem;
-  }
-
-  .strava-link:hover {
-    color: #fc4c02;
-  }
-
   /* ── Premios ─────────────────────────────────────────────────────── */
   .awards-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    gap: 1.25rem;
     margin-top: 1.5rem;
     margin-bottom: 4rem;
   }
 
-  .award-box {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    border: var(--hairline) solid var(--line);
-    background: var(--bg-raised);
-    padding: 1.5rem;
+  .award-card {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.25rem;
   }
 
+  /* El logotipo del patrocinador es una FOTO (un trofeo, una camiseta): se
+     muestra a su proporción, sin recortarla a un cuadrado que la dejaba
+     ilegible. */
   .award-img {
-    width: 5.625rem;
-    height: 5.625rem;
-    object-fit: cover;
-    flex-shrink: 0;
+    width: auto;
+    height: 4.5rem;
+    max-width: 6rem;
+    object-fit: contain;
+    flex: 0 0 auto;
   }
 
   .award-content {
     min-width: 0;
-  }
-
-  .award-heading {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: 1.125rem;
-    font-weight: 800;
-    margin: 0 0 0.35rem 0;
-  }
-
-  .award-sponsor {
-    margin: 0 0 0.5rem;
-    font-size: 0.625rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-
-  .award-text {
-    font-size: 0.8125rem;
-    color: var(--muted);
-    line-height: 1.5;
-    margin: 0;
-  }
-
-  .award-winner {
-    margin: 0.625rem 0 0;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: var(--accent);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   @media (min-width: 48em) {

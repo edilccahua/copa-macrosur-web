@@ -139,7 +139,15 @@ export function init(): void {
    * alarga con una cola larga. 0.25 deja un retardo corto y elegante
    * (justo el que pide el sitio) sin esa demora.
    */
-  const lenis = new Lenis({ lerp: 0.25, anchors: true });
+  /*
+   * `anchors: false` — el shell (`site-shell.ts`) es la ÚNICA autoridad de
+   * las anclas: las del menú y las del índice lateral (`PageIndex`) las
+   * resuelve él con `window.__kuspideScrollTo`, que deja la cabecera pegada
+   * arriba. Con `anchors: true`, el manejador propio de Lenis competía con
+   * el shell en el mismo clic y el último `scrollTo` ganaba: la página se
+   * quedaba donde estaba en vez de saltar a la sección.
+   */
+  const lenis = new Lenis({ lerp: 0.25, anchors: false });
   lenisInstance = lenis;
   // El global que espera el timeline (`TimelineEvents.astro`): con él, el
   // marcador de la espina se actualiza en cada fotograma de Lenis y no

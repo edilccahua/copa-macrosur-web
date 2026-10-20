@@ -1,0 +1,66 @@
+---
+/**
+ * PageHeader.astro — la cabecera de una página interior.
+ *
+ * Reproduce el "masthead" de la referencia (`copiaartcraft/src/pages/apps.astro`):
+ * un eyebrow en monoespaciada, el titular con el acento serif de
+ * `DisplayTitle` y un párrafo de bajada. Lo que había era un bloque
+ * `.page-header / .page-tag / .page-title / .page-desc` reescrito en cada
+ * página, con el titular en versalitas planas.
+ *
+ * El acento serif es el del sistema: una sola palabra en Instrument Serif
+ * itálica, como en la portada.
+ */
+import DisplayTitle from './DisplayTitle.astro';
+
+interface Props {
+  /** Antetítulo entre corchetes, en monoespaciada. */
+  eyebrow?: string;
+  /** Parte del titular antes del acento. */
+  before: string;
+  /** Palabra acentuada (serif itálica). */
+  accent: string;
+  /** Parte del titular después del acento. */
+  after?: string;
+  /** Bajada: el párrafo de contexto. */
+  lead?: string;
+}
+
+const { eyebrow, before, accent, after = '', lead } = Astro.props;
+---
+
+<header class="masthead" data-draw>
+  {eyebrow && (
+    <div class="masthead__eyebrow font-mono" data-draw-eyebrow>[ {eyebrow} ]</div>
+  )}
+
+  <DisplayTitle size="page" before={before} accent={accent} after={after} />
+
+  {lead && (
+    <p class="masthead__lead" data-reveal>
+      {lead}
+    </p>
+  )}
+</header>
+
+<style>
+  .masthead {
+    margin-bottom: 3rem;
+  }
+
+  .masthead__eyebrow {
+    margin-bottom: 0.875rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .masthead__lead {
+    margin-top: 1.5rem;
+    max-width: 62ch;
+    font-size: var(--text-base);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+</style>

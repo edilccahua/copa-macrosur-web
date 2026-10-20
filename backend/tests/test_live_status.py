@@ -149,3 +149,26 @@ async def test_admin_live_unknown_stage_is_404(client):
         headers={"X-Admin-Key": settings.ADMIN_API_KEY},
     )
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_close_a_future_stage(client, async_session, monkeypatch):
+    """Cerrar hoy una fecha futura la dejaría apagada el día de la carrera."""
+    s = stage()
+    async_session.add(s)
+    await async_session.commit()
+    await async_session.refresh(s)
+
+    monkeypatch.setattr(
+        live_service,
+        "now_lima",
+        lambda: datetime(2026, 10, 20, 9, 0, tzinfo=LIMA_TZ),
+    )
+
+    res = await client.post(
+        f"/api/v1/stages/{s.id}/live",
+        json={"active": False},
+        headers={"X-Admin-Key": settings.ADMIN_API_KEY},
+    )
+    assert res.status_code == 400
+    assert "día de la carrera" in res.json()["detail"]

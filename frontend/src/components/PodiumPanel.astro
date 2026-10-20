@@ -20,7 +20,7 @@ interface Props {
   kicker: string;
   /** Filas del podio (máximo 3). */
   rows: PodiumRow[];
-  /** Texto de contexto bajo el nombre del líder. */
+  /** Texto de contexto bajo el rótulo. */
   body: string;
   /** Destino de la clasificación completa. */
   href: string;
@@ -41,8 +41,6 @@ const {
   scope,
   error = false,
 } = Astro.props;
-
-const leader = rows[0]?.name ?? 'Sin resultados aún';
 ---
 
 <div class:list={['panel', scope && `scope-${scope}`]}>
@@ -50,16 +48,12 @@ const leader = rows[0]?.name ?? 'Sin resultados aún';
 
   {
     error ? (
-      <>
-        <h3 class="panel__title">Clasificación no disponible</h3>
-        <p class="panel__body">
-          No pudimos cargar esta clasificación en este momento. Vuelve a intentarlo en unos
-          segundos.
-        </p>
-      </>
+      <p class="panel__body">
+        No pudimos cargar esta clasificación en este momento. Vuelve a intentarlo en unos
+        segundos.
+      </p>
     ) : (
       <>
-        <h3 class="panel__title">{leader}</h3>
         <p class="panel__body">{body}</p>
 
         <ol class="podium">
@@ -95,16 +89,6 @@ const leader = rows[0]?.name ?? 'Sin resultados aún';
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: var(--scope-ink, var(--faint));
-  }
-
-  .panel__title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
-    color: var(--ink-strong);
   }
 
   .panel__body {

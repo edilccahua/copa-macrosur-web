@@ -296,24 +296,75 @@ function initDelegatedHandlers(): void {
       setDrawer(false);
     }
 
-    // Anclas del menú (p.ej. "FECHAS" → /#fechas): el router de Astro no
-    // desplaza al ancla, así que se resuelve aquí.
-    const anchorLink = target.closest('a[data-nav-anchor]');
-    if (anchorLink) {
+    // Anclas del menú (p.ej. "FECHAS" → /#fechas): se resuelven en el
+    // manejador de CAPTURA de abajo, antes que el router de Astro.
+  });
+
+  /*
+    Anclas internas: "FECHAS" → /#fechas, y las del índice de secciones
+    (href="#premios").
+
+    POR QUÉ EN FASE DE CAPTURA, Y NO EN BURBUJA
+    -------------------------------------------
+    El router de Astro (`ClientRouter`) también intercepta los clics en `<a>`
+    y, si el evento NO está cancelado, lanza una navegación. Para una ancla
+    eso significa re-pedir la página y cambiarla entera: el elemento al que
+    queremos ir y la instancia de Lenis desaparecen a mitad del recorrido, y
+    el salto nativo del navegador deja el destino bajo la cabecera fija.
+
+    El router sólo se aparta si ve `ev.defaultPrevented` (ClientRouter.astro:
+    "ev.defaultPrevented" en la lista de casos en los que no navega). Como
+    nuestro manejador estaba en fase de burbuja, se ejecutaba DESPUÉS del
+    router: para entonces la navegación ya estaba en marcha, y el
+    `preventDefault()` llegaba tarde. Con el manejador en captura, el
+    `preventDefault()` va primero y el router se aparta: el ancla se resuelve
+    aquí, sin recargar nada.
+
+    POR QUÉ `replaceState` Y NO `pushState`
+    ----------------------------------------
+    `pushState` con un objeto de estado vacío BORRA el estado que Astro
+    guarda en cada entrada del historial (`{ index, scrollX, scrollY }`).
+    `index` es lo que Astro usa para saber si el usuario va hacia delante o
+    hacia atrás (`onPopState`: `nextIndex > currentHistoryIndex`): al perder
+    esa cuenta, el botón "atrás" empieza a clasificar mal las navegaciones y
+    el `index` acaba siendo `NaN`. A partir de ahí el router se comporta de
+    forma errática y las anclas dejan de funcionar.
+
+    Con `replaceState` la URL refleja la sección (se puede compartir) sin
+    crear una entrada nueva ni tocar el estado del router.
+  */
+  document.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target as Element | null;
+      if (!target) return;
+
+      const anchorLink = target.closest('a[data-nav-anchor]');
+      if (!anchorLink) return;
+
       const href = anchorLink.getAttribute('href') ?? '';
       const url = new URL(href, window.location.href);
-      if (url.hash) {
-        event.preventDefault();
-        if (url.pathname === window.location.pathname) {
-          history.pushState({}, '', url.pathname + url.hash);
-          scrollToHash(url.hash);
-        } else {
-          pendingAnchor = url.hash;
-          navigate(url.pathname + url.hash);
-        }
+      if (!url.hash) return;
+
+      event.preventDefault();
+
+      if (url.pathname === window.location.pathname) {
+        // Misma página: solo hay que desplazarse. Se conserva el estado que
+        // Astro guarda en la entrada (su `index` y su posición guardada).
+        history.replaceState(
+          { ...(history.state ?? {}) },
+          '',
+          url.pathname + url.hash,
+        );
+        scrollToHash(url.hash);
+      } else {
+        // Otra página: la navega el router y el ancla se aplica al montar.
+        pendingAnchor = url.hash;
+        navigate(url.pathname + url.hash);
       }
-    }
-  });
+    },
+    true,
+  );
 
   // Escape cierra el cajón; Tab queda atrapado dentro mientras esté abierto.
   document.addEventListener('keydown', (event) => {

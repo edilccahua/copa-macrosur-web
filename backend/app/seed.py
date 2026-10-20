@@ -19,6 +19,7 @@ from backend.app.services.excel_service import (
 )
 from backend.app.services.pdf_service import extract_race_results_from_pdf, collapse_team_hyphen
 from backend.app.services.gpx_service import parse_gpx_in_memory
+from backend.app.services.special_prizes_service import compute_claro_remontada
 from backend.app.services.scoring import (
     recalculate_stage_ranks, recalculate_championship_standings,
     recalculate_team_standings, merge_duplicate_entries
@@ -693,45 +694,73 @@ async def load_results(
             print(f"   -> las {report['official_rows']} filas coinciden con el PUESTO oficial")
 
 
-async def seed_special_awards(session: AsyncSession, stage_1_id: int) -> None:
-    """Los premios especiales de la Fecha 1.
+async def seed_special_awards(session: AsyncSession) -> None:
+    """Los premios especiales de la edición.
 
-    Montos en DÓLARES, como el resto de la escala de premios (decisión del
-    organizador, 20-Oct-2026). Antes estaban en soles y convivían con una
-    escala en dólares: dos monedas en la misma página.
+    Montos en DÓLARES, como el resto de la escala de premios.
 
-    Se hace UPSERT: si el premio ya existe, se actualizan sus textos (para
-    que un cambio de monto no requiera borrar la fila).
+    · **Premio CLARO** (USD 100): la remontada del campeonato. Es un premio
+      ACUMULADO: se entrega al cerrar las cuatro fechas y NO se muestra en la
+      ficha de una fecha. El ganador se calcula con `compute_claro_remontada`
+      y se guarda como instantánea en `winner_rider_id`; mientras falten
+      fechas es provisional.
+    · Los títulos de montaña (KOM, QOM y los dos Kamikaze) NO viven aquí:
+      se resuelven por Strava en la ficha de cada fecha y se muestran a
+      USD 30 cada uno en `/premios`.
+
+    Se hace UPSERT por título y se eliminan los premios antiguos que ya no
+    forman parte de la edición (Coca, Rey de la Montaña de USD 150).
     """
     definitions = [
         {
-            "title": "Premio Especial Coca",
-            "sponsor_name": "Tradición Andina",
-            "sponsor_logo_url": "/images/premio_coca.jpg",
-            "prize_description": "USD 100 + Trofeo Conmemorativo Coca de Bronce",
-            "metric_value": "Premio a la Resistencia y Espíritu Deportivo",
-        },
-        {
-            "title": "Rey de la Montaña (KOM)",
-            "sponsor_name": "Kuspide Performance",
-            "sponsor_logo_url": "/images/rey_montana.jpg",
-            "prize_description": "USD 150 + Maillot de Lunares de Líder Escalador",
-            "metric_value": "Mejor tiempo en el sector de ascenso Cumbre",
+            "title": "Premio CLARO",
+            "sponsor_name": "Claro Perú",
+            "sponsor_logo_url": "/images/sponsors/claro.svg",
+            "prize_description": "USD 100",
+            "metric_value": (
+                "Mayor remontada en su categoría entre la primera y la última "
+                "fecha, habiendo terminado todas."
+            ),
         },
     ]
+
     print("Sembrando premios especiales...")
+    saved: Dict[str, SpecialAward] = {}
     for definition in definitions:
         stmt = select(SpecialAward).where(
-            SpecialAward.stage_id == stage_1_id,
             SpecialAward.title == definition["title"],
         )
         award = (await session.exec(stmt)).first()
         if award is None:
-            session.add(SpecialAward(stage_id=stage_1_id, **definition))
-            continue
-        for field, value in definition.items():
-            setattr(award, field, value)
+            award = SpecialAward(stage_id=None, **definition)
+        else:
+            # Premio de campeonato: no pertenece a ninguna fecha.
+            award.stage_id = None
+            for field, value in definition.items():
+                setattr(award, field, value)
         session.add(award)
+        saved[definition["title"]] = award
+
+    # Premios que ya no forman parte de la edición 2026.
+    obsolete = ("Premio Especial Coca", "Rey de la Montaña (KOM)")
+    for title in obsolete:
+        old = (
+            await session.exec(
+                select(SpecialAward).where(SpecialAward.title == title)
+            )
+        ).first()
+        if old is not None:
+            await session.delete(old)
+
+    # Instantánea del ganador provisional del Premio CLARO.
+    remontada = await compute_claro_remontada(session)
+    claro = saved.get("Premio CLARO")
+    if claro is not None:
+        claro.winner_rider_id = (
+            remontada["winner"]["rider_id"] if remontada.get("winner") else None
+        )
+        session.add(claro)
+
     await session.commit()
 
 
@@ -941,7 +970,7 @@ async def seed_data() -> None:
             stage = stages[cfg["stage_number"]]
             await load_results(session, stage, cfg, cat_map)
 
-        await seed_special_awards(session, stages[1].id)
+        await seed_special_awards(session)
         await seed_prize_tiers(session)
         await seed_strava(session, stages[1].id, stages[2].id, stages[3].id)
         await seed_extra_events(session)

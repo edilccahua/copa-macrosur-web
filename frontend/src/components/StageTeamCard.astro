@@ -44,7 +44,7 @@ function context(team: TeamPodium): string {
     teams.map((team, index) => (
       <li class={`bento bento--span-4 ${placeClass(index)}`}>
         <header class="bento__head">
-          <span class="bento__label">CLUB</span>
+          <span class="bento__index tabular">{String(index + 1).padStart(2, '0')}</span>
           <MedalIcon
             rank={(index + 1) as 1 | 2 | 3}
             size={22}
@@ -140,7 +140,10 @@ function context(team: TeamPodium): string {
     position: relative;
     display: grid;
     place-items: center;
-    aspect-ratio: 16 / 6;
+    /* 16/10, la proporción de la media del `AppCard` de la referencia. Con
+       16/6 la caja quedaba vacía y desproporcionada: dos iniciales y dos
+      cientos píxeles de nada. */
+    aspect-ratio: 16 / 10;
     background: var(--bg-sunken);
     border: var(--hairline) solid var(--line);
     border-radius: var(--radius);
@@ -149,11 +152,14 @@ function context(team: TeamPodium): string {
 
   .bento__initial {
     font-family: var(--font-display);
-    font-size: var(--text-4xl);
+    /* La referencia usa `--text-5xl` en tarjetas de dos columnas; las de club
+       van en tres, así que la inicial se escala un peldaño para no quedar
+       perdida en el hueco. */
+    font-size: var(--text-6xl);
     font-weight: var(--font-weight-medium);
     letter-spacing: var(--tracking-tight);
     color: var(--app);
-    opacity: 0.35;
+    opacity: 0.4;
   }
 
   .bento__title {

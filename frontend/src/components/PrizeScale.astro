@@ -11,7 +11,6 @@
  *   · PRO / NORMAL → el color de su grupo (`--scope`, tokens.css)
  *   · GOLD         → el oro de la copa (`--copa-gold`)
  */
-import MedalIcon from './MedalIcon.astro';
 import type { PrizeStep } from '../data/prizes';
 
 interface Props {
@@ -63,7 +62,6 @@ const accentClass =
     {
       tiers.map((tier) => (
         <li class="prize__tier">
-          <MedalIcon rank={tier.position} size={20} class="prize__medal" />
           <span class="prize__pos font-mono">{tier.position}º</span>
           <span class="prize__amount tabular">
             {currency} {tier.amountUsd}
@@ -101,14 +99,7 @@ const accentClass =
       var(--default-transition-timing-function);
   }
 
-  /* Marca de acento: la misma señal superior de BentoCard. */
-  .prize::before {
-    content: '';
-    display: block;
-    height: 2px;
-    background: var(--prize-accent, var(--line));
-  }
-
+  /* Sin borde de acento superior: la tarjeta se lee por su contenido. */
   .prize--gold {
     --prize-accent: var(--copa-gold);
   }
@@ -181,15 +172,11 @@ const accentClass =
 
   .prize__tier {
     display: grid;
-    grid-template-columns: 1.25rem 2rem 1fr;
+    grid-template-columns: 2rem 1fr;
     gap: 0.75rem;
     align-items: center;
     padding-block: 0.55rem;
     border-bottom: var(--hairline) solid var(--line);
-  }
-
-  .prize__medal {
-    align-self: center;
   }
 
   .prize__pos {

@@ -41,6 +41,10 @@
     };
     document.addEventListener('visibilitychange', onVisible);
 
+    // Sincroniza al hidratar: la página pudo renderizarse antes de las 08:00
+    // o antes de que el admin cerrara.
+    void refresh();
+
     return () => {
       cancelled = true;
       window.clearInterval(id);
@@ -110,6 +114,13 @@
     <h3 class="live__title">{title}</h3>
     <p class="live__body">{body}</p>
 
+    <ul class="live__specs font-mono">
+      <li>LLEGADAS</li>
+      <li>TIEMPO</li>
+      <li>CATEGORÍA</li>
+      <li>PUESTO</li>
+    </ul>
+
     {#if stage}
       <p class="live__meta font-mono">{metaLine}</p>
     {/if}
@@ -128,28 +139,30 @@
   </div>
 
   <div class="live__media">
-    {#if stage?.poster_url}
-      <img
-        class="live__poster"
-        src={stage.poster_url}
-        alt={`Póster de ${stageName}`}
-        loading="lazy"
-      />
-    {:else}
-      <div class="live__fallback" aria-hidden="true">META</div>
-    {/if}
+    <div class="live__poster-wrap">
+      {#if stage?.poster_url}
+        <img
+          class="live__poster"
+          src={stage.poster_url}
+          alt={`Póster de ${stageName}`}
+          loading="lazy"
+        />
+      {:else}
+        <div class="live__fallback" aria-hidden="true">META</div>
+      {/if}
 
-    <div class="live__shade" aria-hidden="true"></div>
-
-    <div class="live__signal" aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
+      <div class="live__signal" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
     </div>
 
-    <div class="live__finish" aria-hidden="true"></div>
-
-    <p class="live__stamp font-mono">META · 08:00 → CIERRE</p>
+    <!-- La meta: una línea de cuadros horizontal, como el arco de llegada. -->
+    <div class="live__finishbar">
+      <p class="live__stamp font-mono">META · 08:00 → CIERRE</p>
+      <span class="live__finish" aria-hidden="true"></span>
+    </div>
   </div>
 </article>
 
@@ -166,17 +179,7 @@
     overflow: hidden;
   }
 
-  /* La señal de acento superior: la misma marca de las tarjetas Bento. */
-  .live::before {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    top: 0;
-    z-index: 3;
-    height: 2px;
-    background: var(--live-accent);
-  }
-
+  /* Sin borde de acento superior: la tarjeta respira por su contenido. */
   .live.is-live {
     --live-accent: var(--status-down);
   }
@@ -189,6 +192,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    justify-content: center;
     gap: 0.75rem;
     padding: 1.5rem;
   }
@@ -221,11 +225,11 @@
 
   .live__title {
     margin: 0;
-    max-width: 16ch;
+    max-width: 15ch;
     font-family: var(--font-display);
-    font-size: clamp(2rem, 4.5vw, 3.25rem);
+    font-size: clamp(1.65rem, 3vw, 2.35rem);
     font-weight: var(--font-weight-medium);
-    line-height: 0.98;
+    line-height: 1.02;
     letter-spacing: var(--tracking-tight);
     color: var(--ink-strong);
   }
@@ -244,6 +248,23 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--faint);
+  }
+
+  .live__specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .live__specs li {
+    padding: 0.2rem 0.45rem;
+    font-size: 0.5625rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border: var(--hairline) solid var(--line);
   }
 
   .live__cta {
@@ -283,10 +304,18 @@
 
   /* ── La pieza gráfica ─────────────────────────────────────────────── */
   .live__media {
-    position: relative;
-    min-height: 16rem;
+    display: flex;
+    flex-direction: column;
     background: var(--bg-sunken);
     border-top: var(--hairline) solid var(--line);
+  }
+
+  /* El póster es 4:5 (720 × 900). El bloque usa SU proporción: así no se
+     recorta ni la fecha ni la lista de categorías del cartel. */
+  .live__poster-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
     overflow: hidden;
   }
 
@@ -309,31 +338,30 @@
     color: var(--line-strong);
   }
 
-  .live__shade {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, transparent 45%, rgb(0 0 0 / 0.58) 100%);
+  /* La meta: una línea de cuadros horizontal, como el arco de llegada. */
+  .live__finishbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-raised);
+    border-top: var(--hairline) solid var(--line);
   }
 
-  /* Meta a cuadros: el borde derecho de la pieza. */
   .live__finish {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 1.25rem;
+    flex: 1;
+    height: 0.75rem;
     background: repeating-conic-gradient(
         var(--invert-bg) 0% 25%,
         var(--invert-fg) 0% 50%
       )
-      0 0 / 14px 14px;
-    opacity: 0.9;
+      0 0 / 12px 12px;
   }
 
   .live__signal {
     position: absolute;
-    top: 1.25rem;
-    right: 2.5rem;
+    top: 1rem;
+    right: 1rem;
     width: 2.5rem;
     height: 2.5rem;
   }
@@ -368,15 +396,14 @@
   }
 
   .live__stamp {
-    position: absolute;
-    left: 1rem;
-    bottom: 1rem;
     margin: 0;
-    padding: 0.3rem 0.5rem;
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
     font-size: 0.625rem;
     letter-spacing: 0.12em;
-    color: var(--invert-fg);
-    background: var(--invert-bg);
+    color: var(--ink);
+    border: var(--hairline) solid var(--line);
+    background: var(--bg);
   }
 
   @keyframes live-pulse {
@@ -402,7 +429,7 @@
 
   @media (min-width: 48em) {
     .live {
-      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.75fr);
     }
 
     .live__copy {
@@ -410,7 +437,6 @@
     }
 
     .live__media {
-      min-height: 21rem;
       border-top: 0;
       border-left: var(--hairline) solid var(--line);
     }
