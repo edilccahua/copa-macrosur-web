@@ -989,6 +989,15 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
     (`stages_counted` / `total_stages`).
   - La tarjeta es **la misma** en la portada, en `/premios` y en la ficha de
     una fecha: mismo rótulo en color, mismo icono y mismo pie.
+- **Escala tipográfica de la tarjeta de premios** (20-Oct-2026). La escala de
+  premios comparte escala con `PodiumPanel` (la tarjeta de clasificación de la
+  portada): es toda monoespaciada, con el rótulo a `.6875 rem` en versalitas,
+  el cuerpo a `--text-sm` en la sans del sitio y los datos a `.75–.875 rem`.
+  **Ningún texto de la tarjeta pasa de 14 px.** Antes había un titular en
+  display a 1.5 rem, los montos a 1 rem y el ganador provisional a 1.125 rem:
+  la sección de premios pesaba el doble que la clasificación que tiene justo
+  encima. La identidad (`PRO`, `NORMAL`, `CADA CATEGORÍA`) va en el rótulo,
+  con el mismo orden que `PodiumPanel` (`[ PRO · TODOS ]` → `[ PRO · ACUMULADO ]`).
 - **BD pendiente:** `prize_tiers` todavía conserva la escala anterior
   (por fecha 70/50/30 y acumulado por categoría). Mientras no se migre, la
   escala vive en `frontend/src/data/prizes.ts` y la deuda está documentada en

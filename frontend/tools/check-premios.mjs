@@ -49,14 +49,24 @@ const leerTarjetas = (page, selector) =>
       const label = el.querySelector('.prize__label');
       const icon = el.querySelector('.prize__icon svg');
       const pie = el.querySelector('.prize__foot-label');
+      // La escala tipográfica de la tarjeta: sólo los elementos que
+      // PINTAN texto (los contenedores heredan el tamaño de la raíz y no
+      // cuentan).
+      const sizes = [...el.querySelectorAll('*')]
+        .filter((n) =>
+          [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim())
+        )
+        .map((n) => parseFloat(getComputedStyle(n).fontSize));
       return {
         label: label?.textContent?.trim() ?? null,
+        scope: el.querySelector('.prize__scope')?.textContent?.trim() ?? null,
         color: label ? getComputedStyle(label).color : null,
         icono: icon?.innerHTML ?? null,
         pie: pie?.textContent?.trim() ?? null,
         nombre: el.querySelector('.prize__foot-name')?.textContent?.trim() ?? null,
         detalle: el.querySelector('.prize__foot-detail')?.textContent?.trim() ?? null,
         borde: getComputedStyle(el).borderTopColor,
+        maxFontSize: sizes.length ? Math.max(...sizes) : 0,
       };
     })
   );
@@ -86,6 +96,27 @@ ok(
 ok(
   portada[2]?.pie === 'CADA FECHA',
   `portada: CADA CATEGORÍA dice "CADA FECHA" (${portada[2]?.pie})`
+);
+
+// ── 1b · La escala tipográfica es la de la sección 02 ───────────────────────
+//
+// La sección 02 (PodiumPanel) es toda mono a .75 rem. La escala de premios
+// tenía un titular display de 1.5 rem, los montos a 1 rem y el ganador
+// provisional a 1.125 rem: tres veces más grande que la clasificación que
+// tiene justo encima. Ahora NINGÚN texto de la tarjeta pasa de 14 px.
+ok(
+  portada.every((t) => t.maxFontSize <= 14),
+  `portada: ningún texto de la tarjeta pasa de 14 px (${portada.map((t) => t.maxFontSize).join(' · ')})`
+);
+
+// ── 1c · El rótulo lleva la identidad: "PRO · ACUMULADO" ───────────────────
+ok(
+  portada[0]?.label === 'PRO' && portada[0]?.scope === '· ACUMULADO',
+  `portada: el rótulo es "PRO · ACUMULADO" (${portada[0]?.label} ${portada[0]?.scope})`
+);
+ok(
+  portada[2]?.label === 'CADA CATEGORÍA' && portada[2]?.scope === '· POR FECHA',
+  `portada: el rótulo es "CADA CATEGORÍA · POR FECHA" (${portada[2]?.label} ${portada[2]?.scope})`
 );
 
 // ── 2 · El color vive en el rótulo, no en un borde ─────────────────────────
