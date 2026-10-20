@@ -61,7 +61,6 @@ const trace = await page.evaluate(() => window.__trace || []);
 // desaparece (opacidad 0) — es el patrón del salto.
 const porElemento = new Map();
 for (const row of trace) {
-  const key = row.t + '|' + row.cls;
   if (!porElemento.has(row.cls)) porElemento.set(row.cls, []);
   porElemento.get(row.cls).push(row);
 }
