@@ -144,3 +144,77 @@ async def test_admin_clave_con_acentos_responde_403(client, monkeypatch):
         headers={"X-Admin-Key": "clávé-ñ".encode("latin-1")},
     )
     assert res.status_code == 403
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CORS cerrado en producción
+#
+# El sitio se sirve desde Cloudflare Pages y la API desde Render: el navegador
+# del visitante manda la cabecera `Origin`. Si el backend acepta cualquier
+# origen, cualquiera puede leer la API desde su propia página. En producción
+# sólo valen los orígenes de la lista.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def test_cors_no_acepta_pages_dev_arbitrario(client, monkeypatch):
+    """Un `*.pages.dev` que NO está en la lista no recibe permiso de CORS."""
+    from backend.app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(
+        config_module.settings, "CORS_ORIGINS", ["https://copa-macrosur-web.pages.dev"]
+    )
+    res = await client.get(
+        "/api/v1/public/live-status",
+        headers={"Origin": "https://attacker.pages.dev"},
+    )
+    assert "access-control-allow-origin" not in {k.lower() for k in res.headers}
+
+
+async def test_cors_en_produccion_no_acepta_localhost(client, monkeypatch):
+    """En producción el regex de localhost está DESACTIVADO.
+
+    Antes el regex de localhost estaba activo SIEMPRE, también en producción:
+    eso deja abierta la API a cualquier página servida desde el portátil de
+    cualquiera.
+    """
+    from backend.app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(config_module.settings, "CORS_ORIGINS", ["https://kuspideweb.com"])
+    res = await client.get(
+        "/api/v1/public/live-status",
+        headers={"Origin": "http://localhost:4321"},
+    )
+    assert "access-control-allow-origin" not in {k.lower() for k in res.headers}
+
+
+async def test_cors_en_produccion_acepta_un_origen_de_la_lista(client, monkeypatch):
+    """El origen REAL sí recibe permiso: la lista no es un muro."""
+    from backend.app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(config_module.settings, "CORS_ORIGINS", ["https://kuspideweb.com"])
+    res = await client.get(
+        "/api/v1/public/live-status",
+        headers={"Origin": "https://kuspideweb.com"},
+    )
+    assert res.headers.get("access-control-allow-origin") == "https://kuspideweb.com"
+
+
+async def test_cors_en_desarrollo_acepta_cualquier_puerto_de_localhost(client, monkeypatch):
+    """En desarrollo vale cualquier puerto de localhost.
+
+    Astro toma el siguiente puerto libre si el 4321 está ocupado: con una
+    lista fija, el sitio "funciona" en el servidor (el SSR no lleva `Origin`)
+    pero TODAS las islas de cliente fallan en silencio.
+    """
+    from backend.app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "ENVIRONMENT", "development")
+    monkeypatch.setattr(config_module.settings, "CORS_ORIGINS", ["https://kuspideweb.com"])
+    res = await client.get(
+        "/api/v1/public/live-status",
+        headers={"Origin": "http://localhost:4327"},
+    )
+    assert res.headers.get("access-control-allow-origin") == "http://localhost:4327"
