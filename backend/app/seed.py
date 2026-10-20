@@ -763,24 +763,76 @@ async def seed_special_awards(session: AsyncSession) -> None:
 
 
 async def seed_prize_tiers(session: AsyncSession) -> None:
-    """La escala de premios en dólares, por categoría y por ámbito.
+    """La escala de premios en dólares, por ámbito y agrupación.
 
     Decidida por el organizador (20-Oct-2026). Vive en la BD y no en el
     frontend: la página de premios la lee de la API.
+
+    Es un UPSERT por `(scope, group_key, position)`: repetir el seed
+    actualiza los montos (la escala cambió más de una vez) y borra las filas
+    que ya no existen. Antes, si la tabla tenía CUALQUIER fila, el seed se
+    iba sin hacer nada y la BD se quedaba con la escala vieja para siempre.
     """
-    stmt = select(PrizeTier)
-    if (await session.exec(stmt)).first():
-        return
-    print("Sembrando la escala de premios...")
-    session.add_all([
-        PrizeTier(scope="FECHA", position=1, amount_usd=70, label="1er puesto de cada categoría", currency="USD"),
-        PrizeTier(scope="FECHA", position=2, amount_usd=50, label="2do puesto de cada categoría", currency="USD"),
-        PrizeTier(scope="FECHA", position=3, amount_usd=30, label="3er puesto de cada categoría", currency="USD"),
-        PrizeTier(scope="ACUMULADO", position=1, amount_usd=300, label="Campeón de cada categoría", currency="USD"),
-        PrizeTier(scope="ACUMULADO", position=2, amount_usd=200, label="Subcampeón de cada categoría", currency="USD"),
-        PrizeTier(scope="ACUMULADO", position=3, amount_usd=100, label="Tercer puesto de cada categoría", currency="USD"),
-    ])
-    await session.commit()
+    escala = [
+        # El premio por fecha: cada una de las 11 categorías cobra lo que dice
+        # su fila. `group_key` nulo.
+        ("FECHA", None, 1, 100, "1er puesto de cada categoría"),
+        ("FECHA", None, 2, 50, "2do puesto de cada categoría"),
+        ("FECHA", None, 3, 30, "3er puesto de cada categoría"),
+        # El acumulado: un podio por agrupación, no por categoría.
+        ("ACUMULADO", "PRO", 1, 300, "Campeón del acumulado PRO"),
+        ("ACUMULADO", "PRO", 2, 200, "Subcampeón del acumulado PRO"),
+        ("ACUMULADO", "PRO", 3, 100, "Tercer puesto del acumulado PRO"),
+        ("ACUMULADO", "NORMAL", 1, 300, "Campeón del acumulado NORMAL"),
+        ("ACUMULADO", "NORMAL", 2, 200, "Subcampeón del acumulado NORMAL"),
+        ("ACUMULADO", "NORMAL", 3, 100, "Tercer puesto del acumulado NORMAL"),
+        # La Copa de Equipos acumulada.
+        ("ACUMULADO", "EQUIPOS", 1, 500, "Campeón de la Copa de Equipos"),
+        ("ACUMULADO", "EQUIPOS", 2, 400, "Subcampeón de la Copa de Equipos"),
+        ("ACUMULADO", "EQUIPOS", 3, 300, "Tercer puesto de la Copa de Equipos"),
+    ]
+
+    existentes = (
+        await session.exec(
+            select(PrizeTier).where(
+                PrizeTier.scope.in_(["FECHA", "ACUMULADO"]),
+            )
+        )
+    ).all()
+    por_clave = {(t.scope, t.group_key, t.position): t for t in existentes}
+
+    cambios = False
+    for scope, group_key, position, amount, label in escala:
+        tier = por_clave.get((scope, group_key, position))
+        if tier is None:
+            session.add(
+                PrizeTier(
+                    scope=scope,
+                    group_key=group_key,
+                    position=position,
+                    amount_usd=amount,
+                    label=label,
+                    currency="USD",
+                )
+            )
+            cambios = True
+            continue
+        if (tier.amount_usd, tier.label, tier.currency) != (amount, label, "USD"):
+            tier.amount_usd = amount
+            tier.label = label
+            tier.currency = "USD"
+            cambios = True
+
+    # Las filas que ya no están en la escala (la vieja, por categoría) se van.
+    claves = {(scope, group_key, position) for scope, group_key, position, *_ in escala}
+    for tier in existentes:
+        if (tier.scope, tier.group_key, tier.position) not in claves:
+            await session.delete(tier)
+            cambios = True
+
+    if cambios:
+        print("Sembrando la escala de premios...")
+        await session.commit()
 
 
 async def seed_strava(

@@ -966,6 +966,7 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   | :--- | :--- | :--- | :--- | :--- |
   | Por fecha | 100 USD | 50 USD | 30 USD | Cada una de las 11 categorías |
   | Acumulado del campeonato | 300 USD | 200 USD | 100 USD | Podio de la agrupación **PRO** y podio de la agrupación **NORMAL** |
+  | Acumulado de equipos | 500 USD | 400 USD | 300 USD | Podio de la **Copa de Equipos** acumulada |
 
 - El acumulado **no es por categoría**: premia al que más puntos suma dentro
   de PRO y al que más suma dentro de NORMAL.
@@ -979,12 +980,13 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   campeonato— no mostraban a nadie.
   | Celda | Estado | Contenido |
   | :--- | :--- | :--- |
-  | `PRO` / `NORMAL` (acumulado) | `GANADOR PROVISIONAL` | el líder de la agrupación con sus puntos (`{pts} PTS · {n} DE {m} FECHAS`). Pasa a `GANADOR` cuando las cuatro fechas están disputadas |
+  | `PRO` / `NORMAL` (acumulado) | `PROVISIONAL` en cada peldaño | el podio completo de la agrupación: el 1º, el 2º y el 3º, con sus puntos |
+  | `COPA DE EQUIPOS` (acumulado) | `PROVISIONAL` en cada peldaño | el podio completo de la Copa de Equipos |
   | `CADA CATEGORÍA` (por fecha) | `CADA FECHA` | no hay un ganador único: hay once podios por fecha |
   | `KOM` / `QOM` / `KAMIKAZE` | `UNO POR FECHA` | **sin ganador**: son premios POR FECHA y su ganador es el de cada fecha, no el del campeonato. Se publica en la ficha de la fecha (`/fechas/[slug]`) y en la portada |
-  - El líder provisional sale de `GET /api/v1/public/standings?scope=PRO|NORMAL`
-    (la fila 1). En la portada no cuesta una petición extra: la sección 02 ya
-    lee la misma clasificación.
+  - Los ganadores provisionales salen de
+    `GET /api/v1/public/standings?scope=PRO|NORMAL` y
+    `GET /api/v1/public/standings?kind=teams` (los tres primeros de cada uno).
   - El recuento de fechas sale de `GET /api/v1/public/remontada`
     (`stages_counted` / `total_stages`).
 - **La página son CINCO secciones y UNA sola gramática** (20-Oct-2026).
@@ -1019,8 +1021,10 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
       sección, como resumen.
   - **En los premios acumulados, cada peldaño lleva su ganador PROVISIONAL**
     (el primero, el segundo y el tercero de la clasificación): el podio dice
-    quién cobra cada cifra, no sólo cuánto cobra. En los premios por fecha
-    no: se resuelven en cada carrera.
+    quién cobra cada cifra, no sólo cuánto cobra. El nombre va **centrado**
+    dentro del peldaño: los nombres largos se parten en dos renglones y, sin
+    centrar, el segundo queda pegado a la izquierda y el peldaño se ve
+    torcido. En los premios por fecha no: se resuelven en cada carrera.
   - **Sin números de celda.** La tarjeta no lleva índice arriba a la
     derecha.
   - **Sin panels, sin notas sueltas y sin párrafos que repitan lo que dice la
@@ -1039,10 +1043,13 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   los datos a `.75–.875 rem`. **Ningún texto de la tarjeta pasa de 14 px.**
   La identidad (`PRO`, `NORMAL`, `CADA CATEGORÍA`) va en el rótulo, con el
   mismo orden que `PodiumPanel` (`[ PRO · TODOS ]` → `[ PRO · ACUMULADO ]`).
-- **BD pendiente:** `prize_tiers` todavía conserva la escala anterior
-  (por fecha 70/50/30 y acumulado por categoría). Mientras no se migre, la
-  escala vive en `frontend/src/data/prizes.ts` y la deuda está documentada en
-  `docs/PREMIOS-PENDIENTE.md`.
+- **La escala está en la BD** (`prize_tiers`, con su `group_key`: `PRO`,
+  `NORMAL`, `EQUIPOS` y `NULL` para el premio por fecha) y la publica
+  `GET /api/v1/public/prizes`. El seed es un UPSERT por
+  `(scope, group_key, position)`: cambiar un monto es cambiar una línea de
+  `backend/app/seed.py` y volver a sembrar. La copia de lectura del
+  frontend es `frontend/src/data/prizes.ts` y tiene que decir lo mismo; la
+  deuda y el detalle están en `docs/PREMIOS-PENDIENTE.md`.
 - La portada reproduce la misma escala en la sección `03 · Premios` y enlaza
   a esta página.
 - **Premio CLARO (USD 100) — la remontada, ACUMULADO.** Se entrega al cerrar

@@ -1,19 +1,15 @@
 /**
  * prizes.ts — escala de premios de la edición 2026.
  *
- * ⚠️ PROVISIONAL: la BD (`prize_tiers`) todavía tiene la escala anterior
- * (por fecha 70/50/30 y acumulado 300/200/100 **por categoría**). El
- * organizador fijó esta escala nueva, pero la migración de datos queda
- * pendiente y documentada en `docs/PREMIOS-PENDIENTE.md`.
- *
- * Mientras esa migración no se haga, esta es la ÚNICA fuente de los montos
- * en el frontend: la portada y /premios leen de aquí, no escriben cifras
- * sueltas en el marcado. Cuando la BD se actualice, este módulo se sustituye
- * por la respuesta de `GET /api/v1/public/prizes`.
+ * La escala vive en la BD (`prize_tiers`, con su `group_key`) y el backend
+ * la publica en `GET /api/v1/public/prizes`. Este módulo es la copia de
+ * lectura del frontend: mientras la página no la pida a la API, es la fuente
+ * de los montos que se pintan.
  *
  * Reglas:
  *  · Acumulado del campeonato: 300/200/100 USD para el líder de puntos de
  *    cada agrupación (PRO y NORMAL). No es por categoría.
+ *  · Copa de Equipos acumulada: 500/400/300 USD para el podio de clubes.
  *  · Por fecha: 100/50/30 USD en CADA UNA de las 11 categorías, en cada una
  *    de las cuatro fechas.
  */
@@ -76,11 +72,25 @@ export const ACCUMULATED_PRIZES: AccumulatedPrize[] = [
  */
 export const PER_DATE_PRIZE_ICON: IconName = 'trophy';
 
-/** 100 / 50 / 30 USD en cada categoría, en cada fecha. */
+/**
+ * El premio por fecha se reparte en CADA una de las 11 categorías, en cada
+ * una de las cuatro fechas: no hay un ganador único, hay once podios.
+ */
 export const PER_DATE_PRIZES: PrizeStep[] = [
   { position: 1, amountUsd: 100 },
   { position: 2, amountUsd: 50 },
   { position: 3, amountUsd: 30 },
+];
+
+/**
+ * El premio acumulado de EQUIPOS (la Copa de Equipos): 500 / 400 / 300 USD.
+ * Es la única escala que NO coincide con la de los corredores, porque el
+ * podio de clubes se paga con un presupuesto propio.
+ */
+export const TEAM_PRIZES: PrizeStep[] = [
+  { position: 1, amountUsd: 500 },
+  { position: 2, amountUsd: 400 },
+  { position: 3, amountUsd: 300 },
 ];
 
 /**
