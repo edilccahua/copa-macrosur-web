@@ -1,0 +1,104 @@
+---
+/**
+ * premios.astro — Página de premios del campeonato.
+ *
+ * En blanco por ahora (decisión del organizador, 20-Oct-2026): la estructura
+ * está lista para llenarse con los `SpecialAward` de la base de datos (hoy
+ * hay 2 registrados) en cuanto se definan.
+ */
+import Showcase from '../layouts/Showcase.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SectionLabel from '../components/bento/SectionLabel.astro';
+---
+
+<Showcase
+  title="Premios — Kúspide MTB"
+  sections={[{ label: 'Premios', id: 'premios' }]}
+>
+  <SiteHeader />
+
+  <main class="page-content container" id="premios">
+    <header class="page-header" data-draw>
+      <div class="page-tag font-mono" data-draw-eyebrow>[ KÚSPIDE XTREME SPORTS // PREMIOS ]</div>
+      <h1 class="page-title">PREMIOS</h1>
+      <p class="page-desc">
+        Premios oficiales de la Copa MacroSur MTB 2026: montaña, por etapa y
+        distintivos de la organización. Los ganadores de cada jornada se
+        anuncian al cerrar la fecha.
+      </p>
+    </header>
+
+    <section class="premios-section">
+      <SectionLabel number="01" label="PREMIOS DE LA EDICIÓN 2026" kicker="COPA MACROSUR MTB" />
+
+      <div class="empty-state" data-reveal>
+        <div class="empty-state__label font-mono">[ EN PREPARACIÓN ]</div>
+        <p class="empty-state__text">
+          Los premios de esta edición se anuncian próximamente. Vuelve pronto.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</Showcase>
+
+<style>
+  .page-content {
+    padding-top: 3rem;
+    padding-bottom: 5rem;
+  }
+
+  .page-header {
+    margin-bottom: 3.5rem;
+    max-width: 50rem;
+  }
+
+  .page-tag {
+    font-size: var(--text-xs, 0.6875rem);
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .page-title {
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+
+  .page-desc {
+    margin-top: 1rem;
+    max-width: 46ch;
+    font-size: var(--text-base);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .premios-section {
+    border-top: var(--hairline) solid var(--line);
+    padding-top: 2.5rem;
+  }
+
+  .empty-state {
+    padding: 3rem 0;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .empty-state__label {
+    font-size: var(--text-xs);
+    letter-spacing: 0.14em;
+    color: var(--faint);
+  }
+
+  .empty-state__text {
+    margin-top: 0.75rem;
+    max-width: 40ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+</style>

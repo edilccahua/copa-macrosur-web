@@ -82,6 +82,24 @@ let lenisInstance: Lenis | null = null;
 let triggers: ScrollTrigger[] = [];
 let rulerCleanup: (() => void) | null = null;
 
+/**
+ * Desplaza hasta un elemento, dejando la cabecera pegada arriba.
+ * Lo expone el shell (`window.__kuspideScrollTo`) para resolver las anclas
+ * del menú: el router de Astro no desplaza al ancla.
+ */
+function scrollToElement(target: Element): void {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--nav-height');
+  const headerOffset = Number.parseFloat(raw) || 49;
+  const offset = -(headerOffset + 8);
+
+  if (lenisInstance) {
+    lenisInstance.scrollTo(target as HTMLElement, { offset });
+    return;
+  }
+  const top = target.getBoundingClientRect().top + window.scrollY + offset;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+
 // ── API pública ─────────────────────────────────────────────────────────────
 
 /** Monta el movimiento de la página actual. */
@@ -95,6 +113,7 @@ export function init(): void {
   }
 
   window.__motionReady = true;
+  (window as any).__kuspideScrollTo = scrollToElement;
 
   /* ── Scroll suave ─────────────────────────────────────────────────────── */
   const lenis = new Lenis({ lerp: 0.12, anchors: true });
@@ -205,6 +224,8 @@ export function teardown(): void {
 
   rulerCleanup?.();
   rulerCleanup = null;
+
+  delete (window as any).__kuspideScrollTo;
 
   if (lenisInstance) {
     lenisInstance.destroy();
