@@ -100,6 +100,10 @@ async def sync_strava_efforts(
     # Insertar nuevos esfuerzos
     all_riders = (await session.exec(select(Rider))).all()
     rider_tokens = [(r, normalize_name(r.full_name).split()) for r in all_riders]
+    # Cruce por identificador de Strava: es fiable, el nombre no.
+    rider_by_strava_id = {
+        r.strava_athlete_id: r for r in all_riders if r.strava_athlete_id
+    }
 
     def find_rider(athlete_name: str) -> Optional[Rider]:
         """Cruza el nombre de Strava con un Rider por subconjunto de tokens normalizados."""
@@ -114,14 +118,21 @@ async def sync_strava_efforts(
         return best
 
     for item in payload.efforts:
-        rider = find_rider(item.athlete_name_raw)
+        # El identificador de Strava manda; el nombre es el respaldo.
+        rider = (
+            rider_by_strava_id.get(item.strava_athlete_id)
+            if item.strava_athlete_id
+            else None
+        ) or find_rider(item.athlete_name_raw)
 
         effort = StravaEffort(
             segment_id=segment.id,
             rider_id=rider.id if rider else None,
             athlete_name_raw=item.athlete_name_raw,
             elapsed_time_sec=item.elapsed_time_sec,
-            is_kom_qom=item.is_kom_qom
+            is_kom_qom=item.is_kom_qom,
+            measured_on=item.measured_on,
+            strava_athlete_id=item.strava_athlete_id,
         )
         session.add(effort)
 

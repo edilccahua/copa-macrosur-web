@@ -1,19 +1,20 @@
 """
-Sincroniza los esfuerzos de Strava de TODOS los segmentos de las rutas
-oficiales del campeonato.
+Sincroniza los esfuerzos de Strava de las rutas oficiales del campeonato.
 
-Usa la sesión Strava ya abierta en Chrome (CDP) y la API protegida del
+Usa la sesion Strava ya abierta en Chrome (CDP) y la API protegida del
 backend. Es una herramienta LOCAL del administrador: nunca se despliega.
 
-El script:
-  1. recorre la tabla `Segments` de cada ruta de Strava;
-  2. visita cada segmento y lee su tabla de tiempos (top 10);
-  3. envía el payload a `POST /api/v1/stages/{stage_id}/sync-strava-efforts`.
+Por cada segmento de la tabla `Segments` de cada ruta:
+  1. lee la tabla de tiempos (top 10) con la FECHA de cada intento y el
+     identificador del atleta en Strava;
+  2. envia el payload a `POST /api/v1/stages/{stage_id}/sync-strava-efforts`.
 
-El flag `is_kom_qom` lo marca el propio Strava en su tabla de récords: la
-primera fila de cada segmento es el KOM/QOM de ese tramo.
+La fecha es lo que permite distinguir los intentos de la carrera de los de
+años atrás: Strava lista en un mismo segmento los de 2019, 2023, 2024 y los
+del día de la carrera, todos en la misma tabla.
 """
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -27,25 +28,16 @@ ROUTES = [
     {"stage_number": 3, "route": "3545824230908680048"},
 ]
 
-# Los segmentos sin efforts se consultan; los que ya los tienen se saltan.
-SKIP_WITH_EFFORTS = {"41448847", "18378066", "41681206"}
+MESES = {
+    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
+    "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12,
+}
 
 
 def api_get(path):
     request = urllib.request.Request(f"{API_BASE}{path}")
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.loads(response.read().decode("utf-8"))
-
-
-def stage_id_by_number(stage_number: int) -> int:
-    """El id de la etapa por su número de calendario.
-
-    `GET /stages` NO acepta filtros: devuelve las cuatro. Filtrar aquí.
-    """
-    for stage in api_get("/stages"):
-        if stage.get("stage_number") == stage_number:
-            return stage["id"]
-    raise LookupError(f"no hay fecha {stage_number}")
 
 
 def api_post(path, payload):
@@ -57,6 +49,17 @@ def api_post(path, payload):
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def stage_id_by_number(stage_number: int) -> int:
+    """El id de la etapa por su numero de calendario.
+
+    `GET /stages` NO acepta filtros: devuelve las cuatro. Filtrar aqui.
+    """
+    for stage in api_get("/stages"):
+        if stage.get("stage_number") == stage_number:
+            return stage["id"]
+    raise LookupError(f"no hay fecha {stage_number}")
 
 
 def route_segments(route_id):
@@ -71,7 +74,7 @@ def route_segments(route_id):
         const m = a.getAttribute('href').match(/\\/segments\\/(\\d+)/);
         if (!m) return;
         const tr = a.closest('tr');
-        const cells = tr ? [...tr.querySelectorAll('td')].map(td => td.innerText.trim().replace(/\\n/g,' ')) : [];
+        const cells = tr ? [...tr.querySelectorAll('td')].map(td => td.innerText.trim().replace(/\\n/g, ' ')) : [];
         rows.push({id: m[1], cells: cells});
       });
       return JSON.stringify(rows);
@@ -81,22 +84,34 @@ def route_segments(route_id):
 
 
 def segment_efforts(segment_id):
-    """El top 10 de tiempos de un segmento."""
+    """El top 10 de tiempos de un segmento, con fecha y atleta de Strava."""
     new_tab(f"https://www.strava.com/segments/{segment_id}")
     wait_for_load()
-    time.sleep(2.8)
+    # La tabla de tiempos tarda en aparecer: se espera a que tenga filas.
+    for _ in range(20):
+        time.sleep(0.6)
+        try:
+            count = js("document.querySelectorAll('table tbody tr').length")
+        except Exception:
+            continue
+        if count and count > 0:
+            break
+    time.sleep(1.2)
     data = js("""
     (() => {
-      const lines = document.body.innerText.split('\\n').map(s=>s.trim());
-      const grab = (l) => { const i = lines.indexOf(l); return i>=0 ? (lines[i+1]||null) : null; };
-      const rows = [...document.querySelectorAll('table tbody tr')].slice(0,10).map(tr => {
-        const tds = [...tr.querySelectorAll('td')].map(td=>td.innerText.trim());
-        return tds;
+      const lines = document.body.innerText.split('\\n').map(s => s.trim());
+      const grab = (l) => { const i = lines.indexOf(l); return i >= 0 ? (lines[i+1] || null) : null; };
+      const rows = [...document.querySelectorAll('table tbody tr')].slice(0, 10).map(tr => {
+        const tds = [...tr.querySelectorAll('td')].map(td => td.innerText.trim());
+        // el identificador del atleta sale del enlace a su perfil
+        const link = tr.querySelector('a[href*="/athletes/"]');
+        const athleteId = link ? (link.getAttribute('href').match(/\\/athletes\\/(\\d+)/) || [])[1] : null;
+        return {cells: tds, athleteId: athleteId};
       });
       return JSON.stringify({
-        name: (document.querySelector('h1')||{}).innerText||null,
-        distance: grab('Distance'), gain: grab('Elevation Gain'), grade: grab('Avg Grade'),
-        low: grab('Lowest Elev'), high: grab('Highest Elev'),
+        name: (document.querySelector('h1') || {}).innerText || null,
+        distance: grab('Distance'), gain: grab('Elevation Gain'),
+        grade: grab('Avg Grade'), low: grab('Lowest Elev'), high: grab('Highest Elev'),
         rows: rows
       });
     })()
@@ -116,14 +131,8 @@ def parse_grade(text):
     return float(text.replace("%", "").replace(",", ".").strip())
 
 
-def parse_alt(text):
-    if not text:
-        return None
-    return int(text.replace(" m", "").replace(",", "").strip())
-
-
 def parse_time(text):
-    """'1:07:39' o '14:33' → segundos."""
+    """'1:07:39' o '14:33' -> segundos."""
     if not text:
         return None
     parts = text.strip().split(":")
@@ -137,6 +146,20 @@ def parse_time(text):
     return seconds
 
 
+def parse_date(text):
+    """'17 may 2026' -> '2026-05-17'."""
+    if not text:
+        return None
+    match = re.match(r"(\d{1,2})\s+([a-zA-Zñ]{3,})\s+(\d{4})", text.strip())
+    if not match:
+        return None
+    day, month_name, year = match.groups()
+    month = MESES.get(month_name[:3].lower())
+    if not month:
+        return None
+    return f"{year}-{month:02d}-{int(day):02d}"
+
+
 def main():
     for route in ROUTES:
         stage_id = stage_id_by_number(route["stage_number"])
@@ -147,9 +170,6 @@ def main():
 
         for segment in segments:
             seg_id = segment["id"]
-            if seg_id in SKIP_WITH_EFFORTS:
-                print(f"    · {seg_id} ya tiene esfuerzos, se omite", file=sys.stderr)
-                continue
             cells = segment["cells"]
             name = cells[0] if cells else f"SEG {seg_id}"
             distance_m = parse_distance(cells[1]) * 1000 if len(cells) > 1 else 0.0
@@ -158,18 +178,23 @@ def main():
             info = segment_efforts(seg_id)
             efforts = []
             for index, row in enumerate(info.get("rows", [])):
-                if len(row) < 2:
+                cells_row = row.get("cells", [])
+                if len(cells_row) < 2:
                     continue
-                athlete = row[1]
-                # la ultima columna es el tiempo; puede venir con sufijo
-                time_text = row[-1].strip()
-                seconds = parse_time(time_text)
+                athlete = cells_row[1]
+                seconds = parse_time(cells_row[-1].strip())
                 if seconds is None:
                     continue
+                # la fecha es la penultima columna con formato "17 may 2026"
+                measured_on = None
+                for cell in cells_row:
+                    measured_on = parse_date(cell) or measured_on
                 efforts.append(
                     {
                         "athlete_name_raw": athlete,
                         "elapsed_time_sec": seconds,
+                        "measured_on": measured_on,
+                        "strava_athlete_id": row.get("athleteId"),
                         # La primera fila de la tabla de récords de Strava es el
                         # KOM/QOM de ese tramo.
                         "is_kom_qom": index == 0,
@@ -186,10 +211,11 @@ def main():
                 "average_grade": grade,
                 "efforts": efforts,
             }
-            result = api_post(f"/stages/{stage_id}/sync-strava-efforts", payload)
+            api_post(f"/stages/{stage_id}/sync-strava-efforts", payload)
+            con_fecha = sum(1 for e in efforts if e["measured_on"])
             print(
-                f"    ✓ {seg_id} {name[:36]:38} {len(efforts):2d} tiempos "
-                f"(KOM: {efforts[0]['athlete_name_raw']})",
+                f"    ✓ {seg_id} {name[:34]:36} {len(efforts):2d} tiempos "
+                f"({con_fecha} con fecha, {sum(1 for e in efforts if e['strava_athlete_id'])} con id)",
                 file=sys.stderr,
             )
             time.sleep(0.4)

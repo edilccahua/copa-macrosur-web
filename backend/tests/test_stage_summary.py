@@ -38,6 +38,7 @@ from backend.app.services.stage_summary_service import (
     compute_category_podium,
     compute_stage_awards,
     compute_stage_checkpoints,
+    compute_stage_extremes,
     compute_stage_mountain_titles,
     compute_stage_route_profile,
     compute_stage_stats,
@@ -437,7 +438,7 @@ async def test_summary_upcoming_stage_has_empty_collections(async_session):
     stage = await _seed_stage_with_results(
         async_session, slug="vuelta-a-los-poblados", stage_number=3, entries=0
     )
-    assert await compute_stage_strava(async_session, stage.id) == []
+    assert await compute_stage_strava(async_session, stage) == []
     assert await compute_stage_awards(async_session, stage.id) == []
 
 
@@ -447,10 +448,10 @@ async def test_strava_summary_exposes_top10_and_kom(async_session):
     session = async_session
     segment = StravaSegment(
         stage_id=stage.id,
-        strava_segment_id="41448847",
-        name="La Joya Xtreme 26",
-        distance_m=38800.0,
-        average_grade=-1.6,
+        strava_segment_id="18378066",
+        name="Pte. Quishuarani / Antes bajada a La Joya",
+        distance_m=6920.0,
+        average_grade=0.7,
     )
     session.add(segment)
     await session.flush()
@@ -461,16 +462,17 @@ async def test_strava_summary_exposes_top10_and_kom(async_session):
                 segment_id=segment.id,
                 athlete_name_raw=f"ATHLETE {i:02d}",
                 elapsed_time_sec=4000 + i * 60,
+                measured_on=stage.date.isoformat(),
                 is_kom_qom=1 if i == 0 else 0,
             )
         )
     await session.commit()
 
-    segs = await compute_stage_strava(session, stage.id)
+    segs = await compute_stage_strava(session, stage)
     assert len(segs) == 1
     la_joya = segs[0]
-    assert la_joya.name == "La Joya Xtreme 26"
-    assert la_joya.distance_km == 38.8
+    assert la_joya.name == "Pte. Quishuarani / Antes bajada a La Joya"
+    assert la_joya.distance_km == 6.92
     assert len(la_joya.efforts) == 10
     assert la_joya.kom is not None
     assert la_joya.kom.is_kom_qom is True
@@ -638,6 +640,7 @@ async def test_strava_loads_all_efforts_in_one_query(async_session):
                     segment_id=segment.id,
                     athlete_name_raw=f"ATHLETE {index}-{e}",
                     elapsed_time_sec=300 + e,
+                    measured_on=stage.date.isoformat(),
                     is_kom_qom=1 if e == 0 else 0,
                 )
             )
@@ -652,14 +655,15 @@ async def test_strava_loads_all_efforts_in_one_query(async_session):
 
     event.listen(async_session.bind.sync_engine, "before_cursor_execute", _count)
     try:
-        segs = await compute_stage_strava(session, stage.id)
+        segs = await compute_stage_strava(session, stage)
     finally:
         event.remove(async_session.bind.sync_engine, "before_cursor_execute", _count)
 
     assert len(segs) == 3
     assert all(len(s.efforts) == 4 for s in segs)
-    # 2 consultas (segmentos + esfuerzos), no 4 (una por segmento).
-    assert len(statements) <= 2, f"consultas de Strava: {len(statements)}"
+    # 3 consultas (segmentos + esfuerzos + riders inscritos), no 4 (una por
+    # segmento).
+    assert len(statements) <= 3, f"consultas de Strava: {len(statements)}"
 
 
 # --------------------------------------------------------------------------
@@ -703,9 +707,10 @@ async def test_winner_speed_uses_laps_actually_completed(async_session):
     await session.commit()
 
     stats = await compute_stage_stats(session, stage.id)
-    assert stats.winner_time_ms == 3_600_000
-    # 11.83 km × 2 vueltas = 23.66 km en 1 h
-    assert stats.winner_avg_speed_kmh == pytest.approx(23.66, abs=0.01)
+    # El ganador es el de mayor VELOCIDAD, no el de menor tiempo: 3 vueltas en
+    # 1:08:52 -> 30.92 km/h, contra 2 vueltas en 1:00:00 -> 23.66 km/h.
+    assert stats.winner_time_ms == 4_132_000
+    assert stats.winner_avg_speed_kmh == pytest.approx(30.92, abs=0.01)
 
 
 async def test_stats_distinguish_registered_from_not_finished(async_session):
@@ -801,12 +806,13 @@ async def test_strava_kom_is_null_when_no_effort_is_flagged(async_session):
             segment_id=segment.id,
             athlete_name_raw="ATHLETE 00",
             elapsed_time_sec=300,
+            measured_on=stage.date.isoformat(),
             is_kom_qom=0,
         )
     )
     await session.commit()
 
-    segs = await compute_stage_strava(session, stage.id)
+    segs = await compute_stage_strava(session, stage)
     assert segs[0].kom is None
     # El mejor tiempo sigue disponible, aunque no sea un KOM.
     assert segs[0].efforts[0].athlete_name == "ATHLETE 00"
@@ -899,12 +905,13 @@ async def test_mountain_titles_pick_the_steepest_climb_and_descent(async_session
                 segment_id=segment.id,
                 athlete_name_raw=athlete,
                 elapsed_time_sec=secs,
+                measured_on=stage.date.isoformat(),
                 is_kom_qom=0,
             )
         )
     await session.commit()
 
-    titles = await compute_stage_mountain_titles(session, stage.id)
+    titles = await compute_stage_mountain_titles(session, stage)
     assert titles["kom"] is not None
     assert titles["kom"].segment_name == "SUBIDA EMPINADA"
     assert titles["kom"].athlete_name == "RIDER B"
@@ -918,7 +925,7 @@ async def test_mountain_titles_are_none_without_segments(async_session):
     stage = await _seed_stage_with_results(
         async_session, entries=1, finishers=1, points=10, categories=1
     )
-    titles = await compute_stage_mountain_titles(async_session, stage.id)
+    titles = await compute_stage_mountain_titles(async_session, stage)
     assert titles["kom"] is None
     assert titles["qom"] is None
 
@@ -947,7 +954,7 @@ async def test_strava_segments_expose_kind_and_location(async_session):
         )
     await session.commit()
 
-    segs = await compute_stage_strava(session, stage.id)
+    segs = await compute_stage_strava(session, stage)
     kinds = {s.name: s.kind for s in segs}
     assert kinds == {"SEG 1": "CLIMB", "SEG 2": "DESCENT", "SEG 3": "FLAT"}
     assert all(s.location == "Uchumayo, Arequipa" for s in segs)
@@ -965,6 +972,161 @@ async def test_summary_endpoint_carries_profile_summits_and_titles(async_session
     assert "summits" in body
     assert "kom" in body
     assert "qom" in body
+
+
+# --------------------------------------------------------------------------
+# La E-MTB no compite por el titulo de la fecha
+# --------------------------------------------------------------------------
+
+
+async def test_extremes_exclude_the_e_mtb_category(async_session):
+    """Un e-bike no puede ser el scratch de la fecha.
+
+    El E-BIKE OPEN sigue con su propio leaderboard de categoría, pero no
+    entra en la pugna por el título de la jornada.
+    """
+    stage = await _seed_stage_with_results(
+        async_session, entries=4, finishers=4, points=40, categories=2
+    )
+    session = async_session
+    ebk = (await _seed_categories(session, ["EBK"]))[0]
+    eli = (await _seed_categories(session, ["ELI"]))[0]
+
+    entries = (
+        await session.exec(select(StageEntry).where(StageEntry.stage_id == stage.id))
+    ).all()
+    # El e-bike es el mas rapido: si no se excluye, seria el scratch.
+    for index, entry in enumerate(entries):
+        entry.category_id = ebk.id if index < 2 else eli.id
+        entry.finish_elapsed_ms = 1_800_000 if index < 2 else 3_600_000
+    await session.commit()
+
+    extremes = await compute_stage_extremes(session, stage)
+    assert extremes["scratch"] is not None
+    assert extremes["scratch"].rider_name != "CICLISTA 000"
+
+
+async def test_winner_speed_uses_the_laps_actually_completed(async_session):
+    """El ganador es el de mayor velocidad, no el de menor tiempo.
+
+    En un circuito por vueltas, el tiempo más bajo puede ser el de quien dio
+    menos vueltas: su velocidad es menor.
+    """
+    stage = await _seed_stage_with_results(
+        async_session,
+        slug="z-xtreme-2026",
+        stage_number=2,
+        distance_km=11.83,
+        elevation_gain_m=280,
+        laps=3,
+        entries=2,
+        finishers=2,
+        points=20,
+        categories=1,
+    )
+    session = async_session
+    entries = (
+        await session.exec(
+            select(StageEntry)
+            .where(StageEntry.stage_id == stage.id)
+            .order_by(StageEntry.bib_number)
+        )
+    ).all()
+    # El primero hizo 2 vueltas en 1 h; el segundo, 3 vueltas en 1:08:52.
+    entries[0].laps = 2
+    entries[0].finish_elapsed_ms = 3_600_000
+    entries[1].laps = 3
+    entries[1].finish_elapsed_ms = 4_132_000
+    await session.commit()
+
+    extremes = await compute_stage_extremes(session, stage)
+    # 3 vueltas en 1:08:52 -> 30.9 km/h; 2 vueltas en 1:00:00 -> 23.7 km/h.
+    assert extremes["scratch"] is not None
+    assert extremes["scratch"].rider_name == "CICLISTA 001"
+
+    stats = await compute_stage_stats(session, stage.id)
+    # El ganador es el de mayor velocidad: 3 vueltas en 1:08:52 -> 30.92 km/h.
+    # Su tiempo es MAYOR que el del que hizo 2 vueltas, y aun así gana.
+    assert stats.winner_time_ms == 4_132_000
+    assert stats.winner_avg_speed_kmh == pytest.approx(30.92, abs=0.1)
+
+
+# --------------------------------------------------------------------------
+# El filtro por fecha de medicion y el cruce con los pilotos
+# --------------------------------------------------------------------------
+
+
+async def test_strava_segments_only_show_efforts_of_the_race_day(async_session):
+    """Los intentos de otros años no se muestran en un segmento.
+
+    Strava lista en la tabla de un segmento los intentos de muchas fechas;
+    solo los de la fecha de la carrera cuentan.
+    """
+    stage = await _seed_stage_with_results(
+        async_session, entries=2, finishers=2, points=20, categories=1
+    )
+    session = async_session
+    segment = StravaSegment(
+        stage_id=stage.id,
+        strava_segment_id="55555",
+        name="Segmento con historia",
+        distance_m=1000.0,
+        average_grade=3.0,
+        kind="CLIMB",
+    )
+    session.add(segment)
+    await session.flush()
+    session.add(
+        StravaEffort(
+            segment_id=segment.id,
+            athlete_name_raw="DE HOY",
+            elapsed_time_sec=300,
+            measured_on=stage.date.isoformat(),
+        )
+    )
+    session.add(
+        StravaEffort(
+            segment_id=segment.id,
+            athlete_name_raw="DE 2019",
+            elapsed_time_sec=310,
+            measured_on="2019-09-08",
+        )
+    )
+    await session.commit()
+
+    segs = await compute_stage_strava(session, stage)
+    target = next(s for s in segs if s.strava_segment_id == "55555")
+    names = [e.athlete_name for e in target.efforts]
+    assert "DE HOY" in names
+    assert "DE 2019" not in names
+
+
+async def test_strava_segments_drop_the_full_route_segment(async_session):
+    """El segmento que cubre la carrera entera no se muestra."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=2, finishers=2, points=20, categories=1
+    )
+    session = async_session
+    for seg_id, name, dist in [
+        ("1", "La Carrera Entera", 40000.0),
+        ("2", "Pte. Quishuarani", 6920.0),
+    ]:
+        session.add(
+            StravaSegment(
+                stage_id=stage.id,
+                strava_segment_id=seg_id,
+                name=name,
+                distance_m=dist,
+                average_grade=1.0,
+                kind="CLIMB",
+            )
+        )
+    await session.commit()
+
+    segs = await compute_stage_strava(session, stage)
+    names = [s.name for s in segs]
+    assert "La Carrera Entera" not in names
+    assert "Pte. Quishuarani" in names
 
 
 async def test_team_podium_exposes_medals_of_the_day(async_session):

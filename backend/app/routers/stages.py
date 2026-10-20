@@ -146,17 +146,17 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
         )
     ).first()
 
-    mountain_titles = await compute_stage_mountain_titles(session, stage.id)
+    mountain_titles = await compute_stage_mountain_titles(session, stage)
 
     return {
         "stage": stage,
         "stats": await compute_stage_stats(session, stage.id),
         "podium": await compute_category_podium(session, stage.id),
         "teams": await compute_stage_team_podium(session, stage.id),
-        "strava": await compute_stage_strava(session, stage.id),
+        "strava": await compute_stage_strava(session, stage),
         "checkpoints": await compute_stage_checkpoints(session, stage.id),
         "awards": await compute_stage_awards(session, stage.id),
-        "extremes": await compute_stage_extremes(session, stage.id),
+        "extremes": await compute_stage_extremes(session, stage),
         "route_profile": await compute_stage_route_profile(session, stage),
         "summits": await compute_stage_summits(session, stage.id),
         "kom": mountain_titles["kom"],

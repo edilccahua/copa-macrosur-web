@@ -689,7 +689,12 @@ async def seed_special_awards(session: AsyncSession, stage_1_id: int) -> None:
     await session.commit()
 
 
-async def seed_strava(session: AsyncSession, stage_1_id: int, stage_2_id: int) -> None:
+async def seed_strava(
+    session: AsyncSession,
+    stage_1_id: int,
+    stage_2_id: int,
+    stage_3_id: int,
+) -> None:
     """Registra los segmentos oficiales reales. Los esfuerzos se cargan por scraping CDP.
 
     La lista sale de la tabla `Segments` de cada ruta de Strava (la propia ruta
@@ -711,10 +716,20 @@ async def seed_strava(session: AsyncSession, stage_1_id: int, stage_2_id: int) -
         (stage_1_id, "41279552", "Arena, calamina, piedras y trepada", 2960.0, 1.8, "Uchumayo, Arequipa", None, None),
         (stage_1_id, "30612243", "A la Joya", 5510.0, -3.9, "Uchumayo, Arequipa", 1656, 1873),
         (stage_1_id, "41448847", "La Joya Xtreme 26", 38800.0, -1.6, "Cerro Colorado, Arequipa", 1679, 2284),
-        # --- Fecha 2 · Z Xtreme 2026 (2 segmentos) ---
+        # --- Fecha 2 · Z Xtreme 2026 (3 segmentos) ---
         (stage_2_id, "12875208", "Corte_Mollebaya", 710.0, 8.1, "Giriguaya, Arequipa", None, None),
         (stage_2_id, "41681206", "Circuito La Z Extreme 2026", 11230.0, 0.0, "Uchumayo, Arequipa", 2488, 2747),
         (stage_2_id, "27868955", "Z de desenfreno", 5720.0, -4.2, "Uchumayo, Arequipa", None, None),
+        # --- Fecha 3 · Vuelta a los Poblados (10 segmentos) ---
+        (stage_3_id, "25245306", "Trepada Carretera 602 - Hasta Iglesia Cacayaco", 5400.0, 6.2, "Cacayaco, Arequipa", None, None),
+        (stage_3_id, "21396382", "Cruce Chiguata - Mosopuquio", 8730.0, 3.7, "Mosopuquio, Arequipa", None, None),
+        (stage_3_id, "26168484", "Chiguata a Tuctumpaya", 15840.0, 2.5, "Tuctumpaya, Arequipa", None, None),
+        (stage_3_id, "30658106", "Santa Maria a Cacayaco", 4330.0, 6.9, "Cacayaco, Arequipa", None, None),
+        (stage_3_id, "26420480", "Desvio-Mosopuquio", 6970.0, 4.2, "Mosopuquio, Arequipa", None, None),
+        (stage_3_id, "21396392", "Mosopuquio - Tuctumpaya", 6850.0, 0.7, "Tuctumpaya, Arequipa", None, None),
+        (stage_3_id, "32049640", "Piaca, el regreso", 4540.0, -1.0, "Piaca, Arequipa", None, None),
+        (stage_3_id, "19713632", "DH Cruce Pocsi - Z", 3320.0, -4.6, "Pocsi, Arequipa", None, None),
+        (stage_3_id, "31319233", "Hacienda la Luna", 1210.0, 2.5, "Arequipa", None, None),
     ]
     for stage_id, seg_id, name, dist, grade, location, ele_min, ele_max in segments:
         stmt = select(StravaSegment).where(StravaSegment.strava_segment_id == seg_id)
@@ -860,7 +875,7 @@ async def seed_data() -> None:
             await load_results(session, stage, cfg, cat_map)
 
         await seed_special_awards(session, stages[1].id)
-        await seed_strava(session, stages[1].id, stages[2].id)
+        await seed_strava(session, stages[1].id, stages[2].id, stages[3].id)
         await seed_extra_events(session)
 
         print("Sembrando las cimas de las rutas...")

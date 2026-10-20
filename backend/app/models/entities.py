@@ -322,6 +322,12 @@ class StravaEffort(SQLModel, table=True):
     athlete_name_raw: str
     elapsed_time_sec: int
     is_kom_qom: bool = Field(default=False)
+    # Fecha del intento (ISO, "YYYY-MM-DD"). Strava muestra intentos de muchas
+    # fechas en un mismo segmento: sin esta columna no se puede saber cuales
+    # son de la carrera y cuales de anos atras.
+    measured_on: Optional[str] = Field(default=None, index=True)
+    # Identificador del atleta en Strava, para cruzar sin depender del nombre.
+    strava_athlete_id: Optional[str] = Field(default=None, index=True)
 
     segment: StravaSegment = Relationship(back_populates="efforts")
 
