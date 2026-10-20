@@ -25,6 +25,7 @@ from backend.app.models.entities import (
     Checkpoint,
     RaceStatusEnum,
     Rider,
+    RouteSummit,
     SpecialAward,
     Stage,
     StageEntry,
@@ -37,13 +38,17 @@ from backend.app.models.schemas import (
     AwardSummaryRead,
     CategoryPodiumRead,
     CheckpointRead,
+    MountainTitleRead,
     PodiumEntryRead,
+    RouteProfileRead,
     StageStatsRead,
     StravaEffortRead,
     StravaSegmentSummaryRead,
+    SummitRead,
     TeamPodiumRead,
 )
 from backend.app.services.pdf_service import format_ms_to_time
+from backend.app.services.route_profile_service import build_route_profile
 
 # Escala de puntos de specs/01 §3.1: 1°=10 … 10°=1, 11°+=1, DNF/DNS/DSQ=0.
 _POINTS_TOP10 = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
@@ -369,10 +374,133 @@ async def compute_stage_strava(
                 distance_km=round(float(segment.distance_m or 0) / 1000, 2),
                 efforts=effort_reads[:_STRAVA_TOP_N],
                 kom=kom,
+                kind=segment.kind or "FLAT",
+                location=segment.location,
+                elevation_min_m=segment.elevation_min_m,
+                elevation_max_m=segment.elevation_max_m,
             )
         )
 
     return summaries
+
+
+async def compute_stage_mountain_titles(
+    session: AsyncSession, stage_id: int
+) -> Dict[str, Any]:
+    """El King of the Mountain y la Queen of the Mountain de la fecha.
+
+    El **KOM** es el segmento de **subida** más empinado: la pendiente media
+    positiva más alta y, a igualdad, el más largo. El **QOM** es el de
+    **bajada** más empinada: la pendiente media negativa más pronunciada y, a
+    igualdad, el más largo.
+
+    El corredor que acompaña a cada título es el más rápido de ese segmento.
+    """
+    segments = (
+        await session.exec(
+            select(StravaSegment)
+            .where(StravaSegment.stage_id == stage_id)
+            .order_by(StravaSegment.id)
+        )
+    ).all()
+    if not segments:
+        return {"kom": None, "qom": None}
+
+    segment_ids = [segment.id for segment in segments]
+    efforts = (
+        await session.exec(
+            select(StravaEffort)
+            .where(StravaEffort.segment_id.in_(segment_ids))
+            .order_by(StravaEffort.segment_id, StravaEffort.elapsed_time_sec)
+        )
+    ).all()
+
+    best_effort: Dict[int, StravaEffort] = {}
+    for effort in efforts:
+        if effort.segment_id not in best_effort:
+            best_effort[effort.segment_id] = effort
+
+    def _title(segment: StravaSegment) -> Optional[MountainTitleRead]:
+        effort = best_effort.get(segment.id)
+        if effort is None:
+            return None
+        seconds = int(effort.elapsed_time_sec or 0)
+        return MountainTitleRead(
+            strava_segment_id=str(segment.strava_segment_id or ""),
+            segment_name=segment.name or "",
+            location=segment.location,
+            distance_km=round(float(segment.distance_m or 0) / 1000, 2),
+            average_grade=float(segment.average_grade or 0),
+            elevation_min_m=segment.elevation_min_m,
+            elevation_max_m=segment.elevation_max_m,
+            athlete_name=effort.athlete_name_raw or "—",
+            formatted_time=format_ms_to_time(seconds * 1000),
+            elapsed_time_sec=seconds,
+        )
+
+    climbs = [s for s in segments if float(s.average_grade or 0) > 0]
+    descents = [s for s in segments if float(s.average_grade or 0) < 0]
+
+    kom_segment = None
+    if climbs:
+        kom_segment = max(
+            climbs,
+            key=lambda s: (float(s.average_grade or 0), float(s.distance_m or 0)),
+        )
+    qom_segment = None
+    if descents:
+        qom_segment = min(
+            descents,
+            key=lambda s: (float(s.average_grade or 0), -float(s.distance_m or 0)),
+        )
+
+    return {
+        "kom": _title(kom_segment) if kom_segment else None,
+        "qom": _title(qom_segment) if qom_segment else None,
+    }
+
+
+async def compute_stage_summits(
+    session: AsyncSession, stage_id: int
+) -> List[SummitRead]:
+    """Las cimas de la ruta: los «puertos» del perfil de etapa."""
+    rows = (
+        await session.exec(
+            select(RouteSummit)
+            .where(RouteSummit.stage_id == stage_id)
+            .order_by(RouteSummit.distance_km)
+        )
+    ).all()
+    return [
+        SummitRead(
+            name=summit.name,
+            category=summit.category or "",
+            distance_km=summit.distance_km,
+            elevation_m=summit.elevation_m,
+            climb_gain_m=summit.climb_gain_m,
+            avg_grade_pct=summit.avg_grade_pct,
+            max_grade_pct=summit.max_grade_pct,
+            lat=summit.lat,
+            lon=summit.lon,
+            name_source=summit.name_source or "geo",
+        )
+        for summit in rows
+    ]
+
+
+async def compute_stage_route_profile(
+    session: AsyncSession, stage: Stage
+) -> Optional[RouteProfileRead]:
+    """El perfil de altimetría de la ruta, con su traza punto a punto.
+
+    Sale de la geometría real (`route_geojson`), no de multiplicar la
+    distancia por las vueltas: en un circuito por vueltas la geometría es de
+    UNA vuelta y `geometry_covers_full_stage` lo avisa.
+    """
+    profile = build_route_profile(stage.route_geojson, stage_laps=stage.laps or 1)
+    if profile is None:
+        return None
+    return RouteProfileRead(**profile)
 
 
 async def compute_stage_checkpoints(

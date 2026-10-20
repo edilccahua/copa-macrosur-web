@@ -125,6 +125,7 @@ class Stage(SQLModel, table=True):
     checkpoints: List["Checkpoint"] = Relationship(back_populates="stage")
     entries: List["StageEntry"] = Relationship(back_populates="stage")
     special_awards: List["SpecialAward"] = Relationship(back_populates="stage")
+    summits: List["RouteSummit"] = Relationship(back_populates="stage")
 
 
 # 5. StartWave
@@ -153,6 +154,39 @@ class Checkpoint(SQLModel, table=True):
     is_finish_line: bool = Field(default=False)
 
     stage: Stage = Relationship(back_populates="checkpoints")
+
+
+# 6b. RouteSummit — un punto alto de la ruta, con su nombre y su categoría.
+#
+# Es el "puerto" del perfil de etapa: la cima de un tramo de subida, con el
+# nombre del lugar (resuelto con el reverse-geocode de OpenStreetMap al
+# sembrar) y su categoría al estilo del Tour (HC, 1, 2, 3).
+class RouteSummit(SQLModel, table=True):
+    __tablename__ = "route_summits"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    stage_id: int = Field(foreign_key="stages.id", index=True)
+    # Nombre del lugar: "Espíritu Santo", "El Horno", "Cerro La Caldera".
+    name: str
+    # Categoría del puerto: "HC", "1", "2", "3" o "" si no es un puerto.
+    category: str = Field(default="")
+    # Kilómetro del recorrido en el que está la cima.
+    distance_km: float = Field(default=0.0)
+    # Altitud de la cima, en msnm.
+    elevation_m: int = Field(default=0)
+    # Desnivel acumulado desde el inicio del tramo de subida.
+    climb_gain_m: int = Field(default=0)
+    # Pendiente media del tramo de subida, en %.
+    avg_grade_pct: float = Field(default=0.0)
+    # Pendiente máxima del tramo, en %.
+    max_grade_pct: float = Field(default=0.0)
+    # Latitud y longitud de la cima.
+    lat: Optional[float] = Field(default=None)
+    lon: Optional[float] = Field(default=None)
+    # Dónde sale el nombre: "osm" (geocodificado) o "geo" (derivado).
+    name_source: str = Field(default="geo")
+
+    stage: Stage = Relationship(back_populates="summits")
 
 
 # 7. StageEntry
@@ -262,6 +296,18 @@ class StravaSegment(SQLModel, table=True):
     distance_m: float = Field(default=0.0)
     average_grade: float = Field(default=0.0)
     elevation_profile_json: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    # Lugar del segmento ("Uchumayo, Arequipa"), tal como lo reporta Strava.
+    location: Optional[str] = Field(default=None)
+    # Altitud mínima y máxima del segmento, en msnm (lo reporta Strava).
+    elevation_min_m: Optional[int] = Field(default=None)
+    elevation_max_m: Optional[int] = Field(default=None)
+    # Clasificación del tramo dentro de la ruta: CLIMB | DESCENT | FLAT.
+    # La calcula el seed a partir de `average_grade`; el 1er y el 2º climbed
+    # son el King of the Mountain y la Queen of the Mountain de la fecha.
+    kind: str = Field(default="FLAT")
+    # Kategoría de puerto al estilo del Tour (1, 2, 3, HC) o vacío si no es
+    # un puerto. La decide el seed por longitud y pendiente.
+    category: Optional[str] = Field(default=None)
 
     efforts: List["StravaEffort"] = Relationship(back_populates="segment")
 

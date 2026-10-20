@@ -151,7 +151,7 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
       </a>
     </h3>
 
-    <!-- Minitarjetas técnicas limpias: FECHA, DISTANCIA, DESNIVEL y LARGADA -->
+    <!-- Minitarjetas técnicas limpias: FECHA, DISTANCIA y DESNIVEL -->
     <div class="event-card__specs">
       <div class="event-card__spec event-card__spec--date">
         <span class="event-card__spec-label">FECHA</span>
@@ -164,10 +164,6 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
       <div class="event-card__spec">
         <span class="event-card__spec-label">DESNIVEL</span>
         <span class="event-card__spec-val">{event.elevation}</span>
-      </div>
-      <div class="event-card__spec">
-        <span class="event-card__spec-label">LARGADA</span>
-        <span class="event-card__spec-val">{event.startTime}</span>
       </div>
     </div>
   </div>
@@ -490,8 +486,8 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     position: relative;
     z-index: 2;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.35rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
   }
 
   .event-card__spec {
@@ -587,7 +583,11 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
 
   @media (max-width: 480px) {
     .event-card__specs {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.3rem;
+    }
+    .event-card__spec {
+      padding: 0.3rem 0.35rem;
     }
   }
 </style>

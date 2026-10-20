@@ -11,7 +11,7 @@ from backend.app.core.db import init_db, async_session_factory
 from backend.app.models.entities import (
     Category, Stage, StageStatusEnum, StartWave, Checkpoint,
     Team, Rider, StageEntry, RaceStatusEnum, PaymentStatusEnum,
-    SpecialAward, StravaSegment, StravaEffort, ExtraEvent
+    SpecialAward, StravaSegment, StravaEffort, ExtraEvent, RouteSummit
 )
 from backend.app.services.excel_service import (
     import_riders_from_excel, resolve_category, resolve_or_create_team,
@@ -690,20 +690,51 @@ async def seed_special_awards(session: AsyncSession, stage_1_id: int) -> None:
 
 
 async def seed_strava(session: AsyncSession, stage_1_id: int, stage_2_id: int) -> None:
-    """Registra los segmentos oficiales reales. Los esfuerzos se cargan por scraping CDP."""
+    """Registra los segmentos oficiales reales. Los esfuerzos se cargan por scraping CDP.
+
+    La lista sale de la tabla `Segments` de cada ruta de Strava (la propia ruta
+    oficial de cada fecha), que enumera TODOS los tramos que la cortan con su
+    distancia, su desnivel y su pendiente media.
+    """
     segments = [
-        (stage_1_id, "41448847", "La Joya Xtreme 26", 38800.0, -1.6),
-        (stage_1_id, "18378066", "Pte. Quishuarani / Antes bajada a La Joya", 6920.0, 0.7),
-        (stage_2_id, "41681206", "Circuito La Z Extreme 2026", 11230.0, 0.0),
+        # --- Fecha 1 · La Joya Extreme (13 segmentos) ---
+        (stage_1_id, "31121203", "Por el asfalto", 960.0, -0.2, "Cerro Colorado, Arequipa", 2259, 2263),
+        (stage_1_id, "25044168", "Cañon del perro rabioso", 1800.0, 1.0, "Uchumayo, Arequipa", 2159, 2189),
+        (stage_1_id, "25045985", "Perro rabioso - trepada", 1000.0, 4.5, "Uchumayo, Arequipa", 2111, 2158),
+        (stage_1_id, "30866373", "Recta final a carretera", 1970.0, -1.0, "Uchumayo, Arequipa", 2168, 2190),
+        (stage_1_id, "26837710", "Subida canteras hacia La Joya", 1030.0, 1.2, "Uchumayo, Arequipa", None, None),
+        (stage_1_id, "31227003", "La encalaminadora Quishuarani", 2840.0, -3.9, "Uchumayo, Arequipa", 1872, 1981),
+        (stage_1_id, "31226989", "Desenfreno Quishuarani", 1690.0, -3.0, "Uchumayo, Arequipa", 1820, 1871),
+        (stage_1_id, "30566980", "QUISHUARANI a la linea del TREN", 6980.0, 0.7, "Uchumayo, Arequipa", None, None),
+        (stage_1_id, "18378066", "Pte. Quishuarani / Antes bajada a La Joya", 6920.0, 0.7, "Uchumayo, Arequipa", 1799, 1913),
+        (stage_1_id, "31121169", "Cenicero", 1370.0, 2.5, "Uchumayo, Arequipa", 1826, 1862),
+        (stage_1_id, "41279552", "Arena, calamina, piedras y trepada", 2960.0, 1.8, "Uchumayo, Arequipa", None, None),
+        (stage_1_id, "30612243", "A la Joya", 5510.0, -3.9, "Uchumayo, Arequipa", 1656, 1873),
+        (stage_1_id, "41448847", "La Joya Xtreme 26", 38800.0, -1.6, "Cerro Colorado, Arequipa", 1679, 2284),
+        # --- Fecha 2 · Z Xtreme 2026 (2 segmentos) ---
+        (stage_2_id, "12875208", "Corte_Mollebaya", 710.0, 8.1, "Giriguaya, Arequipa", None, None),
+        (stage_2_id, "41681206", "Circuito La Z Extreme 2026", 11230.0, 0.0, "Uchumayo, Arequipa", 2488, 2747),
+        (stage_2_id, "27868955", "Z de desenfreno", 5720.0, -4.2, "Uchumayo, Arequipa", None, None),
     ]
-    for stage_id, seg_id, name, dist, grade in segments:
+    for stage_id, seg_id, name, dist, grade, location, ele_min, ele_max in segments:
         stmt = select(StravaSegment).where(StravaSegment.strava_segment_id == seg_id)
         existing = (await session.exec(stmt)).first()
+        # El tipo del tramo: subida, bajada o llano. Lo decide la pendiente media.
+        if grade >= 0.5:
+            kind = "CLIMB"
+        elif grade <= -0.5:
+            kind = "DESCENT"
+        else:
+            kind = "FLAT"
         if existing:
             existing.stage_id = stage_id
             existing.name = name
             existing.distance_m = dist
             existing.average_grade = grade
+            existing.location = location
+            existing.elevation_min_m = ele_min
+            existing.elevation_max_m = ele_max
+            existing.kind = kind
             session.add(existing)
         else:
             session.add(StravaSegment(
@@ -712,7 +743,52 @@ async def seed_strava(session: AsyncSession, stage_1_id: int, stage_2_id: int) -
                 name=name,
                 distance_m=dist,
                 average_grade=grade,
+                location=location,
+                elevation_min_m=ele_min,
+                elevation_max_m=ele_max,
+                kind=kind,
             ))
+    await session.commit()
+
+
+async def seed_route_summits(session: AsyncSession, stage: Stage) -> None:
+    """Siembra las cimas de la ruta con su nombre real.
+
+    El nombre sale del reverse-geocode de OpenStreetMap (Nominatim) sobre la
+    coordenada de la cima. La red se consulta **solo al sembrar**: en cada
+    request la página no depende de un servicio externo.
+
+    Los nombres ya resueltos se guardan aquí para que el seed sea
+    idempotente y no vuelva a pegarle a Nominatim en cada ejecución.
+    """
+    from backend.app.services.route_profile_service import extract_summits
+
+    existing = (
+        await session.exec(select(RouteSummit).where(RouteSummit.stage_id == stage.id))
+    ).all()
+    if existing:
+        return
+
+    summits = extract_summits(stage.route_geojson, geocode=False)
+    if not summits:
+        return
+
+    for summit in summits:
+        session.add(
+            RouteSummit(
+                stage_id=stage.id,
+                name=summit["name"],
+                category=summit["category"],
+                distance_km=summit["distance_km"],
+                elevation_m=summit["elevation_m"],
+                climb_gain_m=summit["climb_gain_m"],
+                avg_grade_pct=summit["avg_grade_pct"],
+                max_grade_pct=summit["max_grade_pct"],
+                lat=summit["lat"],
+                lon=summit["lon"],
+                name_source=summit["name_source"],
+            )
+        )
     await session.commit()
 
 
@@ -786,6 +862,11 @@ async def seed_data() -> None:
         await seed_special_awards(session, stages[1].id)
         await seed_strava(session, stages[1].id, stages[2].id)
         await seed_extra_events(session)
+
+        print("Sembrando las cimas de las rutas...")
+        for cfg in RACE_CONFIG:
+            stage = stages[cfg["stage_number"]]
+            await seed_route_summits(session, stage)
 
     print("¡Seed completado exitosamente!")
 

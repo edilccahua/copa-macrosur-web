@@ -171,6 +171,68 @@ class StravaSegmentSummaryRead(BaseModel):
     distance_km: float
     efforts: List[StravaEffortRead]
     kom: Optional[StravaEffortRead] = None
+    # Tipo del tramo: CLIMB | DESCENT | FLAT.
+    kind: str = "FLAT"
+    # Lugar del segmento ("Uchumayo, Arequipa"), tal como lo reporta Strava.
+    location: Optional[str] = None
+    elevation_min_m: Optional[int] = None
+    elevation_max_m: Optional[int] = None
+
+
+class RoutePointRead(BaseModel):
+    """Un punto de la traza: kilómetro, altitud y coordenada."""
+
+    km: float
+    ele: float
+    lat: float
+    lon: float
+
+
+class RouteProfileRead(BaseModel):
+    """Perfil de altimetría de la ruta, derivado de su geometría real."""
+
+    distance_km: float
+    distance_km_stage: float
+    elevation_min_m: int
+    elevation_max_m: int
+    elevation_gain_m: int
+    elevation_loss_m: int
+    mean_grade_pct: float
+    max_grade_pct: float
+    max_grade_at_km: float
+    # False cuando la geometría es de UNA vuelta de un circuito por vueltas.
+    geometry_covers_full_stage: bool
+    points: List[RoutePointRead] = []
+
+
+class SummitRead(BaseModel):
+    """Una cima de la ruta: el «puerto» del perfil de etapa."""
+
+    name: str
+    category: str = ""
+    distance_km: float = 0.0
+    elevation_m: int = 0
+    climb_gain_m: int = 0
+    avg_grade_pct: float = 0.0
+    max_grade_pct: float = 0.0
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    name_source: str = "geo"
+
+
+class MountainTitleRead(BaseModel):
+    """El King of the Mountain o la Queen of the Mountain de la fecha."""
+
+    strava_segment_id: str
+    segment_name: str
+    location: Optional[str] = None
+    distance_km: float
+    average_grade: float
+    elevation_min_m: Optional[int] = None
+    elevation_max_m: Optional[int] = None
+    athlete_name: str
+    formatted_time: str
+    elapsed_time_sec: int
 
 
 class CheckpointRead(BaseModel):

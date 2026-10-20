@@ -13,8 +13,11 @@ from backend.app.services.stage_summary_service import (
     compute_stage_awards,
     compute_stage_checkpoints,
     compute_stage_extremes,
+    compute_stage_mountain_titles,
+    compute_stage_route_profile,
     compute_stage_stats,
     compute_stage_strava,
+    compute_stage_summits,
     compute_stage_team_podium,
 )
 
@@ -143,6 +146,8 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
         )
     ).first()
 
+    mountain_titles = await compute_stage_mountain_titles(session, stage.id)
+
     return {
         "stage": stage,
         "stats": await compute_stage_stats(session, stage.id),
@@ -152,6 +157,10 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
         "checkpoints": await compute_stage_checkpoints(session, stage.id),
         "awards": await compute_stage_awards(session, stage.id),
         "extremes": await compute_stage_extremes(session, stage.id),
+        "route_profile": await compute_stage_route_profile(session, stage),
+        "summits": await compute_stage_summits(session, stage.id),
+        "kom": mountain_titles["kom"],
+        "qom": mountain_titles["qom"],
         "navigation": {
             "prev_slug": prev_stage.slug if prev_stage else None,
             "prev_name": prev_stage.title or prev_stage.name if prev_stage else None,

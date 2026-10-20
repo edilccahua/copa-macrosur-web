@@ -22,6 +22,7 @@
   import { fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import ScopeControl from './ScopeControl.svelte';
+  import { API_V1 } from '../../lib/api';
   import {
     getStandings,
     type StandingsContext,
@@ -36,6 +37,7 @@
    * - "fecha": solo la carrera elegida (sin acumulado y sin DELTA).
    */
   type Mode = 'acumulado' | 'fecha';
+  type Kind = 'individual' | 'teams';
 
   interface Props {
     stages: StageOption[];
@@ -47,11 +49,8 @@
     initialCategoryId: number | null;
     /** Modo inicial; por defecto "acumulado". */
     initialMode?: Mode;
-    /**
-     * La fecha la fija la página (página de la carrera): sin navegador de
-     * fechas, porque la carrera ES la página.
-     */
-    stageLocked?: boolean;
+    /** Tabla inicial: "individual" o "teams" (Copa de Equipos). */
+    initialKind?: Kind;
   }
 
   let {
@@ -63,17 +62,25 @@
     initialScope,
     initialCategoryId,
     initialMode = 'acumulado',
-    stageLocked = false,
+    initialKind = 'individual',
   }: Props = $props();
 
-  type Kind = 'individual' | 'teams';
   type ScopeKey = 'PRO' | 'NORMAL' | 'E-MTB';
 
+  /**
+   * `mode` es el modo PEDIDO (el de la pestaña activa) y `tableMode` el que la
+   * tabla DIBUJA. Se separan a propósito: la estructura de la tabla (la columna
+   * Δ, el navegador de fechas) solo puede cambiar en el MISMO update que traen
+   * los datos. Si cambiara antes, la animación `flip` de las filas se
+   * interrumpiría al llegar los datos y dejaría filas pegadas en posición
+   * absoluta, amontonadas sobre las nuevas.
+   */
   let mode = $state<Mode>(initialMode);
+  let tableMode = $state<Mode>(initialMode);
   let stageId = $state<number | null>(initialStageId);
   let scope = $state<ScopeKey>(initialScope as ScopeKey);
   let categoryId = $state<number | null>(initialCategoryId);
-  let kind = $state<Kind>('individual');
+  let kind = $state<Kind>(initialKind);
   let search = $state('');
 
   let rows = $state<StandingsRow[]>(initialRows as StandingsRow[]);
@@ -114,8 +121,8 @@
   async function load(key: string) {
     loading = true;
     error = null;
+    const [md, s, sc, cat, kd] = key.split('|');
     try {
-      const [md, s, sc, cat, kd] = key.split('|');
       const res = await getStandings({
         mode: md as Mode,
         stage: s ? Number(s) : null,
@@ -123,16 +130,23 @@
         categoryId: cat ? Number(cat) : null,
         kind: kd as Kind,
       });
+      // Si el usuario cambió algo mientras cargaba, esta respuesta es vieja.
+      if (key !== lastKey) return;
       if (kd === 'teams') {
         teamRows = res.rows as TeamStandingRow[];
       } else {
         rows = res.rows as StandingsRow[];
       }
       meta = res.context;
+      // El modo se aplica AQUÍ, con los datos: un solo update, una sola
+      // animación, sin filas pegadas.
+      tableMode = md as Mode;
     } catch (e) {
+      if (key !== lastKey) return;
       error = 'No se pudo cargar la clasificación. Reintenta en unos segundos.';
+      tableMode = md as Mode;
     } finally {
-      loading = false;
+      if (key === lastKey) loading = false;
     }
   }
 
@@ -151,17 +165,6 @@
   };
 
   // --- Opciones de los selectores --------------------------------------------
-
-  let stageOptions = $derived(
-    stages.map((s) => ({
-      value: String(s.id),
-      // Solo el nombre de la carrera: "FECHA 2 · 23 AGO. 2026 · KÚSPIDE Z
-      // XXTREME III" era una línea interminable, y la fecha no aporta nada
-      // (el corte ya está en la cinta y el navegador de fechas).
-      label: s.name.replace(/^Fecha\s+\d+\s*:\s*/i, '').toUpperCase(),
-      meta: '',
-    }))
-  );
 
   /** El selector ofrece "COMBINADO" (las categorías de la pestaña) y cada una. */
   let categoryOptions = $derived([
@@ -232,9 +235,9 @@
    */
   $effect(() => {
     const t = document.querySelector('[data-mode-title]');
-    if (t) t.textContent = mode === 'acumulado' ? 'Ranking general' : 'Clasificación';
+    if (t) t.textContent = tableMode === 'acumulado' ? 'Ranking general' : 'Clasificación';
     const w = document.querySelector('[data-mode-word]');
-    if (w) w.textContent = mode === 'acumulado' ? 'acumulado' : 'de la fecha';
+    if (w) w.textContent = tableMode === 'acumulado' ? 'acumulado' : 'de la fecha';
   });
 
   function setCategory(code: string) {
@@ -291,11 +294,28 @@
 <div class="standings {kind === 'teams' ? 'scope-team' : SCOPE_CLASS[scope]}">
   <!--
     Cabecera FUERA de la caja, patrón Tour de Francia: primero la etapa (con
-    flechas para recorrer las fechas) y debajo las pestañas de modo. En el modo
-    "fecha" es el único sitio donde se cambia de carrera; en el modo
-    "acumulado" ese papel lo cumple el selector "ACUMULADO HASTA" de dentro.
+    flechas para recorrer las fechas) y debajo las pestañas de modo. El
+    navegador de fechas es el ÚNICO selector de fecha y funciona en los dos
+    modos: en "acumulado" marca el corte (HASTA FECHA N) y en "fecha" la
+    carrera que se está viendo.
   -->
-  {#if mode === 'fecha' && !stageLocked}
+  <!--
+    Los enlaces de la carrera (su podio y su planilla) viven AQUÍ, sobre el
+    navegador de fechas y fuera de la caja: son de la fecha que se está
+    viendo, no de la tabla.
+  -->
+  {#if activeStage}
+    <div class="stageactions">
+      <a class="stagelink font-mono" href={`/fechas/${activeStage.slug}#podio`}>
+        PODIO POR CATEGORÍA ↑
+      </a>
+      <a class="stagelink font-mono" href={`${API_V1}/stages/${activeStage.id}/export-excel`}>
+        EXPORTAR PLANILLA [.XLSX] ↓
+      </a>
+    </div>
+  {/if}
+
+  {#if activeStage}
     <div class="stagehead">
       <button
         type="button"
@@ -309,7 +329,9 @@
         </svg>
       </button>
       <div class="stagehead__id">
-        <span class="stagehead__num font-mono">FECHA {activeStage?.stage_number ?? ''}</span>
+        <span class="stagehead__num font-mono">
+          {tableMode === 'acumulado' ? 'HASTA FECHA' : 'FECHA'} {activeStage?.stage_number ?? ''}
+        </span>
         {#if activeStage}
           <span class="stagehead__meta font-mono">{stageDate(activeStage.date)}</span>
         {/if}
@@ -363,7 +385,7 @@
       <span class="ribbon__name font-mono">{scopeLabel}</span>
     </div>
     <div class="ribbon__meta font-mono">
-      {#if mode === 'fecha'}
+      {#if tableMode === 'fecha'}
         FECHA {activeStage?.stage_number ?? ''} · {meta.total_distance_km.toFixed(2)} KM
         {#if activeStage}· {stageDate(activeStage.date)}{/if}
       {:else}
@@ -372,6 +394,7 @@
         {#if activeStage}· CORTE {stageDate(activeStage.date)}{/if}
       {/if}
     </div>
+
   </div>
 
   <!-- Barra de pestañas y filtros -->
@@ -427,20 +450,6 @@
         </div>
       {/if}
 
-      {#if mode === 'acumulado'}
-        <div class="ctl ctl--stage">
-          <ScopeControl
-            options={stageOptions}
-            value={String(stageId ?? '')}
-            label="ACUMULADO HASTA"
-            onchange={(v) => {
-              stageId = Number(v);
-              urlTouched = true;
-            }}
-          />
-        </div>
-      {/if}
-
       <div class="search">
         <input
           type="search"
@@ -468,12 +477,12 @@
         <thead>
           <tr>
             <th class="col-rank">Puesto</th>
-            {#if mode === 'acumulado'}<th class="col-delta">Δ</th>{/if}
+            {#if tableMode === 'acumulado'}<th class="col-delta">Δ</th>{/if}
             <th>Ciclista</th>
             <th class="col-cat">Categoría</th>
             <th class="col-catrank">En cat.</th>
             <th class="col-team">Equipo / Club</th>
-            <th class="col-time">{mode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
+            <th class="col-time">{tableMode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
             <th class="col-gap" title={GAP_HINT}>Diferencia</th>
             <th class="col-pts">Puntos</th>
           </tr>
@@ -481,7 +490,7 @@
         <tbody bind:this={tbodyEl}>
           {#if filteredRows.length === 0}
             <tr>
-              <td colspan={mode === 'acumulado' ? 9 : 8} class="empty font-mono">
+              <td colspan={tableMode === 'acumulado' ? 9 : 8} class="empty font-mono">
                 No se encontraron corredores con los criterios seleccionados.
               </td>
             </tr>
@@ -499,7 +508,7 @@
                     {r.current_rank}º
                   </span>
                 </td>
-                {#if mode === 'acumulado'}
+                {#if tableMode === 'acumulado'}
                   <td class="col-delta">
                     {#if r.is_debut}
                       <span class="delta-new font-mono">NUEVO</span>
@@ -570,7 +579,7 @@
             <th class="col-num">Platas</th>
             <th class="col-num">Bronces</th>
             <th class="col-num">Corredores</th>
-            <th class="col-time">{mode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
+            <th class="col-time">{tableMode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
             <th class="col-gap" title={GAP_HINT}>Diferencia</th>
           </tr>
         </thead>
@@ -795,6 +804,30 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--muted);
+  }
+
+  /* Enlaces de la carrera: podio y planilla oficial. */
+  .stageactions {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.5rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .stagelink {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--scope-ink, var(--ink));
+    text-decoration: none;
+    border-bottom: var(--hairline) solid transparent;
+    transition: border-color var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .stagelink:hover {
+    border-bottom-color: currentColor;
   }
 
   /* --- Controles --- */
