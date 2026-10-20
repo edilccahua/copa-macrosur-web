@@ -249,6 +249,13 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 - **Sin datos ficticios:** los perfiles de corredor y equipo muestran únicamente lo que devuelve la API.
 - **El `fetch` de servidor usa `PUBLIC_API_URL`** (`frontend/src/lib/api.ts`), igual que el cliente.
 - **El backend debe reiniciarse tras cambiar los modelos.** Un `uvicorn` sin `--reload` sigue sirviendo la versión anterior del esquema: la página lee `undefined` en los campos nuevos y, si tiene un mock de respaldo, muestra datos falsos en lugar de fallar. En desarrollo, `start.sh` lanza el backend con `--reload` y espera a que `/api/v1/stages` responda antes de levantar el frontend.
+- **Una sola base de datos, y viva con Alembic.** `DATABASE_URL` es relativa
+  (`.sqlite+aiosqlite:///./kuspide_mtb.db`), así que **la ruta importa**: la BD
+  de trabajo es la de la **raíz del repo** (la usan el seed y el servidor, que
+  arrancan desde ahí). `backend/kuspide_mtb.db` es una copia vieja. Y una BD
+  creada con `create_all` (no con Alembic) no tiene `alembic_version`: hay que
+  `alembic stamp head` una vez, o la siguiente migración intentará recrear
+  tablas que ya existen.
 - **Los recursos estáticos siguen serviéndose desde `public/`** (manifiesto PWA, `sw.js`, imágenes, GPX).
 - **`/en-vivo` y `/admin/juez` siguen usando `Base.astro`** y **no cargan GSAP ni Lenis** (ver `AGENTS.md` §2). El SSR no altera esa regla: el motion editorial sigue únicamente en `Showcase.astro`.
 - **Ejecución:** `npm run build && node dist/server/entry.mjs` (producción) o `npm run dev` (desarrollo). `start.sh` acepta `dev` (por defecto) y `prod`.
@@ -395,8 +402,12 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
 > **Rediseño del 19 de Octubre de 2026.** Antes la página tenía un espejo hardcodeado de las cuatro fechas (`stagesDb`) que servía de red de seguridad cuando el API fallaba. Eso ocultaba la caída del API (el `uvicorn` llevaba horas sirviendo un modelo viejo sin `title`/`short_name`/`start_location`, la página leía `undefined` y caía al mock) y mostraba cifras distintas de las de la BD (40.9 km en vez de 40.85). El mock se eliminó.
 
 1. **Hero con datos reales:** póster oficial, nombre de la fecha sin el prefijo `Fecha N:`, fecha, punto de partida y hora, **distancia y desnivel por vuelta Y total** (`Stage.distance_km` y `Stage.elevation_gain_m` son **por vuelta**; el total es `× Stage.laps`), estado y sinopsis derivada de los datos. Botones a la tabla de resultados, al ranking acumulado y a la ruta de Strava.
+   - **Una fecha sin ruta no afirma cifras**: la distancia y el desnivel se
+     rotulan **POR CONFIRMAR** (es el caso de la Fecha 4). Ver §1.7.1.
 2. **Navegación de campeonato ARRIBA del hero:** fecha anterior y siguiente (`navigation` del resumen) en dos bloques con flecha grande y nombre de la fecha; el hover desplaza la flecha 2 px. La cuenta regresiva aparece en las fechas con inscripción abierta y el badge `[ EN VIVO ]` cuando `Stage.status == LIVE`. La hora de largada se interpreta con su meridiem (`"02:30 PM"` son las 14:30, no las 02:30) mediante `frontend/src/lib/datetime.ts`.
 3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha. Los "no finalizados" son solo los abandonos de una fecha **ya disputada**: en una fecha con inscripción abierta, `REGISTERED` significa "aún no compite" y se rotula así.
+   - **Los puntos del PDF oficial y los del motor se muestran los dos** cuando
+     difieren (Z Xtreme: 554 publicados, 555 tras el recálculo). Ver §1.7.1.
 4. **Leaderboard de podio por categoría** (`StageLeaderboard`): una fila por categoría con **solo el título de la categoría** (sin recuadro de código corto) y los tres ganadores con su club. **Sin dorsal, sin tiempo y sin puntos**: el detalle completo está en el ranking, en modo FECHA (`/ranking-general?modo=fecha&tabla=PRO&fecha={n}`). El título **no va en blanco como el resto del texto**: usa la tipografía display en mayúsculas y el acento de su grupo (`PRO` / `NORMAL` / `E-BIKE`, tokens `.scope-*` de `tokens.css`), de modo que se lee de un vistazo a qué categoría pertenece cada bloque; al pasar el ratón el título toma el color vivo del grupo. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
    - **El puesto se dibuja con una MEDALLA, no con un número.** Es la insignia de leaderboard de Strava (`icon-at-pr-01/02/03`), reproducida con su geometría exacta: silueta de "bolsillo" con la cinta y el puesto **calado al vacío** dentro del disco (`fill-rule="evenodd"`). La pieza vive en `src/assets/medals/medal-N.svg` (canónica, `currentColor`) y en `public/icons/medals/medal-N.svg` (plana, para reutilizar fuera de Astro); la genera `frontend/tools/build-medals.mjs`. El "2" y el "3" son los trazados literales de Strava; el "1" está dibujado con la misma construcción. Los tonos (`--medal-1/2/3`) son el oro, la plata y el bronce exactos de Strava. El componente `MedalIcon.astro` la inserta **en línea** (no como `<img>`) para que herede el color del tema y para que el número calado deje ver el fondo real de la página.
 5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales, **medalla del lugar** (en lugar del índice numérico), nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce). Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
@@ -411,9 +422,11 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
    - **La escala vertical se DECLARA** (`ESCALA VERTICAL ×19`): un perfil de
      etapa estira la vertical, y un lector de mapas necesita saber cuánto. Se
      calcula de la geometría, no se elige a ojo.
-   - El **desnivel** que se muestra es el **acumulado real** (359 m en La Joya),
+   - El **desnivel** que se muestra es el **acumulado real** (384 m en La Joya),
      no la diferencia entre el máximo y el mínimo (648 m): un vaivén no es un
-     desnivel.
+     desnivel. Y es el de la **ruta oficial** (GPX a resolución completa), no
+     el que sale de la traza simplificada: la ficha mostraba las dos cifras
+     (cabecera +384 m, perfil +359 m) y ahora hay **una sola** (ver §1.7.1).
    - Las pendientes se miden sobre la altitud **suavizada** (media móvil de 3
      puntos): la geometría se guarda simplificada a 500 puntos y esa
      simplificación inflaba un tramo de 70 m hasta el 53% de pendiente.
@@ -425,7 +438,18 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
    2. **Cruce con los pilotos.** Solo cuenta el intento de un corredor inscrito en esa fecha. El cruce usa `strava_athlete_id` (fiable) y, como respaldo, el nombre normalizado.
    3. **Selección.** Se descarta el segmento que cubre ≥80% de la etapa —**es la ruta, no un tramo**— y se muestran los **cinco** más relevantes: primero las subidas y bajadas más empinadas, luego los más largos.
 
-   Cada segmento muestra su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava. Encima, dos tarjetas: el **King of the Mountain** (la subida más empinada) y la **Queen of the Mountain** (la bajada más empinada), con el corredor más rápido de cada tramo.
+   Cada segmento muestra su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava.
+
+   Los **títulos de montaña** van en su propia sección, antes de los segmentos, y son **cuatro**:
+
+   | Título | Tramo | Género |
+   |---|---|---|
+   | **KOM** — King of the Mountain | la subida más empinada y, a igualdad, la más larga | varón |
+   | **QOM** — Queen of the Mountain | la misma subida | damas |
+   | **El Kamikaze** | el descenso más pronunciado y, a igualdad, el más largo | varón |
+   | **La Kamikaze** | el mismo descenso | damas |
+
+   El **QOM nunca puede ser un varón**: se elige entre los intentos con `strava_efforts.athlete_gender = 'F'` (o, si falta, con el género del corredor enlazado). Si no hay intentos de damas, el QOM es `null` y su tarjeta no se pinta. Los Kamikaze se resuelven igual: el mejor tiempo del género en el descenso de la jornada. Se prefiere un tramo con intentos **de la fecha**; si el descenso más empinado solo guarda tiempos de otros años, se elige el siguiente descenso que sí tenga intentos de la carrera.
 9. **La E-BIKE no compite por el título de la fecha.** El E-BIKE OPEN conserva su propio leaderboard de categoría, pero un e-bike no puede ser el scratch ni el KOM/QOM de la jornada.
 10. **El ganador es el de mayor VELOCIDAD**, no el de menor tiempo: en un circuito por vueltas no todos completan lo mismo, y el tiempo más bajo puede ser el de quien dio menos vueltas. En Z Xtreme el scratch pasa de SERGIO PINEDA (2 vueltas, 23.7 km/h) a RONALD LUZA (3 vueltas, 26.7 km/h).
 11. **Premios de la jornada:** título, patrocinador, descripción del premio y **ganador** resuelto desde `SpecialAward.winner_rider_id`. El logotipo del patrocinador sale de `sponsor_logo_url`.
@@ -718,9 +742,9 @@ agregado, sin acceso a disco ni a la red) + `backend/app/routers/stages.py`.
 | `compute_stage_awards(session, stage_id)` | `List[AwardSummaryRead]`: premios con patrocinador, descripción y ganador resuelto. |
 | `compute_stage_route_profile(session, stage)` | `RouteProfileRead`: el perfil de altimetría con su traza punto a punto, el desnivel **acumulado** real, la pendiente media y máxima, y si la geometría cubre la etapa entera o solo una vuelta. `null` si la fecha no tiene geometría. |
 | `compute_stage_summits(session, stage_id)` | `List[SummitRead]`: las cimas de la ruta (los "puertos" del perfil) con su nombre real, su categoría de puerto y sus cifras. |
-| `compute_stage_mountain_titles(session, stage_id)` | El **King of the Mountain** (la subida más empinada) y la **Queen of the Mountain** (la bajada más empinada) de la fecha, con el corredor más rápido de cada tramo. `null` si la fecha no tiene segmentos. |
+| `compute_stage_mountain_titles(session, stage_id)` | Los cuatro **títulos de montaña** de la fecha. **KOM**: el varón más rápido en la subida más empinada; **QOM**: la dama más rápida en esa misma subida; **El Kamikaze** y **La Kamikaze**: el varón y la dama más rápidos en el descenso más pronunciado. El género sale de `StravaEffort.athlete_gender` y, si falta, del `Rider.gender` enlazado: el QOM nunca puede ser un varón. Se prefiere un tramo con intentos de la fecha. `null` si la fecha no tiene segmentos o si no hay intentos de ese género. |
 
-**Respuesta:** `{stage, stats, podium, teams, strava, checkpoints, awards, extremes, route_profile, summits, kom, qom, navigation}`.
+**Respuesta:** `{stage, stats, podium, teams, strava, checkpoints, awards, extremes, route_profile, summits, kom, qom, kamikaze_male, kamikaze_female, navigation}`.
 `extremes` tiene siempre las claves `scratch` y `farolito`, que pueden ser `null`.
 `route_profile` y `kom`/`qom` pueden ser `null` (fecha sin geometría o sin segmentos).
 `navigation` trae `prev_slug`/`prev_name` y `next_slug`/`next_name`.
@@ -728,7 +752,8 @@ Si la fecha no existe: `404` con `{"detail": "Etapa no encontrada."}`.
 
 **Datos de mapa y de puertos:**
 - `StravaSegment` lleva `location`, `elevation_min_m`, `elevation_max_m`, `kind` y `category`. Los segmentos son los de la **ruta oficial** de Strava de cada fecha (25 en total entre las tres fechas) y se sincronizan con `backend/scripts/sync_all_strava_segments.py` (CDP sobre la sesión Strava del administrador; nunca en la nube).
-- `StravaEffort` lleva **`measured_on`** (la fecha del intento) y **`strava_athlete_id`**. Sin la fecha no se puede distinguir un intento de la carrera de otro de 2019: Strava lista en un mismo segmento los de muchas fechas, todos juntos.
+- `StravaEffort` lleva **`measured_on`** (la fecha del intento), **`strava_athlete_id`** y **`athlete_gender`** (`M`/`F`). Sin la fecha no se puede distinguir un intento de la carrera de otro de 2019: Strava lista en un mismo segmento los de muchas fechas, todos juntos. Sin el género no se puede separar el KOM del QOM: hay corredoras inscritas que no están en `riders` y su intento solo se reconoce por el filtro de género del leaderboard.
+- El sincronizador `sync_all_strava_segments.py` recorre cada segmento y mueve los dos filtros de la cabecera de Strava —**fecha** (Todos los tiempos / Este año) y **género** (Hombres / Mujeres)— llamando al `onChange` real del `react-select` a través del fiber de React: los eventos sintéticos no abren esos menús. Las pasadas se acumulan (`replace: false` en el payload) y se deduplican por atleta + fecha + tiempo.
 - `RouteSummit` guarda las cimas de la ruta con su nombre real. El nombre sale del **reverse-geocode de OpenStreetMap (Nominatim)** sobre la coordenada de la cima y se resuelve **al sembrar**, nunca en cada request: la red no está en el camino de una página.
 - La categoría de puerto sigue las reglas del Tour: **HC** (≥1000 m y ≥8%), **1** (≥700 m y ≥6%), **2** (≥400 m y ≥4%), **3** (≥200 m y ≥3%), **4** (≥100 m y ≥2%).
 - El perfil de etapa se **genera como imagen**: `backend/scripts/build_stage_profile.py` escribe `/profiles/{slug}.svg`. Se regenera cuando cambia la geometría o las cimas.
