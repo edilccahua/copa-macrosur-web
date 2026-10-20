@@ -3,13 +3,36 @@ import Base from '../layouts/Base.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import LiveLeaderboard from '../components/svelte/LiveLeaderboard.svelte';
+import { API_V1 } from '../lib/api';
+
+// Selecciona la fecha en curso (LIVE) o, si no hay, la próxima abierta / última finalizada
+let stageId = 3;
+let stageName = 'Fecha 3: Vuelta a los Poblados';
+try {
+  const res = await fetch(`${API_V1}/stages`);
+  if (res.ok) {
+    const stages = await res.json();
+    if (Array.isArray(stages) && stages.length) {
+      const current =
+        stages.find((s: any) => s.status === 'LIVE') ||
+        stages.find((s: any) => s.status === 'REGISTRATION_OPEN') ||
+        stages.filter((s: any) => s.status === 'FINISHED').slice(-1)[0] ||
+        stages[stages.length - 1];
+      stageId = current.id;
+      stageName = current.name;
+    }
+  }
+} catch (e) {}
 ---
 <Base title="Cronometraje En Vivo — Kúspide MTB">
   <SiteHeader />
 
   <main class="container page-content">
     <div class="page-header">
-      <div class="live-pill font-mono">SEÑAL EN TIEMPO REAL 🔴</div>
+      <div class="live-pill font-mono">
+        <span class="live-pulse-dot" aria-hidden="true"></span>
+        <span>[ TRANSMISIÓN EN VIVO // CANAL SSE ]</span>
+      </div>
       <h1 class="page-title">TIEMPOS Y LLEGADAS EN VIVO</h1>
       <p class="page-desc">
         Transmisión directa de las marcaciones de los jueces de meta mediante Server-Sent Events (SSE). Los tiempos y deltas se actualizan instantáneamente sin recargar la página.
@@ -17,7 +40,7 @@ import LiveLeaderboard from '../components/svelte/LiveLeaderboard.svelte';
     </div>
 
     <!-- Isla Svelte 5 LiveLeaderboard -->
-    <LiveLeaderboard client:load stageId={1} stageName="Fecha 1: La Joya Extreme" />
+    <LiveLeaderboard client:load stageId={stageId} stageName={stageName} />
   </main>
 
   <SiteFooter />
@@ -35,14 +58,31 @@ import LiveLeaderboard from '../components/svelte/LiveLeaderboard.svelte';
   }
 
   .live-pill {
-    display: inline-block;
-    padding: 0.25rem 0.625rem;
-    background: #ff3b30;
-    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.625rem;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+    color: var(--ink);
     font-size: 0.6875rem;
     font-weight: 800;
     letter-spacing: 0.12em;
     margin-bottom: 1rem;
+  }
+
+  .live-pulse-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    background: #ff3b30;
+    box-shadow: 0 0 0.375rem #ff3b30;
+    display: inline-block;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
   }
 
   .page-title {
@@ -53,7 +93,7 @@ import LiveLeaderboard from '../components/svelte/LiveLeaderboard.svelte';
   }
 
   .page-desc {
-    max-width: 680px;
+    max-width: 42.5rem;
     font-size: 0.9375rem;
     color: var(--muted);
     line-height: 1.6;

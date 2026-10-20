@@ -8,6 +8,15 @@ from sqlmodel import select
 
 from backend.app.models.entities import Stage, Category, Rider, StageEntry
 from backend.app.services.excel_service import import_riders_from_excel, export_stage_results_to_excel
+from backend.app.services.excel_service import generate_deterministic_dni, normalize_name
+
+
+def test_normalize_name_removes_accents_and_punctuation():
+    assert normalize_name("JOSÉ PEÑA.") == "JOSE PENA"
+    assert normalize_name("LÓPEZ-QUISPE") == "LOPEZ QUISPE"
+    # El DNI sintético es estable ante tildes/puntuación
+    assert generate_deterministic_dni("JOSE PEÑA.") == generate_deterministic_dni("JOSE PENA")
+    assert generate_deterministic_dni("ROBERTO VALENCIA") != generate_deterministic_dni("ROBERTO VALENCIA GONZALES")
 
 
 def create_mock_excel(rows: list) -> bytes:

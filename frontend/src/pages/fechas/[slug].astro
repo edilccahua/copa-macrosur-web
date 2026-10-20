@@ -4,119 +4,204 @@ import SiteHeader from '../../components/SiteHeader.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import RouteMapGpx from '../../components/svelte/RouteMapGpx.svelte';
 import SectionLabel from '../../components/bento/SectionLabel.astro';
+import { API_V1 } from '../../lib/api';
 
-export async function getStaticPaths() {
-  return [
-    { params: { slug: 'la-joya-extreme' } },
-    { params: { slug: 'vuelta-a-los-poblados' } },
-    { params: { slug: 'rally-chachani' } },
-    { params: { slug: 'desafio-del-misti' } }
-  ];
-}
-
+// SSR: ruta dinámica resuelta contra la API en cada request (antes se
+// prerenderizaba con `getStaticPaths` y un `fetch` de build-time que se
+// tragaba los errores). Ver specs/03 §2.
 const { slug } = Astro.params;
 
-// Datos de la etapa
+// Datos de la etapa (espejo de la base de datos sembrada desde races/)
 const stagesDb: Record<string, any> = {
   'la-joya-extreme': {
     num: 1,
     name: 'La Joya Extreme',
-    date: '15 de Marzo de 2026',
+    shortName: 'La Joya',
+    title: 'La Joya Extreme',
+    date: '17 de Mayo de 2026',
     status: 'Finalizada',
-    poster: '/images/la_joya_extreme.jpg',
-    dist: 48.5,
-    elev: 920,
-    scratch: {
-      name: 'PATRICIO RATH DIAZ',
-      category: 'E-BIKE OPEN',
-      time: '01:16:22',
-      bib: 1
-    },
-    farolito: {
-      name: 'IRENE ALFARO',
-      category: 'DAMAS MASTER',
-      time: '02:38:08',
-      bib: 283
-    },
-    strava: [
-      { name: 'Muro Volcánico La Joya (Sector KOM)', dist: '3.4 km', grade: '8.4%', kom: 'ALEXIS ARNOLD QUISPE (10m 42s)' },
-      { name: 'Sprint Cañón del Río', dist: '1.8 km', grade: '1.2%', kom: 'PATRICIO RATH DIAZ (2m 15s)' }
-    ]
+    startLocation: 'Vía de Evitamiento, La Joya',
+    startTime: '08:00 AM',
+    poster: '/images/posters/f1-la-joya-extreme-card.webp',
+    dist: 40.9,
+    elev: 384,
+    laps: 1,
+    gpx: 'la-joya-extreme.gpx',
+    stravaRoute: 'https://www.strava.com/routes/3486799154256647166',
+    scratch: { name: 'RONALD LUZA CALLO', category: 'MASTER A', time: '01:07:55', bib: 38 },
+    farolito: { name: 'IRENE ALFARO', category: 'DAMAS MASTER', time: '02:38:08', bib: 283 },
+    strava: []
+  },
+  'z-xtreme-2026': {
+    num: 2,
+    name: 'Kúspide Z Xtreme III',
+    shortName: 'Z Xtreme',
+    title: 'Kúspide Z Xtreme — 3ra Edición',
+    date: '23 de Agosto de 2026',
+    status: 'Finalizada',
+    startLocation: 'Circuito La Z',
+    startTime: '08:00 AM',
+    poster: '/images/posters/f2-z-xtreme-card.webp',
+    dist: 11.8,
+    elev: 280,
+    laps: 3,
+    gpx: 'z-xtreme.gpx',
+    stravaRoute: 'https://www.strava.com/routes/3200784336826934006',
+    scratch: { name: 'SERGIO PINEDA HUANCA', category: 'TURISMO OPEN VARONES', time: '01:00:00', bib: 159 },
+    farolito: { name: 'REYNALDO PARQUE', category: 'MASTER C', time: '02:19:41', bib: 96 },
+    strava: []
   },
   'vuelta-a-los-poblados': {
-    num: 2,
-    name: 'Vuelta a los Poblados',
+    num: 3,
+    name: 'El Retorno a los Poblados 2',
+    shortName: 'Poblados',
+    title: 'El Retorno a los Poblados 2',
     date: '25 de Octubre de 2026',
     status: 'Inscripciones Abiertas',
-    poster: '/images/vuelta_a_los_poblados.jpg',
-    dist: 64.2,
-    elev: 1780,
-    scratch: null,
-    farolito: null,
-    strava: [
-      { name: 'Ascenso Cumbre Los Poblados (KOM)', dist: '5.8 km', grade: '9.6%', kom: 'Segmento Oficial Strava #394819' },
-      { name: 'Paso Técnico Quebrada Seca', dist: '2.4 km', grade: '4.2%', kom: 'Segmento Oficial Strava #394820' }
-    ]
-  },
-  'rally-chachani': {
-    num: 3,
-    name: 'Rally Chachani',
-    date: '22 de Noviembre de 2026',
-    status: 'Próximamente',
-    poster: '/images/la_joya_extreme.jpg',
-    dist: 52.0,
-    elev: 1350,
+    startLocation: 'Plaza de Chiguata',
+    startTime: '08:00 AM',
+    poster: '/images/posters/f3-retorno-poblados-card.webp',
+    dist: 47.2,
+    elev: 761,
+    laps: 1,
+    gpx: 'vuelta-a-los-poblados.gpx',
+    stravaRoute: 'https://www.strava.com/routes/3545824230908680048',
     scratch: null,
     farolito: null,
     strava: []
   },
-  'desafio-del-misti': {
+  'quequena-xtreme': {
     num: 4,
-    name: 'Desafío del Misti',
+    name: 'Quequeña Xtreme III',
+    shortName: 'Quequeña',
+    title: 'Quequeña Xtreme III',
     date: '13 de Diciembre de 2026',
     status: 'Próximamente',
-    poster: '/images/vuelta_a_los_poblados.jpg',
-    dist: 72.0,
-    elev: 2100,
+    startLocation: 'Plaza Principal de Quequeña',
+    startTime: '08:00 AM',
+    poster: '/images/posters/f4-quequena-xtreme-card.webp',
+    dist: 45.0,
+    elev: 950,
+    laps: 1,
+    gpx: null,
+    stravaRoute: null,
     scratch: null,
     farolito: null,
     strava: []
   }
 };
 
-const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
+const stage = { ...(stagesDb[slug ?? ''] || stagesDb['vuelta-a-los-poblados']) };
+stage.notFound = false;
+
+// Enriquecer con datos reales de la API (extremos, segmentos Strava, métricas)
+try {
+  const res = await fetch(`${API_V1}/stages/${slug}`);
+  if (res.status === 404) {
+    Astro.response.status = 404;
+    stage.notFound = true;
+  } else if (res.ok) {
+    const data = await res.json();
+    const s = data.stage;
+    if (s) {
+      stage.name = s.title || s.name;
+      stage.title = s.title || s.name;
+      stage.shortName = s.short_name || stage.shortName;
+      stage.startLocation = s.start_location || stage.startLocation;
+      stage.startTime = s.start_time || stage.startTime;
+      stage.poster = s.poster_url || stage.poster;
+      stage.date = new Date(s.date + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+      stage.dist = s.distance_km;
+      stage.elev = s.elevation_gain_m;
+      stage.laps = s.laps;
+      stage.status = s.status === 'FINISHED' ? 'Finalizada' : (s.status === 'REGISTRATION_OPEN' ? 'Inscripciones Abiertas' : 'Próximamente');
+    }
+    const ex = data.extremes || {};
+    if (ex.scratch) {
+      stage.scratch = {
+        name: ex.scratch.rider_name,
+        category: ex.scratch.category_name,
+        time: ex.scratch.formatted_time,
+        bib: ex.scratch.bib_number,
+      };
+    }
+    if (ex.farolito) {
+      stage.farolito = {
+        name: ex.farolito.rider_name,
+        category: ex.farolito.category_name,
+        time: ex.farolito.formatted_time,
+        bib: ex.farolito.bib_number,
+      };
+    }
+    if (Array.isArray(data.strava_segments) && data.strava_segments.length) {
+      stage.strava = data.strava_segments.map((seg: any) => ({
+        name: seg.name,
+        dist: `${(seg.distance_m / 1000).toFixed(2)} km`,
+        grade: `${seg.average_grade}%`,
+        kom: seg.efforts && seg.efforts.length
+          ? `${seg.efforts[0].athlete_name} (${seg.efforts[0].formatted_time})`
+          : 'Sin registros aún',
+      }));
+    }
+  }
+} catch (e) {}
+
+// Nombre visible sin el prefijo "Fecha N:" (se muestra aparte en el eyebrow)
+const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '');
 ---
-<Showcase title={`${stage.name} — Kúspide MTB`} ghostWord={`FECHA ${stage.num}`}>
+<Showcase title={`${displayName} — Kúspide MTB`} ghostWord={`FECHA ${stage.num}`}>
   <SiteHeader />
 
   <main class="container stage-page">
+    {stage.notFound ? (
+      <section class="stage-hero" data-draw>
+        <div class="hero-details">
+          <div class="stage-tag font-mono" data-draw-eyebrow>[ FECHA NO ENCONTRADA ]</div>
+          <h1 class="stage-title">Sin resultados para «{slug}»</h1>
+          <p class="stage-synopsis">
+            No existe ninguna fecha con el identificador «{slug}». Revisa el calendario del campeonato.
+          </p>
+          <div class="hero-buttons">
+            <a href="/" class="btn btn--solid">Ir al inicio →</a>
+            <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
+          </div>
+        </div>
+      </section>
+    ) : (
+    <>
     <!-- Cabecera de Fecha con Póster y Datos -->
     <section class="stage-hero" data-draw>
       <div class="hero-grid">
         <div class="hero-poster-box" data-reveal>
           <img src={stage.poster} alt={stage.name} class="hero-poster" />
+          <a href={stage.poster.replace('-card.webp', '-full.webp')} target="_blank" rel="noopener noreferrer" class="poster-full-link font-mono">
+            [ VER AFICHE COMPLETO ↗ ]
+          </a>
         </div>
         <div class="hero-details">
-          <div class="stage-tag font-mono" data-draw-eyebrow>FECHA 0{stage.num} / CAMPEONATO OFICIAL</div>
-          <h1 class="stage-title">{stage.name}</h1>
+          <div class="stage-tag font-mono" data-draw-eyebrow>[ FECHA 0{stage.num} // {stage.shortName ? `${stage.shortName.toUpperCase()} · ` : ''}CAMPEONATO OFICIAL ]</div>
+          <h1 class="stage-title">{stage.title || displayName}</h1>
           <div class="stage-meta font-mono">
-            <span>📅 {stage.date}</span>
-            <span>📏 {stage.dist} KM</span>
-            <span>⛰️ +{stage.elev} M</span>
-            <span class="status-tag">{stage.status}</span>
+            <span>FECHA: {stage.date}</span>
+            <span>PARTIDA: {stage.startLocation || 'Arequipa'} ({stage.startTime || '08:00 AM'})</span>
+            <span>DISTANCIA: {stage.laps > 1 ? `${stage.dist} KM × ${stage.laps} VUELTAS` : `${stage.dist} KM`}</span>
+            <span>DESNIVEL: +{stage.elev * stage.laps} M</span>
+            <span class="status-tag">[{stage.status}]</span>
           </div>
 
           <p class="stage-synopsis">
-            Recorrido técnico y exigente diseñado para medir la resistencia, técnica en terreno suelto y potencia en ascensos de alto gradiente.
+            {stage.laps > 1
+              ? `Circuito de ${stage.dist} km por vuelta y +${stage.elev} m de desnivel por vuelta. ${stage.laps} vueltas para las categorías fuertes.`
+              : `Recorrido de ${stage.dist} km con +${stage.elev} m de desnivel positivo acumulado.`}
           </p>
 
           <div class="hero-buttons">
             {stage.status === 'Finalizada' ? (
-              <a href={`/fechas/${slug}/resultados`} class="btn-primary">Ver Resultados Completos →</a>
+              <a href={`/fechas/${slug}/resultados`} class="btn btn--solid">Resultados Oficiales →</a>
             ) : (
-              <a href="/inscripciones" class="btn-primary">Inscribirse en esta Carrera →</a>
+              <a href="/inscripciones" class="btn btn--solid">Inscripción Oficial →</a>
             )}
-            <a href="/ranking-general" class="btn-secondary">Ver Ranking Acumulado</a>
+            <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
           </div>
         </div>
       </div>
@@ -125,19 +210,19 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
     <!-- Bento de Estadísticas Extremas (si la fecha finalizó) -->
     {stage.scratch && (
       <section class="extremes-section">
-        <SectionLabel label="ESTADÍSTICAS EXTREMAS DE LA JORNADA" />
+        <SectionLabel number="01" label="ESTADÍSTICAS EXTREMAS DE LA JORNADA" />
         <div class="extremes-grid">
           <div class="extreme-card scratch-card" data-reveal>
-            <div class="card-tag font-mono">⚡ EL MÁS RÁPIDO (SCRATCH)</div>
+            <div class="card-tag font-mono">[ SCRATCH // TIEMPO MÁS RÁPIDO EN META ]</div>
             <div class="extreme-name">{stage.scratch.name}</div>
-            <div class="extreme-sub font-mono">Dorsal #{stage.scratch.bib} | {stage.scratch.category}</div>
+            <div class="extreme-sub font-mono">DORSAL #{stage.scratch.bib} // {stage.scratch.category}</div>
             <div class="extreme-time font-mono">{stage.scratch.time}</div>
           </div>
 
           <div class="extreme-card farolito-card" data-reveal>
-            <div class="card-tag font-mono">🕯️ EL MÁS PERSISTENTE (FAROLITO EN META)</div>
+            <div class="card-tag font-mono">[ LANTERNE ROUGE // MÁXIMA PERSISTENCIA ]</div>
             <div class="extreme-name">{stage.farolito.name}</div>
-            <div class="extreme-sub font-mono">Dorsal #{stage.farolito.bib} | {stage.farolito.category}</div>
+            <div class="extreme-sub font-mono">DORSAL #{stage.farolito.bib} // {stage.farolito.category}</div>
             <div class="extreme-time font-mono">{stage.farolito.time}</div>
           </div>
         </div>
@@ -146,30 +231,30 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
 
     <!-- Bento de Ruta Interactiva y Altimetría -->
     <section class="route-section">
-      <SectionLabel label="PERFIL TÉCNICO Y RUTA DE CARRERA" />
+      <SectionLabel number="02" label="PERFIL TÉCNICO Y RUTA DE CARRERA" />
       <RouteMapGpx
         client:visible
         stageName={stage.name}
         distanceKm={stage.dist}
         elevationGainM={stage.elev}
-        gpxUrl={`/gpx/${slug}.gpx`}
+        gpxUrl={stage.gpx ? `/gpx/${stage.gpx}` : undefined}
       />
     </section>
 
     <!-- Bento Segmentos Strava (Filosofía Strava) -->
     {stage.strava.length > 0 && (
       <section class="strava-section">
-        <SectionLabel label="SEGMENTOS OFICIALES STRAVA (KOM / QOM)" />
+        <SectionLabel number="03" label="SEGMENTOS OFICIALES STRAVA (KOM / QOM)" />
         <div class="strava-grid">
           {stage.strava.map((seg: any) => (
             <div class="strava-card font-mono" data-reveal>
               <div class="strava-header">
-                <span class="strava-logo">STRAVA SEGMENT</span>
-                <span class="strava-grade">{seg.grade} pend. media</span>
+                <span class="strava-logo">STRAVA SEGMENT // VERIFICADO</span>
+                <span class="strava-grade">{seg.grade} PEND. MEDIA</span>
               </div>
               <div class="strava-name">{seg.name}</div>
-              <div class="strava-dist">Distancia: {seg.dist}</div>
-              <div class="strava-kom">👑 {seg.kom}</div>
+              <div class="strava-dist">DISTANCIA OFICIAL: {seg.dist}</div>
+              <div class="strava-kom"><span class="kom-label">RÉCORD KOM:</span> {seg.kom}</div>
             </div>
           ))}
         </div>
@@ -178,7 +263,7 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
 
     <!-- Bento Premios Especiales -->
     <section class="awards-section">
-      <SectionLabel label="PREMIOS DE LA JORNADA" />
+      <SectionLabel number="04" label="PREMIOS DE LA JORNADA" />
       <div class="awards-grid">
         <div class="award-box" data-reveal>
           <img src="/images/premio_coca.jpg" alt="Premio Coca" class="award-img" />
@@ -196,6 +281,8 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
         </div>
       </div>
     </section>
+    </>
+    )}
   </main>
 
   <SiteFooter />
@@ -220,7 +307,7 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
 
   .hero-poster-box {
     aspect-ratio: 3/4;
-    max-width: 380px;
+    max-width: 23.75rem;
     background: #14171c;
     overflow: hidden;
     border: var(--hairline) solid var(--line);
@@ -232,6 +319,24 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
     object-fit: cover;
   }
 
+  .poster-full-link {
+    display: block;
+    padding: 0.5rem;
+    font-size: 0.6875rem;
+    text-align: center;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: var(--bg-surface);
+    border-top: var(--hairline) solid var(--line);
+    text-decoration: none;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .poster-full-link:hover {
+    color: var(--accent);
+    background: var(--bg-raised);
+  }
+
   .hero-details {
     display: flex;
     flex-direction: column;
@@ -239,17 +344,23 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
   }
 
   .stage-tag {
-    font-size: 0.75rem;
-    font-weight: 800;
-    color: var(--accent, #ff5500);
-    letter-spacing: 0.15em;
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-medium);
+    color: var(--faint);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     margin-bottom: 0.75rem;
   }
 
   .stage-title {
     font-family: var(--font-display, var(--font-sans));
-    font-size: 2.5rem;
-    font-weight: 800;
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    color: var(--ink-strong);
+    text-wrap: balance;
     margin: 0 0 1rem 0;
   }
 
@@ -263,15 +374,15 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
   }
 
   .status-tag {
-    color: var(--accent, #ff5500);
-    font-weight: 700;
+    color: var(--muted);
+    font-weight: var(--font-weight-medium);
   }
 
   .stage-synopsis {
     font-size: 1rem;
     line-height: 1.6;
     color: var(--muted);
-    max-width: 540px;
+    max-width: 33.75rem;
     margin-bottom: 2rem;
   }
 
@@ -281,30 +392,41 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
     gap: 1rem;
   }
 
-  .btn-primary {
-    padding: 0.875rem 1.5rem;
-    background: var(--invert-bg, #101014);
-    color: var(--invert-fg, #ffffff);
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.125rem;
     font-size: 0.75rem;
-    font-weight: 800;
+    font-weight: var(--font-weight-medium, 500);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
+    border: var(--hairline) solid transparent;
+    border-radius: var(--radius, 0);
+    white-space: nowrap;
     text-decoration: none;
+    transition: background var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
-  .btn-primary:hover {
+  .btn--solid {
+    background: var(--invert-bg);
+    color: var(--invert-fg);
+  }
+
+  .btn--solid:hover {
     background: var(--accent, #ff5500);
+    color: #ffffff;
   }
 
-  .btn-secondary {
-    padding: 0.875rem 1.5rem;
-    border: var(--hairline) solid var(--line);
+  .btn--ghost {
+    border-color: var(--line);
     color: var(--ink);
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    text-decoration: none;
+    background: transparent;
+  }
+
+  .btn--ghost:hover {
+    border-color: var(--line-strong);
+    background: var(--bg-sunken);
   }
 
   /* Estadísticas Extremas */
@@ -324,16 +446,20 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
 
   .card-tag {
     font-size: 0.6875rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    color: var(--accent, #ff5500);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.14em;
+    color: var(--faint);
     margin-bottom: 0.75rem;
   }
 
   .extreme-name {
     font-family: var(--font-display, var(--font-sans));
     font-size: 1.5rem;
-    font-weight: 800;
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    color: var(--ink-strong);
     margin-bottom: 0.25rem;
   }
 
@@ -345,7 +471,8 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
 
   .extreme-time {
     font-size: 2rem;
-    font-weight: 800;
+    font-weight: var(--font-weight-medium);
+    font-variant-numeric: tabular-nums;
     color: var(--ink);
   }
 
@@ -410,8 +537,8 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
   }
 
   .award-img {
-    width: 90px;
-    height: 90px;
+    width: 5.625rem;
+    height: 5.625rem;
     object-fit: cover;
     flex-shrink: 0;
   }
@@ -430,9 +557,9 @@ const stage = stagesDb[slug] || stagesDb['vuelta-a-los-poblados'];
     margin: 0;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 48em) {
     .hero-grid {
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 21.25rem 1fr;
     }
 
     .extremes-grid {

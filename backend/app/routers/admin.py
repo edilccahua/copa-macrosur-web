@@ -11,6 +11,7 @@ from backend.app.models.entities import (
 )
 from backend.app.models.schemas import StravaSyncPayload
 from backend.app.services.gpx_service import parse_gpx_in_memory
+from backend.app.services.excel_service import normalize_name
 from backend.app.services.storage import upload_file_to_r2
 
 router = APIRouter(prefix="", tags=["Admin"])
@@ -97,10 +98,23 @@ async def sync_strava_efforts(
         await session.delete(eff)
 
     # Insertar nuevos esfuerzos
+    all_riders = (await session.exec(select(Rider))).all()
+    rider_tokens = [(r, normalize_name(r.full_name).split()) for r in all_riders]
+
+    def find_rider(athlete_name: str) -> Optional[Rider]:
+        """Cruza el nombre de Strava con un Rider por subconjunto de tokens normalizados."""
+        at = [t for t in normalize_name(athlete_name).split() if len(t) > 1]
+        if not at:
+            return None
+        best, best_len = None, -1
+        for rider, toks in rider_tokens:
+            if all(t in toks for t in at) or all(t in at for t in toks):
+                if len(toks) > best_len:
+                    best, best_len = rider, len(toks)
+        return best
+
     for item in payload.efforts:
-        # Intentar cruzar con ciclista por nombre aproximado
-        stmt_rider = select(Rider).where(Rider.full_name.ilike(f"%{item.athlete_name_raw}%"))
-        rider = (await session.exec(stmt_rider)).first()
+        rider = find_rider(item.athlete_name_raw)
 
         effort = StravaEffort(
             segment_id=segment.id,

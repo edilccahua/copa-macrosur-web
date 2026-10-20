@@ -60,6 +60,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 </Base>
 
 <script>
+  import { API_V1 } from '../lib/api';
   const form = document.getElementById('feedback-form') as HTMLFormElement;
   const msgBox = document.getElementById('response-msg') as HTMLElement;
   const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
@@ -79,20 +80,20 @@ import SiteFooter from '../components/SiteFooter.astro';
     };
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/public/feedback', {
+      const res = await fetch(`${API_V1}/public/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
-        msgBox.innerHTML = `<div class="msg-success">✅ ¡Ticket #${data.ticket_id} registrado con éxito! El comisario deportivo revisará tu mensaje.</div>`;
+        msgBox.innerHTML = `<div class="msg-success font-mono">[CONFIRMACIÓN] ¡Ticket #${data.ticket_id} registrado! El comisario deportivo revisará tu mensaje.</div>`;
         form.reset();
       } else {
-        msgBox.innerHTML = `<div class="msg-error">❌ No se pudo registrar el reclamo.</div>`;
+        msgBox.innerHTML = `<div class="msg-error font-mono">[ERROR] No se pudo registrar el reclamo.</div>`;
       }
     } catch (err) {
-      msgBox.innerHTML = `<div class="msg-error">❌ Error de conexión con el servidor.</div>`;
+      msgBox.innerHTML = `<div class="msg-error font-mono">[ERROR] Error de conexión con el servidor.</div>`;
     } finally {
       submitBtn.disabled = false;
       submitBtn.innerText = 'ENVIAR SOLICITUD AL COMISARIO';
@@ -106,7 +107,7 @@ import SiteFooter from '../components/SiteFooter.astro';
   }
 
   .ticket-wrapper {
-    max-width: 600px;
+    max-width: 37.5rem;
     margin: 0 auto;
     border: var(--hairline) solid var(--line);
     background: var(--bg-raised);

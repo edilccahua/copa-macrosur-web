@@ -22,12 +22,12 @@
 
 @media (prefers-reduced-motion: no-preference) {
   /* Debe coincidir EXACTAMENTE con el estado inicial medido del original:
-     { autoAlpha: 0, y: 28, filter: "blur(8px)" } */
+     { autoAlpha: 0, y: 28, filter: "blur(0.5rem)" } */
   html.motion-ready [data-reveal] {
     opacity: 0;
     visibility: hidden;
-    transform: translateY(28px);
-    filter: blur(8px);
+    transform: translateY(1.75rem);
+    filter: blur(0.5rem);
   }
 
   /* La barra de sección tiene su propia secuencia de entrada: el trazo (una
@@ -40,8 +40,8 @@
   html.motion-ready [data-draw] [data-draw-eyebrow] {
     opacity: 0;
     visibility: hidden;
-    transform: translateY(28px);
-    filter: blur(8px);
+    transform: translateY(1.75rem);
+    filter: blur(0.5rem);
   }
 
   html.motion-ready [data-draw] [data-draw-cell] {
@@ -59,7 +59,7 @@
   html.motion-ready [data-hero-copy] {
     opacity: 0;
     visibility: hidden;
-    transform: translateY(28px);
-    filter: blur(8px);
+    transform: translateY(1.75rem);
+    filter: blur(0.5rem);
   }
 }

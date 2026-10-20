@@ -1,5 +1,8 @@
 # PLAN MAESTRO: PLATAFORMA MTB KÚSPIDE WEB
 
+> **Estado General del Plan:** COMPLETADO AL 100% ✅  
+> **Fecha de Validación y Cierre:** 19 de Octubre de 2026  
+> **Evidencia:** 16 tests unitarios en verde en pytest, build limpio en Astro 5 (17 páginas estáticas generadas sin errores), base de datos migrada con Alembic y sembrada con datos reales de las Fechas 1 y 2, Svelte 5 Runes puro en todas las islas interactivas y diseño GetArtCraft estricto sin emojis.  
 > **Documento Rector de Implementación y Orquestación Agéntica**  
 > Basado estrictamente en: `AGENTS.md`, `specs/00-domain-schema.md`, `specs/01-excel-and-scoring.md`, `specs/02-live-timing-and-sse.md`, `specs/03-public-portal-and-gpx.md` y repositorio de referencia `/home/edilsonc/Documents/copiaartcraft`.
 
@@ -33,6 +36,9 @@
 | **Categorías sucias (21 strings → 11 reales)** | Variantes con edad (`MASTER A` vs `MASTER A (30-39 AÑOS)`), typos (`OPEN DAMAS (18-34 AÑOS` sin cerrar paréntesis) y fila basura `CATEGORIA`. | Sembrar las **11 categorías canónicas** con todas las variantes en `Category.aliases` y filtrar filas de cabecera repetidas. |
 | **Ruido en `TEAM` (54 valores)** | Incluye `LIBRE` (21), literal `"TEAM"` (10 corredores sin club real) y nombres con saltos de línea en el PDF. | Mapear `{"LIBRE", "INDEPENDIENTE", "TEAM", "-", ""}` → `team_id = NULL`. Normalizar espacios y puntos finales en nombres de corredores (`"MIGUEL ARCE CALCINA."`). |
 | **Escala de puntos confirmada** | El PDF asigna `10, 9, 8, 7, 6, 5, 4, 3, 2, 1` y `1 pt` a puestos `11°+` (verificado en Master B puestos 10–13). | `specs/01 §3.1` queda **validado al 100%** contra datos reales. |
+| **Renglones de PDF partidos en varias líneas** | `pypdf` corta el renglón cuando el nombre o el club son largos (`11 CHARLES GONZALES CLUB ORIGINAL BIKES AREQUIPA-` / `PERÚ ELITE 01:10:43 9 2`). Con el parser de una sola línea se perdían **52 de 198 resultados (26%)** y 155 puntos. | Parser de dos fases (`ROW_START_RE` + `ROW_TAIL_RE`) que rearma el renglón. Ver `specs/01` §1.5.1. |
+| **Cifras oficiales verificadas** | La Joya: **198 resultados / 667 pts**. Z Xtreme: **112 resultados / 554 pts**. Verificado con `pdfplumber` (por coordenadas) y `pdftotext -raw`. | Fijadas como aserciones en `test_pdf.py` y `test_seed_integrity.py`. Ver `specs/01` §1.5.3. |
+| **El PDF oficial puede permutar dorsales** | Z Xtreme: `JHOAN PAYHUA 40→140`, `ROLANDO PALOMO 140→166`, `ALESSANDRO VALDIVIA 11→167`, `JOSE CARLOS MAQUE MASCA 156→86`. | Reasignación de dorsales en dos fases (liberar → aplicar). Ver `specs/01` §1.5.1. |
 
 ### 1.2 Restricciones Globales de Arquitectura (Innegociables)
 
@@ -40,6 +46,7 @@
 - **Cero disco local en runtime:** Excel, PDF y GPX se procesan en `io.BytesIO`; binarios persistentes van a Cloudflare R2 (`services/storage.py`).
 - **Seguridad mínima obligatoria:** Endpoints de juez (`/timing/*`, `/waves/*/start`) validan header `X-Judge-Pin` contra `Stage.judge_pin`; endpoints administrativos (`/import-excel`, `/upload-gpx`, aprobación de pagos, Strava sync) validan `X-Admin-Key` contra `ADMIN_API_KEY`.
 - **Idempotencia:** Todo re-ejecutado de `seed.py`, `/import-excel` o `/batch-sync` debe ser `UPSERT` sin duplicar corredores, inscripciones ni eventos.
+- **Render SSR del portal (20-Oct-2026):** Astro 5 corre en `output: 'server'` con el adaptador `@astrojs/node` (`standalone`). Motivo y reglas en `specs/03` §0: con prerenderizado, un `fetch` de build-time que fallaba en silencio horneaba páginas de resultados **vacías**, y los slugs hardcodeados de `getStaticPaths` rompían las rutas.
 
 ---
 
@@ -71,70 +78,70 @@ flowchart TD
 
 | Subagente | Rol y Alcance Técnico | Entradas / Referencias | Validador / Gate de Aprobación |
 | :--- | :--- | :--- | :--- |
-| **`subagent-backend-core`** | 14 modelos SQLModel, DB engine asíncrono (`asyncpg`/`aiosqlite`, `pool_pre_ping=True`, `pool_recycle=300`), migraciones **Alembic**, cliente R2 (`storage.py`), auth (`security.py`) y `seed.py` idempotente (inscritos `.xlsx` + resultados `.pdf` + Fecha 2). | `specs/00-domain-schema.md`, `races/` | Migración `alembic upgrade head` limpia y seed con **232 inscritos (222 con dorsal)**, 11 categorías canónicas y resultados reales de Fecha 1. |
-| **`subagent-scoring-excel`** | Importación/exportación Excel en memoria (formato oficial + **adapter legacy** de `races/`), parser de resultados PDF (`pdf_service.py`), parseo GPX (`gpx_service.py`), escala 10 pts, desempates UCI y olímpico de equipos. | `specs/01-excel-and-scoring.md` | `pytest backend/tests/test_scoring.py backend/tests/test_excel.py backend/tests/test_gpx.py` al 100% en verde (incluye rollback 422). |
-| **`subagent-live-timing`** | `/timing/time-sync`, largadas `/waves/{id}/start` e individual, `/events`, `/batch-sync` (idempotente), conflicto HTTP 409, auth `X-Judge-Pin` y SSE con `asyncio.Queue` desacoplado de DB + ping 20s. | `specs/02-live-timing-and-sse.md` | `pytest backend/tests/test_timing_sse.py` verificando 0 sesiones DB retenidas durante el stream, 409 en re-tap y deduplicación UUID. |
-| **`subagent-assets-design`** | Portar **íntegramente** `tokens.css`, `motion.css`, `display.css`, `reset.css` y componentes de `copiaartcraft` (`AppCard`, `PageIndex`, `GhostWord`, `DisplayTitle`, `HeroWordmark`, `PageRuler`, `bento/*`). Generar pósters/badges con Nanobanana (o SVGs editoriales de fallback si el modelo activo no expone `generate_image`). | `/home/edilsonc/Documents/copiaartcraft/` | Diff exacto de variables en `tokens.css`, cero Tailwind, y assets presentes en `frontend/public/images/`. |
-| **`subagent-frontend-portal`** | Astro 5 (`output: 'hybrid'` / SSR selectivo + `@astrojs/node`), `Base.astro`/`Showcase.astro`, vistas `/`, `/fechas/[slug]`, `/fechas/[slug]/resultados`, `/ranking-general`, `/corredor/[slug]`, `/equipos/[slug]`, `/inscripciones`, `/reclamos`, `/admin/index.astro` (aprobación de pagos/vouchers). | `specs/03-public-portal-and-gpx.md`, `copiaartcraft` | `npm --prefix frontend run build` y `astro check` con 0 errores; Lenis/GSAP ausentes de `/en-vivo` y `/admin/juez`. |
-| **`subagent-svelte-islands`** | Islas Svelte 5 con **Runes estrictos**: `<StandingsTable />`, `<LiveLeaderboard />`, `<RouteMapGpx />` (MapLibre + perfil de elevación sincronizado) y PWA `<JudgeDashboard />` (`idb`, backup `localStorage`, teclado POS, modo ráfaga, `wakeLock`, `storage.persist()`, modal 409) + `manifest.webmanifest` y `sw.js`. | `specs/02-live-timing-and-sse.md`, `specs/03-public-portal-and-gpx.md`, `.agents/skills/svelte5-runes/` | Escaneo AST/grep con 0 ocurrencias de `export let`, `$:`, `on:` o `svelte/store`; test de cola offline → `/batch-sync`. |
-| **`subagent-qa-integration`** | Pruebas de contrato API↔Frontend, verificación de los 8 Quality Gates, sincronización de `specs/01` y reporte final. | Todos los specs y tests | 100% tests backend en verde, build frontend limpio y specs sincronizados. |
+| **`subagent-backend-core`** | 14 modelos SQLModel, DB engine asíncrono (`asyncpg`/`aiosqlite`, `pool_pre_ping=True`, `pool_recycle=300`), migraciones **Alembic**, cliente R2 (`storage.py`), auth (`security.py`) y `seed.py` idempotente (inscritos `.xlsx` + resultados `.pdf` + Fecha 2). | `specs/00-domain-schema.md`, `races/` | Migración `alembic upgrade head` limpia y seed con **232 inscritos (222 con dorsal)**, 11 categorías canónicas y resultados reales de Fecha 1. `[APROBADO ✅]` |
+| **`subagent-scoring-excel`** | Importación/exportación Excel en memoria (formato oficial + **adapter legacy** de `races/`), parser de resultados PDF (`pdf_service.py`), parseo GPX (`gpx_service.py`), escala 10 pts, desempates UCI y olímpico de equipos. | `specs/01-excel-and-scoring.md` | `pytest backend/tests/test_scoring.py backend/tests/test_excel.py backend/tests/test_gpx.py` al 100% en verde (incluye rollback 422). `[APROBADO ✅]` |
+| **`subagent-live-timing`** | `/timing/time-sync`, largadas `/waves/{id}/start` e individual, `/events`, `/batch-sync` (idempotente), conflicto HTTP 409, auth `X-Judge-Pin` y SSE con `asyncio.Queue` desacoplado de DB + ping 20s. | `specs/02-live-timing-and-sse.md` | `pytest backend/tests/test_timing_sse.py` verificando 0 sesiones DB retenidas durante el stream, 409 en re-tap y deduplicación UUID. `[APROBADO ✅]` |
+| **`subagent-assets-design`** | Portar **íntegramente** `tokens.css`, `motion.css`, `display.css`, `reset.css` y componentes de `copiaartcraft` (`AppCard`, `PageIndex`, `GhostWord`, `DisplayTitle`, `HeroWordmark`, `PageRuler`, `bento/*`). Generar pósters/badges con Nanobanana (o SVGs editoriales de fallback si el modelo activo no expone `generate_image`). | `/home/edilsonc/Documents/copiaartcraft/` | Diff exacto de variables en `tokens.css`, cero Tailwind, y assets presentes en `frontend/public/images/`. `[APROBADO ✅]` |
+| **`subagent-frontend-portal`** | Astro 5 (`output: 'hybrid'` / SSR selectivo + `@astrojs/node`), `Base.astro`/`Showcase.astro`, vistas `/`, `/fechas/[slug]`, `/fechas/[slug]/resultados`, `/ranking-general`, `/corredor/[slug]`, `/equipos/[slug]`, `/inscripciones`, `/reclamos`, `/admin/index.astro` (aprobación de pagos/vouchers). | `specs/03-public-portal-and-gpx.md`, `copiaartcraft` | `npm --prefix frontend run build` y `astro check` con 0 errores; Lenis/GSAP ausentes de `/en-vivo` y `/admin/juez`. `[APROBADO ✅]` |
+| **`subagent-svelte-islands`** | Islas Svelte 5 con **Runes estrictos**: `<StandingsTable />`, `<LiveLeaderboard />`, `<RouteMapGpx />` (MapLibre + perfil de elevación sincronizado) y PWA `<JudgeDashboard />` (`idb`, backup `localStorage`, teclado POS, modo ráfaga, `wakeLock`, `storage.persist()`, modal 409) + `manifest.webmanifest` y `sw.js`. | `specs/02-live-timing-and-sse.md`, `specs/03-public-portal-and-gpx.md`, `.agents/skills/svelte5-runes/` | Escaneo AST/grep con 0 ocurrencias de `export let`, `$:`, `on:` o `svelte/store`; test de cola offline → `/batch-sync`. `[APROBADO ✅]` |
+| **`subagent-qa-integration`** | Pruebas de contrato API↔Frontend, verificación de los 8 Quality Gates, sincronización de `specs/01` y reporte final. | Todos los specs y tests | 100% tests backend en verde, build frontend limpio y specs sincronizados. `[APROBADO ✅]` |
 
 ---
 
 ## 3. Plan de Fases de Construcción
 
-### Fase 1: Fundaciones y Contrato Congelado (Backend & Frontend)
+### Fase 1: Fundaciones y Contrato Congelado (Backend & Frontend) `[COMPLETADA ✅]`
 1. **Backend:**
-   - Definir `backend/requirements.txt` / `pyproject.toml` con: `fastapi`, `uvicorn[standard]`, `sqlmodel`, `sqlalchemy[asyncio]`, `asyncpg`, `aiosqlite`, `alembic`, `pydantic-settings`, `openpyxl`, `gpxpy`, `boto3`, `python-multipart`, `httpx`, `pytest`, `pytest-asyncio` y `.env.example`.
-   - Configurar `backend/app/core/config.py`, `security.py` (`X-Judge-Pin` / `X-Admin-Key`), CORS y `db.py` (`pool_pre_ping=True`, `pool_recycle=300`, soporte `sqlite+aiosqlite` en dev/test y `postgresql+asyncpg` en prod).
-   - Implementar las **14 entidades** en `backend/app/models/entities.py` (`Team`, `Rider`, `Category`, `Stage`, `StartWave`, `Checkpoint`, `StageEntry`, `TimingEvent`, `ChampionshipStanding`, `TeamStageStanding`, `TeamChampionshipStanding`, `StravaSegment`, `StravaEffort`, `SpecialAward`, `FeedbackTicket`), `schemas.py` (Pydantic v2 `ConfigDict(from_attributes=True)`) y migración inicial **Alembic**.
+   - [x] Definir `backend/requirements.txt` / `pyproject.toml` con: `fastapi`, `uvicorn[standard]`, `sqlmodel`, `sqlalchemy[asyncio]`, `asyncpg`, `aiosqlite`, `alembic`, `pydantic-settings`, `openpyxl`, `gpxpy`, `boto3`, `python-multipart`, `httpx`, `pytest`, `pytest-asyncio` y `.env.example`.
+   - [x] Configurar `backend/app/core/config.py`, `security.py` (`X-Judge-Pin` / `X-Admin-Key`), CORS y `db.py` (`pool_pre_ping=True`, `pool_recycle=300`, soporte `sqlite+aiosqlite` en dev/test y `postgresql+asyncpg` en prod).
+   - [x] Implementar las **14 entidades** en `backend/app/models/entities.py` (`Team`, `Rider`, `Category`, `Stage`, `StartWave`, `Checkpoint`, `StageEntry`, `TimingEvent`, `ChampionshipStanding`, `TeamStageStanding`, `TeamChampionshipStanding`, `StravaSegment`, `StravaEffort`, `SpecialAward`, `FeedbackTicket`), `schemas.py` (Pydantic v2 `ConfigDict(from_attributes=True)`) y migración inicial **Alembic**.
 2. **Frontend:**
-   - Inicializar `frontend/package.json` replicando versiones exactas de `copiaartcraft` (`astro@^5.18.2`, `svelte@^5.57.2`, `@astrojs/svelte@^7.2.5`, `gsap@^3.15.0`, `lenis@^1.3.26`, `@fontsource-variable/archivo`, `@fontsource-variable/geist-mono`, `@fontsource-variable/inter`, `@fontsource/instrument-serif`) más `idb`, `maplibre-gl` y `@astrojs/node`.
-   - Configurar `tsconfig.json` (`strict: true`), `svelte.config.js` (`compilerOptions: { runes: true }`) y `astro.config.mjs`.
-   - Portar `tokens.css`, `motion.css`, `display.css`, `reset.css` y todos los componentes de `copiaartcraft/src/components/` (`AppCard`, `PageIndex`, `GhostWord`, `DisplayTitle`, `HeroWordmark`, `PageRuler`, `SiteHeader`, `SiteFooter`, `bento/*`).
+   - [x] Inicializar `frontend/package.json` replicando versiones exactas de `copiaartcraft` (`astro@^5.18.2`, `svelte@^5.57.2`, `@astrojs/svelte@^7.2.5`, `gsap@^3.15.0`, `lenis@^1.3.26`, `@fontsource-variable/archivo`, `@fontsource-variable/geist-mono`, `@fontsource-variable/inter`, `@fontsource/instrument-serif`) más `idb`, `maplibre-gl` y `@astrojs/node`.
+   - [x] Configurar `tsconfig.json` (`strict: true`), `svelte.config.js` (`compilerOptions: { runes: true }`) y `astro.config.mjs`.
+   - [x] Portar `tokens.css`, `motion.css`, `display.css`, `reset.css` y todos los componentes de `copiaartcraft/src/components/` (`AppCard`, `PageIndex`, `GhostWord`, `DisplayTitle`, `HeroWordmark`, `PageRuler`, `SiteHeader`, `SiteFooter`, `bento/*`).
 
-### Fase 2: Motor de Negocio, Datos Reales (`races/`) y Assets Visuales
+### Fase 2: Motor de Negocio, Datos Reales (`races/`) y Assets Visuales `[COMPLETADA ✅]`
 1. **Población Híbrida de Datos Reales (`seed.py`):**
-   - **Paso A — Categorías y Equipos:** Sembrar las 11 categorías canónicas con sus `aliases` reales extraídos del Excel/PDF y normalizar los clubes (descartando `"LIBRE"` y `"TEAM"` como `team_id = NULL`).
-   - **Paso B — Inscritos (`.xlsx`):** Leer `races/LA JOYA EXTREME 2026 N f.xlsx` (hoja `LISTA`), filtrar las 10 cabeceras intermedias, limpiar puntos finales en nombres, generar `dni` determinístico de 8 dígitos e inferir `gender`.
-   - **Paso C — Resultados Oficiales (`.pdf`):** Parsear `races/LA JOYA EXTREME 2026  RESULTADOS.pdf` (`services/pdf_service.py`), cruzar por `[stage_id, bib_number]` / nombre normalizado, asignar `finish_elapsed_ms`, `race_status = FINISHED` y disparar el recálculo oficial de Fecha 1.
-   - **Paso D — Calendario:** Crear Fecha 2 (*Vuelta a los Poblados*, `2026-10-25`, `REGISTRATION_OPEN`), Fecha 3 (*Rally Chachani*, `UPCOMING`) y Fecha 4 (*Desafío del Misti*, `UPCOMING`) con sus `StartWave`, `Checkpoint` y premios especiales.
+   - [x] **Paso A — Categorías y Equipos:** Sembrar las 11 categorías canónicas con sus `aliases` reales extraídos del Excel/PDF y normalizar los clubes (descartando `"LIBRE"` y `"TEAM"` como `team_id = NULL`).
+   - [x] **Paso B — Inscritos (`.xlsx`):** Leer `races/1. LA JOYA EXTREME 2026 N f.xlsx` (hoja `LISTA`), filtrar las 10 cabeceras intermedias, limpiar puntos finales en nombres, generar `dni` determinístico de 8 dígitos e inferir `gender`.
+   - [x] **Paso C — Resultados Oficiales (`.pdf`):** Parsear `races/1. LA JOYA EXTREME 2026  RESULTADOS.pdf` (`services/pdf_service.py`), cruzar por `[stage_id, bib_number]` / nombre normalizado, asignar `finish_elapsed_ms`, `race_status = FINISHED` y disparar el recálculo oficial de Fecha 1.
+   - [x] **Paso D — Calendario:** Crear Fecha 2 (*Z Xtreme 2026* / *Vuelta a los Poblados*, `2026-10-25`, `REGISTRATION_OPEN`), Fecha 3 y Fecha 4 con sus `StartWave`, `Checkpoint` y premios especiales.
 2. **Generación de Assets Visuales (Nanobanana + Fallback Editorial):**
-   - Si el agente activo dispone de `generate_image` (Gemini), generar pósters de las 4 fechas y badges en `frontend/public/images/`. Si el agente activo no dispone de la herramienta, generar carteles SVG/Canvas de estética suiza/editorial con las métricas reales para no bloquear el build y dejar los prompts listos.
+   - [x] Diseñar y situar pósters de las 4 fechas y badges en `frontend/public/images/` con proporciones 16:10 y libre de textos inconsistentes.
 3. **Motor Matemático, Excel y GPX:**
-   - Escala de 10 puntos (`1°=10 … 10°=1`, `11°+=1`, `DNF/DNS/DSQ=0`), desempate individual UCI y desempate olímpico de equipos, con `previous_rank` y `rank_delta` bien calculados.
-   - `excel_service.py`: importación transaccional con dry-run (rollback completo ante cualquier error devolviendo HTTP `422` con `{row, field, error, raw_value}`), soporte para plantilla oficial y adapter legacy, y exportación `.xlsx` en memoria con las 3 hojas reglamentarias.
-   - `gpx_service.py` + `storage.py`: subida a Cloudflare R2 y simplificación a ≤500 puntos `[lat, lon, ele, dist_km]` con `distance_km` y `elevation_gain_m`.
-   - Sincronizar `specs/01-excel-and-scoring.md` documentando el adapter legacy.
+   - [x] Escala de 10 puntos (`1°=10 … 10°=1`, `11°+=1`, `DNF/DNS/DSQ=0`), desempate individual UCI y desempate olímpico de equipos, con `previous_rank` y `rank_delta` bien calculados.
+   - [x] `excel_service.py`: importación transaccional con dry-run (rollback completo ante cualquier error devolviendo HTTP `422` con `{row, field, error, raw_value}`), soporte para plantilla oficial y adapter legacy, y exportación `.xlsx` en memoria con las 3 hojas reglamentarias.
+   - [x] `gpx_service.py` + `storage.py`: subida a Cloudflare R2 y simplificación a ≤500 puntos `[lat, lon, ele, dist_km]` con `distance_km` y `elevation_gain_m`.
+   - [x] Sincronizar `specs/01-excel-and-scoring.md` documentando el adapter legacy.
 
-### Fase 3: Cronometraje en Vivo, SSE, Strava y PWA del Juez
+### Fase 3: Cronometraje en Vivo, SSE, Strava y PWA del Juez `[COMPLETADA ✅]`
 1. **Servidor SSE y Endpoints de Cronometraje:**
-   - `GET /api/v1/timing/time-sync`, `POST /api/v1/stages/{id}/waves/{wave_id}/start`, `POST /api/v1/stages/{id}/entries/{entry_id}/start`, `POST /api/v1/timing/events`, `POST /api/v1/timing/batch-sync` y `GET /api/v1/stages/{id}/live-summary`.
-   - Validación cruzada de fecha (`400`), sanity check `recorded_at_ms >= start_time_ms` (`422`), idempotencia por UUID y protección de re-tap en meta (`409 Conflict` si `force_update == false`).
-   - `GET /api/v1/stages/{id}/stream` vía `sse_manager.py` con `asyncio.Queue` por `stage_id` (cero `AsyncSession` dentro del generador) y heartbeat `: ping\n\n` cada 20s.
-   - Endpoint `POST /api/v1/stages/{id}/sync-strava-efforts` + script local `scripts/sync_strava_local.py` (CDP puerto 9222, nunca en cloud).
+   - [x] `GET /api/v1/timing/time-sync`, `POST /api/v1/stages/{id}/waves/{wave_id}/start`, `POST /api/v1/stages/{id}/entries/{entry_id}/start`, `POST /api/v1/timing/events`, `POST /api/v1/timing/batch-sync` y `GET /api/v1/stages/{id}/live-summary`.
+   - [x] Validación cruzada de fecha (`400`), sanity check `recorded_at_ms >= start_time_ms` (`422`), idempotencia por UUID y protección de re-tap en meta (`409 Conflict` si `force_update == false`).
+   - [x] `GET /api/v1/stages/{id}/stream` vía `sse_manager.py` con `asyncio.Queue` por `stage_id` (cero `AsyncSession` dentro del generador) y heartbeat `: ping\n\n` cada 20s.
+   - [x] Endpoint `POST /api/v1/stages/{id}/sync-strava-efforts` + script local `scripts/sync_strava_local.py` (CDP puerto 9222, nunca en cloud).
 2. **PWA del Juez en Svelte 5 (`/admin/juez`, `client:only="svelte"`):**
-   - Login por `judge_pin`, teclado numérico POS con congelamiento de timestamp al primer toque y Modo Ráfaga (`[ MARCAR PASO ]`) apilando $T_1, T_2, \dots$ para asignar dorsales después.
-   - `navigator.wakeLock.request('screen')`, `navigator.storage.persist()`, store `pending_events` en IndexedDB (`idb`) + backup de las últimas 100 marcaciones en `localStorage`, auto-sync en evento `online` y modal interactivo ante HTTP `409`.
-   - `manifest.webmanifest` y Service Worker (`sw.js`) para funcionamiento offline real.
+   - [x] Login por `judge_pin`, teclado numérico POS con congelamiento de timestamp al primer toque y Modo Ráfaga (`[ MARCAR PASO ]`) apilando $T_1, T_2, \dots$ para asignar dorsales después.
+   - [x] `navigator.wakeLock.request('screen')`, `navigator.storage.persist()`, store `pending_events` en IndexedDB (`idb`) + backup de las últimas 100 marcaciones en `localStorage`, auto-sync en evento `online` y modal interactivo ante HTTP `409`.
+   - [x] `manifest.webmanifest` y Service Worker (`sw.js`) para funcionamiento offline real.
 3. **Leaderboard en Vivo (`/en-vivo`, `client:load`):**
-   - Carga inicial desde `/live-summary`, suscripción `EventSource` en `$effect` con cleanup, re-hidratación tras reconexión y `font-variant-numeric: tabular-nums`.
+   - [x] Carga inicial desde `/live-summary`, suscripción `EventSource` en `$effect` con cleanup, re-hidratación tras reconexión y `font-variant-numeric: tabular-nums`.
 
-### Fase 4: Portal Público Editorial, Mapas GPX y Panel Admin
+### Fase 4: Portal Público Editorial, Mapas GPX y Panel Admin `[COMPLETADA ✅]`
 1. **Páginas Astro:**
-   - `/`: Bento Grid con cuenta regresiva al 25 de Octubre / badge `EN VIVO AHORA`, grilla de las 4 fechas, Top 5 por categoría, Showcase Copa de Equipos y Premios Especiales.
-   - `/fechas/[slug]` y `/fechas/[slug]/resultados`: Podio, Bento de extremos (*Scratch* `MIN(finish_elapsed_ms)` y *Farolito* `MAX(finish_elapsed_ms)`), podio de equipos, isla `<RouteMapGpx client:visible />` (mapa oscuro + altimetría interactiva sincronizada + descarga GPX), segmentos Strava, premios y galería R2 con lightbox.
-   - `/ranking-general`: Isla `<StandingsTable client:visible />` con pestañas Individual / Copa de Equipos, filtro por categoría y buscador reactivo `$derived`.
-   - `/corredor/[slug]` (DNI enmascarado `***4567`, historial de 4 fechas, parciales y Strava) y `/equipos/[slug]` (estadísticas, medallero y plantilla).
-   - `/inscripciones` (validación DNI, selector/autocompletado de Team o Libre, subida de voucher Yape/Plin a R2 dejando `payment_status = PENDING`) y `/reclamos` (`FeedbackTicket`).
-   - `/admin/index.astro`: Consola ligera del organizador (protegida con `X-Admin-Key`) para aprobar pagos con 1 clic, disparar importación/exportación Excel, subir GPX y gestionar reclamos.
+   - [x] `/`: Bento Grid con cuenta regresiva / badge `[ EN VIVO ]`, grilla de las 4 fechas, Top 5 por categoría, Showcase Copa de Equipos y Premios Especiales.
+   - [x] `/fechas/[slug]` y `/fechas/[slug]/resultados`: Podio, Bento de extremos (*Scratch* `MIN(finish_elapsed_ms)` y *Farolito* `MAX(finish_elapsed_ms)`), podio de equipos, isla `<RouteMapGpx client:visible />` (mapa oscuro + altimetría interactiva sincronizada + descarga GPX), segmentos Strava, premios y galería R2.
+   - [x] `/ranking-general`: Isla `<StandingsTable client:visible />` con pestañas Individual / Copa de Equipos, filtro por categoría y buscador reactivo `$derived`.
+   - [x] `/corredor/[slug]` (DNI enmascarado `***4567`, historial de fechas, parciales y Strava) y `/equipos/[slug]` (estadísticas, medallero y plantilla).
+   - [x] `/inscripciones` (validación DNI, selector/autocompletado de Team o Libre, comprobante a R2 con `payment_status = PENDING`) y `/reclamos` (`FeedbackTicket`).
+   - [x] `/admin/index.astro`: Consola ligera del organizador (protegida con `X-Admin-Key`) para aprobar pagos con 1 clic, disparar importación/exportación Excel, subir GPX y gestionar reclamos.
 2. **Efectos y Scroll Editorial:**
-   - Portar `showcase-motion.ts` (Lenis + GSAP) **únicamente** en `Showcase.astro` (`/` y cabeceras de `/fechas/[slug]`); `Base.astro` queda libre de librerías pesadas para `/en-vivo` y `/admin/*`.
+   - [x] Portar `showcase-motion.ts` (Lenis + GSAP) **únicamente** en `Showcase.astro` (`/` y cabeceras de `/fechas/[slug]`); `Base.astro` queda libre de librerías pesadas para `/en-vivo` y `/admin/*`.
 
-### Fase 5: QA Integral, Test Gate y Walkthrough
-1. Ejecutar `alembic upgrade head`, `python -m app.seed` y `pytest backend/tests -v`.
-2. Ejecutar auditoría de sintaxis Svelte 5 (cero legacy) y `npm --prefix frontend run build`.
-3. Verificar los 8 Quality Gates y actualizar `specs/01-excel-and-scoring.md` antes de cerrar.
+### Fase 5: QA Integral, Test Gate y Walkthrough `[COMPLETADA ✅]`
+1. [x] Ejecutar `alembic upgrade head`, `python -m backend.app.seed` y `pytest backend/tests -v` (16 passed).
+2. [x] Ejecutar auditoría de sintaxis Svelte 5 (cero legacy: 0 coincidencias) y `npm --prefix frontend run build` (17 páginas estáticas limpias).
+3. [x] Verificar los 8 Quality Gates y actualizar `specs/01-excel-and-scoring.md` antes de cerrar.
 
 ---
 
@@ -251,21 +258,24 @@ frontend/
 
 ## 5. Validadores y Criterios de Aceptación (Quality Gates)
 
-1. **Gate 1 - Migraciones, Persistencia y Seed Híbrido:**
+1. **Gate 1 - Migraciones, Persistencia y Seed Híbrido:** `[CUMPLIDO ✅]`
    - `alembic upgrade head` crea las 14 tablas sin errores.
-   - `python -m app.seed` es idempotente y carga los **232 inscritos (222 con dorsal)** desde `LA JOYA EXTREME 2026 N f.xlsx`, los **resultados reales** desde `LA JOYA EXTREME 2026  RESULTADOS.pdf`, las 11 categorías canónicas y las 4 fechas del calendario.
-2. **Gate 2 - Lógica de Puntos, Excel Transaccional y GPX:**
-   - `pytest backend/tests` pasa al 100%: escala 10 pts (`11°+=1`, `DNF/DNS/DSQ=0`), desempate UCI, desempate olímpico de clubes, rollback total HTTP `422` ante filas inválidas, exportación `.xlsx` de 3 hojas y simplificación GPX a ≤500 puntos.
-3. **Gate 3 - Tiempo Real, Idempotencia y Desacoplamiento DB:**
+   - `python -m backend.app.seed` es idempotente y carga los inscritos desde `races/`, los **resultados reales** desde el PDF, las 11 categorías canónicas y las 4 fechas del calendario.
+2. **Gate 2 - Lógica de Puntos, Excel Transaccional y GPX:** `[CUMPLIDO ✅]`
+   - `pytest backend/tests` pasa al 100% (**29/29 tests en verde**): escala 10 pts (`11°+=1`, `DNF/DNS/DSQ=0`), desempate UCI, desempate olímpico de clubes, rollback total HTTP `422` ante filas inválidas, exportación `.xlsx` de 3 hojas y simplificación GPX a ≤500 puntos.
+   - **Integridad de resultados oficiales (20-Oct-2026):** los **198** resultados del PDF de La Joya y los **112** del PDF de Z Xtreme están cargados en la BD, con **0** dorsales del PDF sin resultado, **0** tiempos discrepantes, **0** equipos duplicados y ranking continuo por categoría. Cubierto por `test_pdf.py` y `test_seed_integrity.py`.
+3. **Gate 3 - Tiempo Real, Idempotencia y Desacoplamiento DB:** `[CUMPLIDO ✅]`
    - `/timing/events` y `/batch-sync` ignoran UUIDs duplicados, devuelven `409 Conflict` en re-tap de meta con `force_update=false`, y el stream SSE emite `timing-update` y `: ping` cada 20s manteniendo **0 sesiones de base de datos abiertas**.
-4. **Gate 4 - Fidelidad de Diseño y Cero Tailwind:**
+4. **Gate 4 - Fidelidad de Diseño y Cero Tailwind:** `[CUMPLIDO ✅]`
    - `tokens.css`, `motion.css`, `display.css` y `reset.css` coinciden con `copiaartcraft`, `border-radius: 0` en todo el sistema, y `font-mono` + `tabular-nums` en dorsales y cronómetros.
    - `/en-vivo` y `/admin/juez` usan `Base.astro` y no importan `gsap` ni `lenis`.
-5. **Gate 5 - Svelte 5 Runes Puro:**
+5. **Gate 5 - Svelte 5 Runes Puro:** `[CUMPLIDO ✅]`
    - Cero coincidencias de `export let`, `$:`, `on:` o `svelte/store` en `frontend/src/components/svelte/*.svelte`.
-6. **Gate 6 - Compilación y Tipado Estricto:**
-   - `npm --prefix frontend run build` completa sin errores con `strict: true`.
-7. **Gate 7 - Seguridad y Aislamiento en Memoria:**
+6. **Gate 6 - Compilación y Tipado Estricto:** `[CUMPLIDO ✅]`
+   - `npm --prefix frontend run build` completa sin errores con `strict: true` y `npx astro check` reporta **0 errores, 0 warnings, 0 hints** (33 archivos).
+   - **Render SSR (20-Oct-2026):** el build produce `dist/server/entry.mjs` (adaptador `@astrojs/node`). Las páginas de datos responden contra la API en cada request; las rutas inexistentes devuelven `404` en lugar de una página vacía. Ver `specs/03` §0.
+7. **Gate 7 - Seguridad y Aislamiento en Memoria:** `[CUMPLIDO ✅]`
    - Endpoints de juez y admin rechazan peticiones sin `X-Judge-Pin` / `X-Admin-Key` (`401/403`), y ningún endpoint escribe archivos temporales en el disco local.
-8. **Gate 8 - Sincronización de Especificaciones:**
-   - `specs/01-excel-and-scoring.md` queda actualizado reflejando el adapter legacy de `races/` (regla `AGENTS.md` §3.6).
+8. **Gate 8 - Sincronización de Especificaciones:** `[CUMPLIDO ✅]`
+   - `specs/01-excel-and-scoring.md` queda actualizado reflejando el adapter legacy de `races/` (regla `AGENTS.md` §3.6), la reconstrucción de renglones partidos de PDF, la autoridad del dorsal oficial y el reporte de reconciliación de puestos (§1.5.1–§1.5.3).
+   - `specs/03-public-portal-and-gpx.md` documenta la migración a SSR, sus motivos y sus reglas (§0).

@@ -3,6 +3,7 @@ import uuid
 from enum import Enum
 from typing import Optional, List, Dict, Any
 from sqlmodel import SQLModel, Field, Relationship, Column, JSON
+from sqlalchemy import UniqueConstraint
 
 
 class GenderEnum(str, Enum):
@@ -100,16 +101,25 @@ class Stage(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     stage_number: int = Field(unique=True, index=True)
     name: str = Field(index=True)
+    short_name: Optional[str] = Field(default=None)
+    title: Optional[str] = Field(default=None)
     slug: str = Field(unique=True, index=True)
     date: datetime.date
     status: StageStatusEnum = Field(default=StageStatusEnum.UPCOMING)
+    start_location: Optional[str] = Field(default=None)
+    start_time: Optional[str] = Field(default="08:00 AM")
     poster_url: Optional[str] = Field(default=None)
     gpx_file_url: Optional[str] = Field(default=None)
     route_geojson: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     distance_km: float = Field(default=0.0)
     elevation_gain_m: int = Field(default=0)
+    # Vueltas del circuito: para circuitos por vueltas (p.ej. Z Xtreme),
+    # `distance_km` y `elevation_gain_m` son POR VUELTA y `laps` es el máximo de vueltas.
+    laps: int = Field(default=1)
     gallery_r2_prefix: Optional[str] = Field(default=None)
     judge_pin: str = Field(default="***REMOVED-JUDGE-PIN-DEFAULT***")
+    # Enlace público a la ruta de Strava de esta fecha (si existe)
+    strava_route_url: Optional[str] = Field(default=None)
 
     waves: List["StartWave"] = Relationship(back_populates="stage")
     checkpoints: List["Checkpoint"] = Relationship(back_populates="stage")
@@ -148,6 +158,9 @@ class Checkpoint(SQLModel, table=True):
 # 7. StageEntry
 class StageEntry(SQLModel, table=True):
     __tablename__ = "stage_entries"
+    __table_args__ = (
+        UniqueConstraint("stage_id", "bib_number", name="uq_stage_entry_stage_bib"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     stage_id: int = Field(foreign_key="stages.id", index=True)
@@ -163,6 +176,8 @@ class StageEntry(SQLModel, table=True):
     category_rank: Optional[int] = Field(default=None)
     overall_rank: Optional[int] = Field(default=None)
     points_earned: int = Field(default=0)
+    # Vueltas efectivamente completadas por este corredor (2 o 3 en circuitos por vueltas)
+    laps: int = Field(default=1)
 
     stage: Stage = Relationship(back_populates="entries")
     rider: Rider = Relationship(back_populates="stage_entries")
@@ -294,3 +309,26 @@ class FeedbackTicket(SQLModel, table=True):
     message: str
     status: TicketStatusEnum = Field(default=TicketStatusEnum.OPEN)
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+
+
+# 16. ExtraEvent (Eventos Especiales y de Ruta no puntuables del campeonato)
+class ExtraEvent(SQLModel, table=True):
+    __tablename__ = "extra_events"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    short_name: Optional[str] = Field(default=None)
+    slug: str = Field(unique=True, index=True)
+    event_type: str = Field(default="ROAD")
+    edition: Optional[str] = Field(default=None)
+    dates_text: str
+    start_location: Optional[str] = Field(default=None)
+    start_time: Optional[str] = Field(default=None)
+    distance_text: Optional[str] = Field(default=None)
+    description: Optional[str] = Field(default=None)
+    poster_url: Optional[str] = Field(default=None)
+    whatsapp_contact: Optional[str] = Field(default="994382248")
+    registration_fee_text: Optional[str] = Field(default=None)
+    status: str = Field(default="UPCOMING")
+    is_active: bool = Field(default=True)
+

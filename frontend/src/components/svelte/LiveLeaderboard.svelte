@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { API_V1 } from '../../lib/api';
+
   interface LeaderboardRow {
     entry_id: number;
     bib_number: number;
@@ -25,7 +27,7 @@
 
   async function loadSnapshot() {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/stages/${stageId}/live-summary`);
+      const res = await fetch(`${API_V1}/stages/${stageId}/live-summary`);
       if (res.ok) {
         const data = await res.json();
         rows = data.leaderboard || [];
@@ -39,7 +41,7 @@
   $effect(() => {
     loadSnapshot();
 
-    const url = `http://localhost:8000/api/v1/stages/${stageId}/stream`;
+    const url = `${API_V1}/stages/${stageId}/stream`;
     const eventSource = new EventSource(url);
 
     eventSource.onopen = () => {
@@ -169,15 +171,15 @@
   }
 
   .live-dot {
-    width: 10px;
-    height: 10px;
+    width: 0.625rem;
+    height: 0.625rem;
     background: #70707c;
     display: inline-block;
   }
 
   .live-dot.is-live {
     background: #ff3b30;
-    box-shadow: 0 0 8px rgba(255, 59, 48, 0.6);
+    box-shadow: 0 0 0.5rem rgba(255, 59, 48, 0.6);
     animation: pulse 1.5s infinite;
   }
 
@@ -241,12 +243,12 @@
   }
 
   .col-rank {
-    width: 70px;
+    width: 4.375rem;
     font-weight: 800;
   }
 
   .col-bib {
-    width: 80px;
+    width: 5rem;
   }
 
   .bib-tag {
@@ -256,7 +258,7 @@
 
   .col-time {
     text-align: right;
-    width: 130px;
+    width: 8.125rem;
   }
 
   .time-bold {

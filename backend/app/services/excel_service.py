@@ -1,6 +1,7 @@
 import io
 import re
 import hashlib
+import unicodedata
 from typing import List, Dict, Any, Tuple, Optional
 import openpyxl
 from fastapi import HTTPException, status
@@ -11,9 +12,12 @@ from backend.app.models.entities import (
     Rider, Team, Category, StageEntry, RaceStatusEnum, PaymentStatusEnum, GenderEnum
 )
 from backend.app.services.scoring import (
-    recalculate_stage_ranks, recalculate_championship_standings, recalculate_team_standings
+    recalculate_stage_ranks, recalculate_championship_standings, recalculate_team_standings,
+    merge_duplicate_entries
 )
-from backend.app.services.pdf_service import parse_time_to_ms, format_ms_to_time
+from backend.app.services.pdf_service import (
+    parse_time_to_ms, format_ms_to_time, collapse_team_hyphen,
+)
 
 
 def slugify(text: str) -> str:
@@ -23,11 +27,24 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
+def normalize_name(name: str) -> str:
+    """
+    Normaliza un nombre de ciclista para identidad determinística:
+    quita acentos/diacríticos (PEÑA -> PENA, LÓPEZ -> LOPEZ), pasa a mayúsculas,
+    elimina puntuación y colapsa espacios. Evita colisiones por tildes y sufijos.
+    """
+    text = unicodedata.normalize("NFKD", name or "")
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.upper()
+    text = re.sub(r"[^A-Z0-9 ]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def generate_deterministic_dni(name: str) -> str:
-    """Genera un DNI sintético numérico de 8 dígitos basado en el hash del nombre."""
-    clean = re.sub(r"[^A-Z0-9]", "", name.upper().strip())
+    """Genera un DNI sintético numérico de 8 dígitos basado en el hash del nombre normalizado."""
+    clean = normalize_name(name).replace(" ", "")
     h = hashlib.sha256(clean.encode("utf-8")).hexdigest()
-    # Convertir parte del hash hex a un entero de 8 dígitos
     num = int(h[:8], 16) % 90000000 + 10000000
     return str(num)
 
@@ -63,10 +80,18 @@ async def resolve_category(session: AsyncSession, raw_cat_name: str) -> Optional
 
 
 async def resolve_or_create_team(session: AsyncSession, raw_team_name: Optional[str]) -> Optional[int]:
-    """Normaliza nombres de equipo y retorna team_id o None si es Libre/Independiente."""
+    """
+    Normaliza nombres de equipo y retorna team_id o None si es Libre/Independiente.
+
+    El PDF oficial parte algunos nombres de club entre dos líneas
+    ("CLUB ORIGINAL BIKES AREQUIPA-" / "PERÚ"), lo que deja un guion pegado a un
+    espacio. Sin normalizar, ese club se crearía duplicado del homónimo limpio y
+    sus puntos se partirían en dos equipos distintos.
+    """
     if not raw_team_name:
         return None
-    cleaned = raw_team_name.strip().upper()
+    cleaned = collapse_team_hyphen(raw_team_name.strip().upper())
+    cleaned = re.sub(r"\s+", " ", cleaned)
     if cleaned in {"LIBRE", "INDEPENDIENTE", "TEAM", "-", "NINGUNO", ""}:
         return None
 
@@ -88,7 +113,8 @@ async def import_riders_from_excel(
     session: AsyncSession,
     stage_id: int,
     file_bytes: bytes,
-    is_legacy_format: bool = False
+    is_legacy_format: bool = False,
+    merge_duplicates: bool = True
 ) -> Dict[str, Any]:
     """
     Importación transaccional con validación atómica (Dry-Run implícito).
@@ -223,11 +249,20 @@ async def import_riders_from_excel(
             rider.team_id = team_id
             session.add(rider)
 
-        # Buscar o crear StageEntry
-        stmt_entry = select(StageEntry).where(
-            StageEntry.stage_id == stage_id,
-            StageEntry.rider_id == rider.id
-        )
+        # Buscar o crear StageEntry.
+        # La clave es (stage_id, bib_number): así un mismo ciclista (mismo DNI) con dos
+        # dorsales en la misma fecha NO se colapsa durante la importación; la fusión por
+        # identidad se resuelve después (conservando el mejor tiempo) en merge_duplicate_entries.
+        if r["bib_number"]:
+            stmt_entry = select(StageEntry).where(
+                StageEntry.stage_id == stage_id,
+                StageEntry.bib_number == r["bib_number"]
+            )
+        else:
+            stmt_entry = select(StageEntry).where(
+                StageEntry.stage_id == stage_id,
+                StageEntry.rider_id == rider.id
+            )
         res_entry = await session.exec(stmt_entry)
         entry = res_entry.first()
 
@@ -257,6 +292,10 @@ async def import_riders_from_excel(
         imported_count += 1
 
     await session.commit()
+
+    # Fusión de identidades duplicadas dentro de la misma fecha (mismo rider, varios dorsales)
+    if merge_duplicates:
+        await merge_duplicate_entries(session, stage_id)
 
     # Recalcular puestos y rankings
     await recalculate_stage_ranks(session, stage_id)

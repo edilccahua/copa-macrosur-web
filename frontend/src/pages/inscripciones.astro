@@ -9,10 +9,13 @@ import SiteFooter from '../components/SiteFooter.astro';
   <main class="container page-content">
     <div class="form-wrapper">
       <div class="form-header">
-        <span class="form-tag font-mono">FECHA 02: VUELTA A LOS POBLADOS (25 OCT 2026)</span>
+        <span class="form-tag font-mono">FECHA 03: EL RETORNO A LOS POBLADOS 2 (25 OCT 2026) · PARTIDA: CHIGUATA 8:00 AM</span>
         <h1 class="form-title">FORMULARIO DE PRE-INSCRIPCIÓN</h1>
         <p class="form-desc">
           Completa tus datos oficiales de deportista y adjunta la captura del abono Yape o Plin. Una vez verificado por la organización, se te asignará tu número de placa dorsal oficial.
+        </p>
+        <p class="form-subdesc font-mono">
+          ¿Dudas con el pago o tu categoría? Escríbenos al WhatsApp oficial: <a href="https://wa.me/51994382248" target="_blank" rel="noopener noreferrer">994 382 248</a> / <a href="https://wa.me/51980081335" target="_blank" rel="noopener noreferrer">980 081 335</a>.
         </p>
       </div>
 
@@ -78,6 +81,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 </Base>
 
 <script>
+  import { API_V1 } from '../lib/api';
   const form = document.getElementById('reg-form') as HTMLFormElement;
   const msgBox = document.getElementById('response-msg') as HTMLElement;
   const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
@@ -89,7 +93,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 
     const formData = new FormData(form);
     const payload = {
-      stage_id: 2, // Vuelta a los Poblados
+      stage_id: 3, // Fecha 3: El Retorno a los Poblados 2
       dni: formData.get('dni'),
       full_name: formData.get('fullName'),
       gender: formData.get('gender'),
@@ -99,20 +103,20 @@ import SiteFooter from '../components/SiteFooter.astro';
     };
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/public/pre-register', {
+      const res = await fetch(`${API_V1}/public/pre-register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
-        msgBox.innerHTML = `<div class="msg-success">✅ ¡Pre-inscripción exitosa! Tu número de dorsal provisional asignado es: <strong>#${data.bib_number}</strong>.</div>`;
+        msgBox.innerHTML = `<div class="msg-success font-mono">[CONFIRMACIÓN] ¡Pre-inscripción registrada! Tu dorsal provisional asignado es: <strong>#${data.bib_number}</strong>.</div>`;
         form.reset();
       } else {
-        msgBox.innerHTML = `<div class="msg-error">❌ Error: ${data.detail || 'No se pudo procesar la inscripción.'}</div>`;
+        msgBox.innerHTML = `<div class="msg-error font-mono">[ERROR] ${data.detail || 'No se pudo procesar la inscripción.'}</div>`;
       }
     } catch (err) {
-      msgBox.innerHTML = `<div class="msg-error">❌ Error de conexión con el servidor.</div>`;
+      msgBox.innerHTML = `<div class="msg-error font-mono">[ERROR] Error de conexión con el servidor.</div>`;
     } finally {
       submitBtn.disabled = false;
       submitBtn.innerText = 'ENVIAR PRE-INSCRIPCIÓN';
@@ -126,7 +130,7 @@ import SiteFooter from '../components/SiteFooter.astro';
   }
 
   .form-wrapper {
-    max-width: 680px;
+    max-width: 42.5rem;
     margin: 0 auto;
     border: var(--hairline) solid var(--line);
     background: var(--bg-raised);
@@ -237,7 +241,7 @@ import SiteFooter from '../components/SiteFooter.astro';
     font-size: 0.875rem;
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 40em) {
     .form-grid {
       grid-template-columns: repeat(2, 1fr);
     }

@@ -5,9 +5,11 @@
  * Cero Tailwind (AGENTS.md).
  */
 import '@fontsource-variable/archivo';
+import '@fontsource-variable/archivo/standard.css';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/geist-mono';
 import '@fontsource/instrument-serif';
+import '@fontsource/instrument-serif/400-italic.css';
 import '../styles/tokens.css';
 import '../styles/reset.css';
 import '../styles/display.css';
@@ -38,6 +40,18 @@ const {
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#101014" />
 
+    <!-- Aplica el tema guardado ANTES del primer pintado (evita el flash) -->
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('kuspide-theme');
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.dataset.theme = stored;
+          }
+        } catch (e) {}
+      })();
+    </script>
+
     <script is:inline>
       (function () {
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -57,12 +71,14 @@ const {
 <style>
   :global(.container) {
     width: 100%;
-    max-width: var(--container-page, 1280px);
+    max-width: var(--container-page, 80rem);
+    box-sizing: border-box;
+    min-width: 0;
     margin-inline: auto;
     padding-inline: 1rem;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 48em) {
     :global(.container) {
       padding-inline: 1.5rem;
       padding-right: 4.5rem;

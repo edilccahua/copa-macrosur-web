@@ -1,0 +1,939 @@
+---
+/**
+ * HeroScene.astro — Trilogía Volcánica de Arequipa + Ciclista MTB + Astro Andino.
+ *
+ * Inspirado en la disciplina gráfica de eventosdenegociosargentina.com y GetArtCraft:
+ *   - Los 3 volcanes: Chachani (escarpado/multicúspide), Misti (cono simétrico) y Pichu Pichu (Indio Dormido)
+ *   - "Poncho blanco" (manto de nieve característico) presente en los 3 volcanes
+ *   - Composición panorámica compacta y cercana
+ *   - Filtros SVG de desplazamiento orgánico (feTurbulence + feDisplacementMap) estilo linograbado/tinta
+ *   - Ciclista MTB vectorizado en ataque recorriendo el sendero de la campiña
+ *   - Sol/Luna andino con halos y rayos finos, con cinemática suave (quickTo + scroll scrub)
+ */
+---
+<div class="scene" data-scene aria-hidden="true">
+  <!-- Filtros SVG de textura orgánica estilo grabado a pluma/lápiz -->
+  <svg class="scene__filters" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="pulso-tinta" x="-2%" y="-2%" width="104%" height="104%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.016 0.028" numOctaves="2" seed="7" />
+        <feDisplacementMap in="SourceGraphic" scale="3.5" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="pulso-lapiz" x="-2%" y="-2%" width="104%" height="104%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.022" numOctaves="2" seed="21" />
+        <feDisplacementMap in="SourceGraphic" scale="5" xChannelSelector="G" yChannelSelector="R" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Resplandor atmosférico de fondo (Alba andina) -->
+  <div class="scene__alba"></div>
+  <div class="scene__light"></div>
+
+  <!-- Sol Andino (tema claro) -->
+  <div class="scene__orb scene__orb--sun" data-orb>
+    <span class="orb__halo"></span>
+    <span class="orb__rays"></span>
+    <span class="orb__disc"></span>
+  </div>
+
+  <!-- Luna Nocturna (tema oscuro) -->
+  <div class="scene__orb scene__orb--moon" data-orb>
+    <span class="orb__halo"></span>
+    <span class="orb__disc"></span>
+  </div>
+
+  <!-- Trilogía Volcánica + Singletrack MTB -->
+  <div class="scene__mountain-wrap">
+    <svg
+      class="scene__mountain"
+      data-mountain
+      viewBox="0 0 1600 580"
+      preserveAspectRatio="xMidYMax meet"
+      role="presentation"
+    >
+      <defs>
+        <!-- Gradientes para caras iluminadas y en sombra (Paleta Azul Andino Arequipa) -->
+        <linearGradient id="facet-chachani-light" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--scene-chachani-light)" />
+          <stop offset="100%" stop-color="var(--scene-chachani-dark)" />
+        </linearGradient>
+
+        <linearGradient id="facet-misti-light" x1="0" y1="0" x2="0.6" y2="1">
+          <stop offset="0%" stop-color="var(--scene-misti-light)" />
+          <stop offset="65%" stop-color="var(--scene-misti-mid)" />
+          <stop offset="100%" stop-color="var(--scene-misti-low)" />
+        </linearGradient>
+
+        <linearGradient id="facet-misti-dark" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--scene-misti-dark)" />
+          <stop offset="100%" stop-color="var(--scene-misti-deep)" />
+        </linearGradient>
+
+        <linearGradient id="facet-pichu-light" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--scene-pichu-light)" />
+          <stop offset="100%" stop-color="var(--scene-pichu-dark)" />
+        </linearGradient>
+
+        <linearGradient id="snow-mantle" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--scene-snow)" />
+          <stop offset="75%" stop-color="var(--scene-snow-soft)" />
+          <stop offset="100%" stop-color="transparent" />
+        </linearGradient>
+
+        <radialGradient id="sun-peak-glow" cx="50%" cy="40%" r="55%">
+          <stop offset="0%" stop-color="var(--orb-glow)" />
+          <stop offset="100%" stop-color="transparent" />
+        </radialGradient>
+      </defs>
+
+      <!-- ── 0. Halo de cumbre ──────────────────────────────────────── -->
+      <ellipse class="mountain__glow" cx="820" cy="220" rx="420" ry="200" fill="url(#sun-peak-glow)" />
+
+      <!-- ── 1. Cordillera lejana (Fondo de perspectiva) ───────────── -->
+      <path
+        class="mountain__far"
+        d="M0 580 L0 440 L60 430 L130 442 L210 424 L290 436 L380 415 L470 428 L560 410
+           L660 424 L750 405 L840 418 L940 398 L1040 415 L1140 395 L1240 412 L1340 390
+           L1430 408 L1520 396 L1600 412 L1600 580 Z"
+      />
+
+      <!-- ── 2. Cordillera media ────────────────────────────────────── -->
+      <path
+        class="mountain__mid"
+        d="M0 580 L0 472 L80 460 L160 474 L250 452 L340 468 L430 448 L530 462 L630 445
+           L720 460 L820 442 L910 458 L1010 438 L1110 456 L1200 436 L1300 452 L1400 438
+           L1500 454 L1600 446 L1600 580 Z"
+      />
+
+      <!-- ── 3. CHACHANI (Izquierda, macizo escarpado multicúspide) ─── -->
+      <!-- Cuerpo del Chachani -->
+      <path
+        class="volcano chachani__body"
+        d="M50 580 L90 510 L140 465 L200 410 L250 350 L290 280 L320 230 L350 255
+           L385 165 L430 205 L475 190 L520 250 L565 315 L620 400 L675 485 L720 540 L720 580 Z"
+        fill="url(#facet-chachani-light)"
+      />
+      <!-- Faceta en sombra oriental del Chachani -->
+      <path
+        class="volcano chachani__shade"
+        d="M385 165 L430 205 L475 190 L520 250 L565 315 L620 400 L675 485 L720 540 L720 580 L520 580 L440 450 Z"
+        fill="var(--scene-chachani-dark)"
+      />
+      <!-- Poncho blanco (manto de nieve característico de Chachani) -->
+      <path
+        class="poncho-blanco chachani__snow"
+        d="M290 280 L320 230 L350 255 L385 165 L430 205 L475 190 L520 250 L505 275
+           L485 240 L465 270 L445 235 L420 280 L395 240 L370 290 L345 260 L325 300 L305 275 Z"
+        fill="url(#snow-mantle)"
+      />
+      <!-- Estratos, crestas y quiebres rocosos de Chachani -->
+      <g class="volcano__linework chachani__ridges">
+        <path d="M385 165 L360 235 L330 330 L300 420" />
+        <path d="M385 165 L415 250 L435 340 L450 440" />
+        <path d="M320 230 L270 310 L220 400" />
+        <path d="M475 190 L510 280 L545 380" />
+        <path d="M430 205 L460 300 L490 390" />
+        <path d="M350 255 L375 320" />
+        <path d="M250 350 L200 430" />
+      </g>
+
+      <!-- ── 4. PICHU PICHU (Derecha, cordal ondulado "Indio Dormido") ─ -->
+      <!-- Cuerpo de Pichu Pichu con sus 7 cumbres consecutivas -->
+      <path
+        class="volcano pichu__body"
+        d="M980 580 L1020 510 L1070 435 L1120 345 L1165 315 L1215 285 L1265 305
+           L1315 260 L1365 285 L1415 245 L1465 270 L1515 350 L1565 440 L1600 500 L1600 580 Z"
+        fill="url(#facet-pichu-light)"
+      />
+      <!-- Sombra inferior de Pichu Pichu -->
+      <path
+        class="volcano pichu__shade"
+        d="M1215 285 L1265 305 L1315 260 L1365 285 L1415 245 L1465 270 L1515 350 L1565 440 L1600 500 L1600 580 L1260 580 Z"
+        fill="var(--scene-pichu-dark)"
+      />
+      <!-- Poncho blanco (manto de nieve sobre las 7 cumbres del Indio Dormido) -->
+      <path
+        class="poncho-blanco pichu__snow"
+        d="M1120 345 L1165 315 L1215 285 L1265 305 L1315 260 L1365 285 L1415 245 L1465 270 L1500 330
+           L1485 345 L1465 310 L1440 335 L1415 295 L1390 330 L1365 310 L1340 335 L1315 300
+           L1290 335 L1265 325 L1240 340 L1215 315 L1185 345 L1155 335 L1130 360 Z"
+        fill="url(#snow-mantle)"
+      />
+      <!-- Fisuras y líneas horizontales de erosión de Pichu Pichu -->
+      <g class="volcano__linework pichu__ridges">
+        <path d="M1215 285 L1230 370 L1240 450" />
+        <path d="M1315 260 L1325 350 L1335 440" />
+        <path d="M1415 245 L1425 330 L1440 430" />
+        <path d="M1165 315 L1180 390 L1190 470" />
+        <path d="M1465 270 L1480 360 L1500 450" />
+      </g>
+
+      <!-- ── 5. EL MISTI (Centro neurálgico, cono simétrico emblemático) -->
+      <!-- Cara izquierda iluminada de El Misti -->
+      <path
+        class="volcano misti__face-left"
+        d="M580 580 L620 515 L670 430 L720 345 L765 245 L800 160 L818 135 L820 135 L820 580 Z"
+        fill="url(#facet-misti-light)"
+      />
+      <!-- Cara derecha en sombra de El Misti -->
+      <path
+        class="volcano misti__face-right"
+        d="M820 135 L822 135 L840 160 L875 245 L920 345 L970 430 L1020 515 L1060 580 L820 580 Z"
+        fill="url(#facet-misti-dark)"
+      />
+      <!-- Cráter caldérico truncado en la cima -->
+      <ellipse class="misti__crater" cx="820" cy="136" rx="14" ry="4" fill="var(--scene-misti-deep)" />
+
+      <!-- Poncho blanco de El Misti (casquete de nieve y lenguas radiales) -->
+      <path
+        class="poncho-blanco misti__snow"
+        d="M745 280 L765 245 L800 160 L818 135 L822 135 L840 160 L875 245 L895 280
+           L882 296 L868 272 L852 305 L836 278 L820 312 L804 278 L788 305 L772 272 L758 296 Z"
+        fill="url(#snow-mantle)"
+      />
+      <!-- Cárcavas y líneas de flujo volcánico de El Misti -->
+      <g class="volcano__linework misti__gullies">
+        <!-- Arista central de quiebre de luz -->
+        <path class="misti__spine" d="M820 136 L820 540" />
+        <!-- Canales y surcos de lava radiales -->
+        <path d="M814 145 L795 210 L770 300 L735 410 L700 520" />
+        <path d="M806 160 L780 250 L750 360 L715 480" />
+        <path d="M826 145 L845 210 L870 300 L905 410 L940 520" />
+        <path d="M834 160 L860 250 L890 360 L925 480" />
+        <path d="M810 180 L790 280 L765 390" />
+        <path d="M830 180 L850 280 L875 390" />
+      </g>
+
+      <!-- ── 6. Contornos y grabados generales de los 3 volcanes ───── -->
+      <path
+        class="mountain__outlines"
+        d="M50 580 L90 510 L140 465 L200 410 L250 350 L290 280 L320 230 L350 255
+           L385 165 L430 205 L475 190 L520 250 L565 315 L620 400 L675 485 L720 540
+           M580 580 L620 515 L670 430 L720 345 L765 245 L800 160 L818 135 L822 135 L840 160 L875 245 L920 345 L970 430 L1020 515 L1060 580
+           M980 580 L1020 510 L1070 435 L1120 345 L1165 315 L1215 285 L1265 305
+           L1315 260 L1365 285 L1415 245 L1465 270 L1515 350 L1565 440 L1600 500"
+      />
+
+      <!-- ── 7. Primer plano: Campiña, laderas y Singletrack MTB ────── -->
+      <path
+        class="mountain__foreground"
+        d="M0 580 L0 520 Q 220 490, 480 515 T 920 495 T 1340 510 T 1600 500 L1600 580 Z"
+        fill="var(--scene-foreground)"
+      />
+      <!-- Línea del Sendero Técnico Singletrack MTB -->
+      <path
+        class="mountain__trail"
+        d="M0 535 Q 240 508, 480 528 T 920 510 T 1340 524 T 1600 516"
+        fill="none"
+        stroke="var(--scene-trail)"
+        stroke-width="2.2"
+        stroke-dasharray="8 4"
+      />
+
+      <!-- ── 8. Ciclista MTB XCO en avance sobre el sendero singletrack ─── -->
+      <!-- Avance continuo de 12s a lo largo del sendero sincronizado con cadencia 60 RPM -->
+      <g class="scene__cyclist-track">
+        <g class="scene__cyclist" data-cyclist>
+          <!-- Sombra en el suelo del sendero -->
+          <ellipse cx="45" cy="72" rx="44" ry="5" fill="var(--scene-line-strong)" opacity="0.3" />
+
+          <!-- LÍNEAS DE VIENTO AERODINÁMICAS (Streamlines MTB en frente del ciclista) -->
+          <g class="cyclist__wind" aria-hidden="true">
+            <!-- Frente a la rueda delantera -->
+            <line class="wind-line wind-line--1" x1="122" y1="58" x2="86" y2="58" stroke="var(--scene-line-strong)" stroke-width="1.6" stroke-linecap="round" />
+            <!-- Frente a la horquilla y manubrio -->
+            <line class="wind-line wind-line--2" x1="135" y1="34" x2="88" y2="34" stroke="var(--scene-line-strong)" stroke-width="1.8" stroke-linecap="round" />
+            <!-- Frente al casco y visera -->
+            <line class="wind-line wind-line--3" x1="142" y1="18" x2="94" y2="18" stroke="var(--scene-line-strong)" stroke-width="1.5" stroke-linecap="round" />
+            <!-- Estela aerodinámica tras la espalda -->
+            <line class="wind-line wind-line--4" x1="68" y1="22" x2="16" y2="26" stroke="var(--scene-line-strong)" stroke-width="1.4" stroke-linecap="round" />
+            <!-- Estela de grava y velocidad tras neumático trasero -->
+            <line class="wind-line wind-line--5" x1="10" y1="70" x2="-24" y2="71" stroke="var(--scene-line-strong)" stroke-width="1.5" stroke-linecap="round" />
+          </g>
+
+          <!-- RUEDA TRASERA 29" -->
+          <g class="cyclist__wheel-rear">
+            <circle cx="16" cy="56" r="15" fill="none" stroke="var(--scene-line-strong)" stroke-width="2.4" />
+            <circle cx="16" cy="56" r="12.5" fill="none" stroke="var(--scene-line)" stroke-width="0.8" />
+            <circle cx="16" cy="56" r="4.5" fill="none" stroke="var(--scene-line-strong)" stroke-width="1" />
+            <!-- Radios giratorios -->
+            <g class="cyclist__spokes cyclist__spokes--rear">
+              <line x1="16" y1="41" x2="16" y2="71" stroke="var(--scene-line)" stroke-width="0.8" />
+              <line x1="1" y1="56" x2="31" y2="56" stroke="var(--scene-line)" stroke-width="0.8" />
+              <line x1="5.5" y1="45.5" x2="26.5" y2="66.5" stroke="var(--scene-line)" stroke-width="0.8" />
+              <line x1="5.5" y1="66.5" x2="26.5" y2="45.5" stroke="var(--scene-line)" stroke-width="0.8" />
+            </g>
+          </g>
+
+          <!-- RUEDA DELANTERA 29" -->
+          <g class="cyclist__wheel-front">
+            <circle cx="74" cy="56" r="15" fill="none" stroke="var(--scene-line-strong)" stroke-width="2.4" />
+            <circle cx="74" cy="56" r="12.5" fill="none" stroke="var(--scene-line)" stroke-width="0.8" />
+            <circle cx="74" cy="56" r="4.5" fill="none" stroke="var(--scene-line-strong)" stroke-width="1" />
+            <!-- Radios giratorios -->
+            <g class="cyclist__spokes cyclist__spokes--front">
+              <line x1="74" y1="41" x2="74" y2="71" stroke="var(--scene-line)" stroke-width="0.8" />
+              <line x1="59" y1="56" x2="89" y2="56" stroke="var(--scene-line)" stroke-width="0.8" />
+              <line x1="63.5" y1="45.5" x2="84.5" y2="66.5" stroke="var(--scene-line)" stroke-width="0.8" />
+              <line x1="63.5" y1="66.5" x2="84.5" y2="45.5" stroke="var(--scene-line)" stroke-width="0.8" />
+            </g>
+          </g>
+
+          <!-- PIERNA IZQUIERDA (FONDO / CINEMÁTICA INVERSA DESFASADA 180° A 60 RPM) -->
+          <path class="cyclist__leg-back" fill="none" stroke="var(--scene-line-strong)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+            <animate
+              attributeName="d"
+              dur="1.0s"
+              repeatCount="indefinite"
+              calcMode="linear"
+              values="
+                M 33 30 L 37.3 44.4 L 42.0 63.0;
+                M 33 30 L 35.3 44.8 L 37.1 60.9;
+                M 33 30 L 40.4 43.1 L 35.0 56.0;
+                M 33 30 L 44.7 39.4 L 37.1 51.1;
+                M 33 30 L 46.8 35.9 L 42.0 49.0;
+                M 33 30 L 46.2 37.1 L 46.9 51.1;
+                M 33 30 L 41.2 42.6 L 49.0 56.0;
+                M 33 30 L 39.5 43.5 L 46.9 60.9;
+                M 33 30 L 37.3 44.4 L 42.0 63.0
+              "
+            />
+          </path>
+
+          <!-- CUADRO MTB XC DE COMPETICIÓN (Geometría Copa del Mundo XCO) -->
+          <g class="cyclist__frame">
+            <!-- Vaina y tirante trasero -->
+            <line x1="16" y1="56" x2="42" y2="56" stroke="var(--scene-line-strong)" stroke-width="2.4" />
+            <line x1="16" y1="56" x2="35" y2="35" stroke="var(--scene-line-strong)" stroke-width="2.2" />
+            <!-- Tubo de asiento inclinado de competición -->
+            <line x1="42" y1="56" x2="34" y2="32" stroke="var(--scene-line-strong)" stroke-width="2.5" />
+            <!-- Tubo diagonal y tubo superior con sloping agresivo XC -->
+            <line x1="42" y1="56" x2="66" y2="36" stroke="var(--scene-line-strong)" stroke-width="3" />
+            <line x1="35" y1="35" x2="66" y2="36" stroke="var(--scene-line-strong)" stroke-width="2.4" />
+            <!-- Tubo de dirección y horquilla de suspensión (100mm) -->
+            <line x1="66" y1="36" x2="68" y2="30" stroke="var(--scene-line-strong)" stroke-width="3" />
+            <line x1="68" y1="33" x2="74" y2="56" stroke="var(--scene-line-strong)" stroke-width="2.6" />
+            <!-- Potencia invertida de competición XCO (-17°) -->
+            <line x1="68" y1="31" x2="71" y2="34" stroke="var(--scene-line-strong)" stroke-width="2.4" />
+            <!-- Manubrio ancho XCO por debajo del nivel de sillín (Drop agresivo) -->
+            <line x1="67" y1="34.5" x2="74" y2="34.5" stroke="var(--scene-line-strong)" stroke-width="2.8" stroke-linecap="round" />
+            <!-- Sillín de carrera XCO -->
+            <path d="M29 31 L39 32 L33 29 Z" fill="var(--scene-line-strong)" />
+          </g>
+
+          <!-- BIELAS Y PEDALIER (GIRATORIO A 60 RPM = 1.0s) -->
+          <g class="cyclist__crank">
+            <!-- Plato de transmisión 34T -->
+            <circle cx="42" cy="56" r="4.2" fill="none" stroke="var(--scene-line-strong)" stroke-width="1.8" />
+            <!-- Biela derecha -->
+            <line x1="42" y1="56" x2="42" y2="49" stroke="var(--scene-line-strong)" stroke-width="2.4" stroke-linecap="round" />
+            <!-- Pedal derecho -->
+            <line x1="40" y1="49" x2="44" y2="49" stroke="var(--scene-line-strong)" stroke-width="2" stroke-linecap="round" />
+            <!-- Biela izquierda (desfasada 180°) -->
+            <line x1="42" y1="56" x2="42" y2="63" stroke="var(--scene-line-strong)" stroke-width="1.8" stroke-linecap="round" opacity="0.6" />
+            <!-- Pedal izquierdo -->
+            <line x1="40" y1="63" x2="44" y2="63" stroke="var(--scene-line-strong)" stroke-width="1.8" stroke-linecap="round" opacity="0.6" />
+          </g>
+
+          <!-- PIERNA DERECHA (PRIMER PLANO / CINEMÁTICA INVERSA A 60 RPM) -->
+          <path class="cyclist__leg-front" fill="none" stroke="var(--scene-line-strong)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+            <animate
+              attributeName="d"
+              dur="1.0s"
+              repeatCount="indefinite"
+              calcMode="linear"
+              values="
+                M 33 30 L 46.8 35.9 L 42.0 49.0;
+                M 33 30 L 46.2 37.1 L 46.9 51.1;
+                M 33 30 L 41.2 42.6 L 49.0 56.0;
+                M 33 30 L 39.5 43.5 L 46.9 60.9;
+                M 33 30 L 37.3 44.4 L 42.0 63.0;
+                M 33 30 L 35.3 44.8 L 37.1 60.9;
+                M 33 30 L 40.4 43.1 L 35.0 56.0;
+                M 33 30 L 44.7 39.4 L 37.1 51.1;
+                M 33 30 L 46.8 35.9 L 42.0 49.0
+              "
+            />
+          </path>
+
+          <!-- TORSO Y CABEZA DEL CICLISTA EN POSTURA DE ATAQUE AGRESIVA XCO -->
+          <g class="cyclist__upper-body">
+            <!-- Torso bajo / aerodinámico rasante (~18°) -->
+            <path d="M33 30 Q 45 25, 56 26" fill="none" stroke="var(--scene-line-strong)" stroke-width="4.5" stroke-linecap="round" />
+            <!-- Brazos flexionados con codos hacia afuera en posición de ataque -->
+            <polyline points="56,26 64,30 70,34.5" fill="none" stroke="var(--scene-line-strong)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
+            <!-- Cabeza y Casco XCO con visera agresiva y gafas -->
+            <circle cx="63" cy="18" r="5.5" fill="var(--scene-chachani-light)" stroke="var(--scene-line-strong)" stroke-width="1.8" />
+            <path d="M66 15 L72 17 L68 19 Z" fill="var(--scene-line-strong)" />
+          </g>
+        </g>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<script>
+  import gsap from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  const scene = document.querySelector<HTMLElement>('[data-scene]');
+  if (scene) {
+    const mountain = scene.querySelector<HTMLElement>('[data-mountain]');
+    const orbs = [...scene.querySelectorAll<HTMLElement>('[data-orb]')];
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    gsap.registerPlugin(ScrollTrigger);
+    gsap.set(orbs, { xPercent: -50 });
+
+    if (!reduce) {
+      // 1. Animación de entrada inicial: revelación suave y señorial
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      tl.fromTo(mountain, { y: 48, opacity: 0 }, { y: 0, opacity: 1, duration: 1.4 }, 0.1)
+        .fromTo(
+          orbs,
+          { y: 30, scale: 0.7, opacity: 0 },
+          { y: 0, scale: 1, opacity: 1, duration: 1.2, ease: 'back.out(1.4)' },
+          0.3
+        )
+        .fromTo(
+          scene.querySelectorAll('.poncho-blanco, .volcano__linework'),
+          { opacity: 0 },
+          { opacity: 1, duration: 1.1 },
+          0.7
+        );
+
+      let ready = false;
+      tl.eventCallback('onComplete', () => {
+        ready = true;
+      });
+
+      // 2. Parallax de mouse de precisión (suave y atenuado, sin sacudidas)
+      // La montaña contiene el sendero y ciclista, moviéndolos en sincronía perfecta
+      if (fine) {
+        const mountainX = gsap.quickTo(mountain, 'x', { duration: 0.8, ease: 'power2.out' });
+        const mountainY = gsap.quickTo(mountain, 'y', { duration: 0.8, ease: 'power2.out' });
+
+        const orbTweens = orbs.map((orb) => ({
+          x: gsap.quickTo(orb, 'x', { duration: 0.8, ease: 'power2.out' }),
+          y: gsap.quickTo(orb, 'y', { duration: 0.8, ease: 'power2.out' }),
+        }));
+
+        let raf = 0;
+        window.addEventListener(
+          'pointermove',
+          (event: PointerEvent) => {
+            if (!ready || raf) return;
+            raf = requestAnimationFrame(() => {
+              raf = 0;
+              const rect = scene.getBoundingClientRect();
+              const o = (event.clientX - (rect.left + rect.width / 2)) / window.innerWidth;
+              const i = (event.clientY - (rect.top + rect.height / 2)) / window.innerHeight;
+
+              scene.style.setProperty('--mx', `${event.clientX}px`);
+              scene.style.setProperty('--my', `${event.clientY}px`);
+
+              mountainX(-(12 * o));
+              mountainY(-(6 * i));
+
+              orbTweens.forEach((t) => {
+                t.x(18 * o);
+                t.y(12 * i);
+              });
+            });
+          },
+          { passive: true }
+        );
+      }
+
+      // 3. Parallax de Scroll: disolución limpia al descender por el contenido
+      gsap.to(scene, {
+        y: -40,
+        scale: 1.02,
+        opacity: 0.5,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: scene.parentElement,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true,
+        },
+      });
+    }
+  }
+</script>
+
+<style>
+  .scene {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: var(--hero-next-height, 5.5rem);
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+
+    /* ── Paleta Azul Andino Arequipa (Tema Claro — Luminous Aerial Perspective) ── */
+    --scene-sky-glow: rgba(85, 155, 245, 0.16);
+    --scene-far: rgba(165, 192, 225, 0.45);
+    --scene-mid: rgba(130, 162, 202, 0.55);
+    --scene-foreground: #3a5679;
+
+    /* Chachani: Macizo rocoso escarpado en azul pizarra andino luminoso */
+    --scene-chachani-light: #95b3d9;
+    --scene-chachani-dark: #4f7099;
+
+    /* El Misti: Cono emblemático con quiebre de luz celeste cobalto / sombra mineral suave */
+    --scene-misti-light: #a3c1e8;
+    --scene-misti-mid: #7296c4;
+    --scene-misti-low: #4d719e;
+    --scene-misti-dark: #42648d;
+    --scene-misti-deep: #2d4766;
+
+    /* Pichu Pichu: Cadena oriental del Indio Dormido */
+    --scene-pichu-light: #91aed4;
+    --scene-pichu-dark: #4b6c94;
+
+    /* Poncho Blanco: Manto de nieve resplandeciente en las cumbres */
+    --scene-snow: #ffffff;
+    --scene-snow-soft: rgba(240, 248, 255, 0.90);
+
+    /* Líneas de relieve, aristas y sendero técnico */
+    --scene-line: rgba(32, 58, 92, 0.40);
+    --scene-line-strong: rgba(20, 42, 72, 0.75);
+    --scene-trail: #ffffff;
+
+    /* Astro Andino (Sol de Arequipa) */
+    --orb-core: #ffae24;
+    --orb-glow: rgba(255, 174, 36, 0.38);
+    --orb-ray: rgba(255, 160, 20, 0.48);
+    --alba-color: rgba(255, 195, 80, 0.20);
+  }
+
+  /* ── Tema Oscuro: Mantiene estética lunar con sutil matiz azul noche ── */
+  :global(:root[data-theme='dark']) .scene {
+    --scene-sky-glow: rgba(70, 105, 160, 0.08);
+    --scene-far: rgba(130, 155, 190, 0.08);
+    --scene-mid: rgba(110, 138, 175, 0.14);
+    --scene-foreground: rgba(18, 26, 36, 0.88);
+
+    --scene-chachani-light: rgba(110, 138, 175, 0.28);
+    --scene-chachani-dark: rgba(20, 30, 44, 0.42);
+
+    --scene-misti-light: rgba(120, 150, 190, 0.32);
+    --scene-misti-mid: rgba(80, 105, 140, 0.24);
+    --scene-misti-low: rgba(50, 70, 96, 0.26);
+    --scene-misti-dark: rgba(18, 26, 38, 0.48);
+    --scene-misti-deep: rgba(12, 18, 28, 0.65);
+
+    --scene-pichu-light: rgba(105, 132, 168, 0.26);
+    --scene-pichu-dark: rgba(20, 30, 44, 0.40);
+
+    --scene-snow: rgba(235, 245, 255, 0.78);
+    --scene-snow-soft: rgba(200, 225, 255, 0.35);
+
+    --scene-line: rgba(155, 180, 215, 0.26);
+    --scene-line-strong: rgba(195, 215, 245, 0.52);
+    --scene-trail: rgba(175, 200, 230, 0.38);
+
+    --orb-core: #eae6da;
+    --orb-glow: rgba(234, 230, 218, 0.28);
+    --orb-ray: rgba(234, 230, 218, 0.35);
+    --alba-color: rgba(74, 104, 153, 0.14);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .scene {
+      --scene-sky-glow: rgba(70, 105, 160, 0.08);
+      --scene-far: rgba(130, 155, 190, 0.08);
+      --scene-mid: rgba(110, 138, 175, 0.14);
+      --scene-foreground: rgba(18, 26, 36, 0.88);
+
+      --scene-chachani-light: rgba(110, 138, 175, 0.28);
+      --scene-chachani-dark: rgba(20, 30, 44, 0.42);
+
+      --scene-misti-light: rgba(120, 150, 190, 0.32);
+      --scene-misti-mid: rgba(80, 105, 140, 0.24);
+      --scene-misti-low: rgba(50, 70, 96, 0.26);
+      --scene-misti-dark: rgba(18, 26, 38, 0.48);
+      --scene-misti-deep: rgba(12, 18, 28, 0.65);
+
+      --scene-pichu-light: rgba(105, 132, 168, 0.26);
+      --scene-pichu-dark: rgba(20, 30, 44, 0.40);
+
+      --scene-snow: rgba(235, 245, 255, 0.78);
+      --scene-snow-soft: rgba(200, 225, 255, 0.35);
+
+      --scene-line: rgba(155, 180, 215, 0.26);
+      --scene-line-strong: rgba(195, 215, 245, 0.52);
+      --scene-trail: rgba(175, 200, 230, 0.38);
+
+      --orb-core: #eae6da;
+      --orb-glow: rgba(234, 230, 218, 0.28);
+      --orb-ray: rgba(234, 230, 218, 0.35);
+      --alba-color: rgba(74, 104, 153, 0.14);
+    }
+  }
+
+  /* Filtros ocultos de textura */
+  .scene__filters {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+
+  /* Resplandor del Alba Andina */
+  .scene__alba {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(75% 55% at 50% 28%, var(--alba-color), transparent 75%);
+    pointer-events: none;
+  }
+
+  /* Luz puntual que sigue suavemente al cursor */
+  .scene__light {
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+    background: radial-gradient(
+      30rem circle at var(--mx, 50%) var(--my, 15%),
+      var(--orb-glow),
+      transparent 70%
+    );
+  }
+
+  /* ── Astro Andino (Sol / Luna en el Cuadrante Oriental) ───────────── */
+  .scene__orb {
+    position: absolute;
+    top: clamp(1.5rem, 4vh, 2.75rem);
+    left: clamp(75%, 80vw, 84%);
+    width: clamp(3.75rem, 5.5vw, 5.5rem);
+    aspect-ratio: 1;
+    will-change: transform;
+  }
+
+  .orb__disc {
+    position: absolute;
+    inset: 6%;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at 38% 32%,
+      #ffffff,
+      var(--orb-core) 64%,
+      color-mix(in srgb, var(--orb-core) 60%, #000) 100%
+    );
+    box-shadow:
+      0 0 3.5rem var(--orb-glow),
+      0 0 7rem var(--orb-glow);
+  }
+
+  .orb__halo {
+    position: absolute;
+    inset: -35%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, var(--orb-glow), transparent 72%);
+    animation: orb-halo 6s ease-in-out infinite;
+  }
+
+  .orb__rays {
+    position: absolute;
+    inset: -38%;
+    border-radius: 50%;
+    background: repeating-conic-gradient(
+      from 0deg,
+      var(--orb-ray) 0deg 1.2deg,
+      transparent 1.2deg 15deg
+    );
+    -webkit-mask: radial-gradient(closest-side, transparent 52%, #000 55%);
+    mask: radial-gradient(closest-side, transparent 52%, #000 55%);
+    opacity: 0.35;
+    animation: orb-spin 80s linear infinite;
+  }
+
+  /* Luna (Modo Oscuro): creciente andina */
+  .scene__orb--moon {
+    display: none;
+  }
+
+  .scene__orb--moon .orb__rays {
+    display: none;
+  }
+
+  .scene__orb--moon .orb__disc::after {
+    content: '';
+    position: absolute;
+    inset: -6% -10% -6% 30%;
+    border-radius: 50%;
+    background: var(--bg);
+  }
+
+  :global(:root[data-theme='dark']) .scene__orb--sun {
+    display: none;
+  }
+
+  :global(:root[data-theme='dark']) .scene__orb--moon {
+    display: block;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .scene__orb--sun {
+      display: none;
+    }
+
+    :global(:root:not([data-theme='light'])) .scene__orb--moon {
+      display: block;
+    }
+  }
+
+  /* ── Montañas y Paisaje ────────────────────────────────────────────── */
+  .scene__mountain-wrap {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: min(108rem, 140%);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .scene__mountain {
+    display: block;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    will-change: transform;
+    /* Aplicar filtro orgánico de tinta linograbado */
+    filter: url(#pulso-tinta);
+  }
+
+  .mountain__glow {
+    opacity: 0.35;
+  }
+
+  .mountain__far {
+    fill: var(--scene-far);
+  }
+
+  .mountain__mid {
+    fill: var(--scene-mid);
+  }
+
+  .mountain__foreground {
+    fill: var(--scene-foreground);
+  }
+
+  .mountain__trail {
+    opacity: 0.85;
+  }
+
+  .mountain__outlines {
+    fill: none;
+    stroke: var(--scene-line-strong);
+    stroke-width: 1.2;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.55;
+  }
+
+  .volcano__linework path {
+    fill: none;
+    stroke: var(--scene-line);
+    stroke-width: 0.95;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.45;
+  }
+
+  .misti__spine {
+    stroke-width: 1.4 !important;
+    opacity: 0.65 !important;
+  }
+
+  .poncho-blanco {
+    filter: drop-shadow(0 2px 6px rgba(215, 235, 255, 0.45));
+  }
+
+  /* ── Cinemática Ciclista MTB XCO & Viento ──────────────────────────── */
+  /* Avance continuo del ciclista a lo largo del sendero (12s = 12 pedaladas a 60 RPM) */
+  .scene__cyclist-track {
+    will-change: transform, opacity;
+    animation: cyclist-advance 12s linear infinite;
+  }
+
+  @keyframes cyclist-advance {
+    0% {
+      transform: translate(460px, 458px);
+      opacity: 0;
+    }
+    4% {
+      opacity: 1;
+    }
+    25% {
+      transform: translate(650px, 450px);
+    }
+    50% {
+      transform: translate(800px, 440px);
+    }
+    75% {
+      transform: translate(950px, 442px);
+    }
+    96% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(1100px, 447px);
+      opacity: 0;
+    }
+  }
+
+  /* Bielas giratorias a 60 RPM (1 revolución por segundo exacto) */
+  .cyclist__crank {
+    transform-origin: 42px 56px;
+    animation: crank-turn 1s linear infinite;
+  }
+
+  @keyframes crank-turn {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Rayos giratorios a velocidad de avance de rueda 29er */
+  .cyclist__spokes--rear {
+    transform-origin: 16px 56px;
+    animation: spokes-spin 0.35s linear infinite;
+  }
+
+  .cyclist__spokes--front {
+    transform-origin: 74px 56px;
+    animation: spokes-spin 0.35s linear infinite;
+  }
+
+  @keyframes spokes-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Micro-pulsación atlética del torso en postura de ataque (120 bpm) */
+  .cyclist__upper-body {
+    animation: xco-bob 0.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes xco-bob {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(0.7px);
+    }
+  }
+
+  /* Líneas de viento aerodinámicas (Streamlines MTB) cruzando al frente */
+  .cyclist__wind {
+    pointer-events: none;
+  }
+
+  .wind-line {
+    stroke-dasharray: 18 30;
+    opacity: 0;
+  }
+
+  .wind-line--1 {
+    animation: wind-flow 0.85s linear infinite;
+  }
+  .wind-line--2 {
+    animation: wind-flow 0.7s linear infinite 0.15s;
+  }
+  .wind-line--3 {
+    animation: wind-flow 0.6s linear infinite 0.3s;
+  }
+  .wind-line--4 {
+    animation: wind-flow 0.9s linear infinite 0.1s;
+  }
+  .wind-line--5 {
+    animation: wind-flow 0.75s linear infinite 0.4s;
+  }
+
+  @keyframes wind-flow {
+    0% {
+      stroke-dashoffset: 48;
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    25% {
+      opacity: 0.65;
+    }
+    75% {
+      opacity: 0.65;
+    }
+    100% {
+      stroke-dashoffset: -48;
+      opacity: 0;
+      transform: translateX(-16px);
+    }
+  }
+
+  @keyframes orb-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  @keyframes orb-halo {
+    50% {
+      opacity: 0.75;
+      scale: 1.08;
+    }
+  }
+
+  /* ── Responsive Viewports ─────────────────────────────────────────── */
+  @media (max-width: 68.75em) {
+    .scene__mountain-wrap {
+      width: 160%;
+    }
+  }
+
+  @media (max-width: 48em) {
+    .scene__mountain-wrap {
+      width: 220%;
+    }
+  }
+
+  @media (max-width: 32em) {
+    .scene__orb {
+      top: 1rem;
+      left: 80%;
+      width: clamp(2.75rem, 10vw, 3.5rem);
+      opacity: 0.9;
+    }
+
+    .scene__mountain-wrap {
+      width: 260%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scene__cyclist-track {
+      animation: none !important;
+      transform: translate(680px, 445px) !important;
+      opacity: 1 !important;
+    }
+
+    .orb__rays,
+    .orb__halo,
+    .cyclist__crank,
+    .cyclist__spokes--rear,
+    .cyclist__spokes--front,
+    .cyclist__upper-body,
+    .wind-line {
+      animation: none !important;
+    }
+  }
+</style>

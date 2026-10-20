@@ -1,0 +1,589 @@
+---
+/**
+ * EventCard.astro — Tarjeta editorial de evento ciclista.
+ * Formato equilibrado de alta densidad:
+ * - Portada en relación 16:10 con buena altura (~200px) para apreciar la foto real.
+ * - Ancho acotado a max 450px para evitar estiramiento horizontal excesivo.
+ * - Iconos vectoriales de carreras: Bandera a cuadros (meta) y Bandera de largada.
+ * - Chip de fecha técnico corto (17-MAY, etc.) para el timeline.
+ * - Minitarjetas técnicas con DISTANCIA, DESNIVEL, PARTIDA y HITO CLAVE.
+ * - Esquinas rectas (border-radius: 0), hairlines de 1px y flecha diagonal interactiva.
+ */
+interface Props {
+  event: {
+    id: string;
+    number: string;
+    badge: string;
+    kicker: string;
+    titlePrefix: string;
+    titleHighlight: string;
+    date: string;
+    dateShort: string;
+    location: string;
+    startTime: string;
+    status: string;
+    statusKey: 'finished' | 'open' | 'upcoming' | 'special';
+    distance: string;
+    elevation: string;
+    highlight?: string;
+    description?: string;
+    poster: string;
+    pageHref?: string;
+    directHref?: string;
+    directCta?: string;
+    href?: string;
+    cta?: string;
+    type: 'mtb' | 'road';
+    color: string;
+    colorInk: string;
+    colorGlow: string;
+    tagBg: string;
+  };
+  side?: 'left' | 'right';
+}
+
+const { event, side = 'left' } = Astro.props;
+
+// Resolver enlace principal de toda la tarjeta y acción directa opcional
+const mainHref = event.pageHref || event.href || `/fechas/${event.id}`;
+const hasDirectAction = Boolean(event.directHref && event.directCta);
+const directHref = event.directHref || mainHref;
+const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
+---
+
+<article
+  class={`event-card event-card--${event.type} event-card--${side}`}
+  style={`--event-color: ${event.color}; --event-ink: ${event.colorInk}; --event-glow: ${event.colorGlow}; --event-tag-bg: ${event.tagBg};`}
+  data-event-id={event.id}
+  data-event-type={event.type}
+  data-status={event.statusKey}
+>
+  <!-- Barra de acento superior estilo GetArtCraft (se expande al hover/pasar) -->
+  <span class="event-card__accent-bar" aria-hidden="true"></span>
+
+  <!-- Cabecera compacta con badge, kicker e icono de bandera de carrera -->
+  <header class="event-card__header">
+    <div class="event-card__head-left">
+      <span class="event-card__badge">{event.badge}</span>
+      <span class="event-card__kicker">{event.kicker}</span>
+    </div>
+
+    <div class={`event-card__status event-card__status--${event.statusKey}`}>
+      <!-- Icono vectorial de carreras: Bandera a cuadros para finalizada, bandera de largada para activa/próxima -->
+      {event.statusKey === 'finished' ? (
+        <svg
+          class="event-card__flag-icon"
+          viewBox="0 0 24 24"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.9"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <!-- Bandera a cuadros de meta 🏁 -->
+          <path d="M4 22V3" />
+          <path d="M4 4c3-1.2 6 1.2 9 0s5-1 7-1v8c-2 0-4 1-7 1s-6-1.2-9 0" />
+          <path d="M8.5 3.4v8M13 4.2v8M17 3.4v8M4 7.6c3-1.2 6 1.2 9 0s5-1 7-1" />
+        </svg>
+      ) : (
+        <svg
+          class="event-card__flag-icon event-card__flag-icon--start"
+          viewBox="0 0 24 24"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.9"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <!-- Bandera de largada / largada oficial -->
+          <path d="M4 22V3" />
+          <path d="M4 4h14l-2.5 4.5 2.5 4.5H4" fill="currentColor" fill-opacity="0.25" />
+        </svg>
+      )}
+
+      {event.statusKey === 'open' && <span class="event-card__pulse" aria-hidden="true"></span>}
+      <span>{event.status}</span>
+    </div>
+  </header>
+
+  <!-- Portada fotográfica en relación 4:3 con generosa altura (~260px) para el afiche completo -->
+  <div class="event-card__media">
+    <img
+      src={event.poster}
+      alt={`Póster oficial ${event.titlePrefix} ${event.titleHighlight}`}
+      loading="lazy"
+      decoding="async"
+    />
+    <div class="event-card__media-overlay" aria-hidden="true"></div>
+
+    <!-- Fecha y Ubicación sobreimpresas sobre el pie de la imagen -->
+    <div class="event-card__media-bar" aria-hidden="true">
+      <div class="event-card__date-chip">
+        <span class="event-card__date-dot"></span>
+        <span class="event-card__date-text">{event.dateShort}</span>
+      </div>
+      <div class="event-card__location-chip">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </svg>
+        <span class="event-card__location-text">{event.location}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cuerpo de contenido -->
+  <div class="event-card__body">
+    <h3 class="event-card__title">
+      <!-- Stretched link: cubre toda la tarjeta para navegar a la ficha del evento -->
+      <a href={mainHref} class="event-card__main-link">
+        {event.titlePrefix} <span class="event-card__title-accent">{event.titleHighlight}</span>
+      </a>
+    </h3>
+
+    <!-- Minitarjetas técnicas limpias: FECHA, DISTANCIA, DESNIVEL y LARGADA -->
+    <div class="event-card__specs">
+      <div class="event-card__spec event-card__spec--date">
+        <span class="event-card__spec-label">FECHA</span>
+        <span class="event-card__spec-val">{event.date}</span>
+      </div>
+      <div class="event-card__spec">
+        <span class="event-card__spec-label">DISTANCIA</span>
+        <span class="event-card__spec-val">{event.distance}</span>
+      </div>
+      <div class="event-card__spec">
+        <span class="event-card__spec-label">DESNIVEL</span>
+        <span class="event-card__spec-val">{event.elevation}</span>
+      </div>
+      <div class="event-card__spec">
+        <span class="event-card__spec-label">LARGADA</span>
+        <span class="event-card__spec-val">{event.startTime}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pie con acción directa (Resultados oficiales / Inscripciones) o enlace secundario -->
+  <footer class="event-card__footer">
+    {hasDirectAction ? (
+      <a href={directHref} class="event-card__direct-link">
+        <span class="event-card__link-text">{directLabel}</span>
+        <svg
+          class="event-card__arrow"
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M7 7h10v10" />
+          <path d="M7 17 17 7" />
+        </svg>
+      </a>
+    ) : (
+      <span class="event-card__direct-link event-card__direct-link--secondary">
+        <span class="event-card__link-text">{directLabel}</span>
+        <svg
+          class="event-card__arrow"
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M7 7h10v10" />
+          <path d="M7 17 17 7" />
+        </svg>
+      </span>
+    )}
+  </footer>
+</article>
+
+<style>
+  .event-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    max-width: 450px;
+    width: 100%;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+    border-radius: 0;
+    overflow: hidden;
+    cursor: pointer;
+    transition:
+      border-color var(--default-transition-duration) var(--default-transition-timing-function),
+      box-shadow var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .event-card:hover {
+    border-color: var(--event-color, var(--line-strong));
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Estado cuando el scroll marker pasa este hito */
+  :global(.timeline-item.passed) .event-card {
+    border-color: color-mix(in srgb, var(--event-color) 45%, var(--line));
+  }
+
+  /* Barra de acento superior */
+  .event-card__accent-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--event-color);
+    transform-origin: left;
+    transform: scaleX(0);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 10;
+  }
+
+  .event-card:hover .event-card__accent-bar,
+  :global(.timeline-item.passed) .event-card .event-card__accent-bar {
+    transform: scaleX(1);
+  }
+
+  /* Cabecera compacta */
+  .event-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.95rem;
+    border-bottom: var(--hairline) solid var(--line);
+    background: var(--bg);
+  }
+
+  .event-card__head-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .event-card__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.15rem 0.45rem;
+    background: var(--event-color);
+    color: #0b0b0c;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    border-radius: 0;
+  }
+
+  .event-card__kicker {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Estado de carrera con icono vectorial de bandera */
+  .event-card__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.18rem 0.5rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-sunken);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .event-card__flag-icon {
+    flex-shrink: 0;
+    color: var(--event-color);
+  }
+
+  .event-card__status--open {
+    border-color: var(--event-color);
+    color: var(--event-ink);
+    background: var(--event-tag-bg);
+    font-weight: 600;
+  }
+
+  .event-card__pulse {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--event-color);
+    box-shadow: 0 0 6px var(--event-color);
+    animation: pulse 1.8s infinite ease-in-out;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.35;
+      transform: scale(1.3);
+    }
+  }
+
+  /* Portada fotográfica en relación 4:3 con buena altura vertical para no recortar afiches */
+  .event-card__media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    min-height: 250px;
+    max-height: 275px;
+    overflow: hidden;
+    background: var(--bg-sunken);
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .event-card__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 15%;
+    transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .event-card:hover .event-card__media img {
+    transform: scale(1.045);
+  }
+
+  .event-card__media-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0, 0, 0, 0.72) 100%);
+    pointer-events: none;
+  }
+
+  /* Barra de fecha y ubicación sobre la imagen */
+  .event-card__media-bar {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+
+  .event-card__date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    background: rgba(11, 11, 12, 0.85);
+    backdrop-filter: blur(4px);
+    border: var(--hairline) solid var(--event-color);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--event-color);
+    letter-spacing: 0.05em;
+  }
+
+  .event-card__date-dot {
+    width: 4px;
+    height: 4px;
+    background: var(--event-color);
+  }
+
+  .event-card__location-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    background: rgba(11, 11, 12, 0.75);
+    backdrop-filter: blur(4px);
+    border: var(--hairline) solid rgba(255, 255, 255, 0.15);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: #f2f1ee;
+    letter-spacing: 0.02em;
+    min-width: 0;
+  }
+
+  .event-card__location-chip svg {
+    color: var(--event-color);
+    flex-shrink: 0;
+  }
+
+  .event-card__location-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Cuerpo */
+  .event-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.85rem 0.95rem;
+  }
+
+  .event-card__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 620;
+    letter-spacing: -0.025em;
+    line-height: 1.12;
+  }
+
+  /* Stretched link: cubre toda la tarjeta con z-index 1 para hacerla completamente clickeable */
+  .event-card__main-link {
+    color: var(--ink-strong);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .event-card__main-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .event-card:hover .event-card__main-link {
+    color: var(--event-color);
+  }
+
+  .event-card__title-accent {
+    color: var(--event-ink);
+  }
+
+  /* Minitarjetas de Métricas Técnicas */
+  .event-card__specs {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.35rem;
+  }
+
+  .event-card__spec {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.35rem 0.45rem;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .event-card__spec--date {
+    border-color: color-mix(in srgb, var(--event-color) 40%, var(--line));
+    background: color-mix(in srgb, var(--event-color) 5%, var(--bg-sunken));
+  }
+
+  .event-card__spec--date .event-card__spec-val {
+    color: var(--event-color);
+    font-weight: 700;
+  }
+
+  .event-card__spec-label {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+  }
+
+  .event-card__spec-val {
+    font-family: var(--font-mono);
+    font-size: 0.725rem;
+    font-weight: 600;
+    color: var(--ink-strong);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Footer compacto con acción directa (z-index: 2 para prevalecer sobre el stretched-link) */
+  .event-card__footer {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0.95rem;
+    border-top: var(--hairline) solid var(--line);
+    background: var(--bg);
+    margin-top: auto;
+  }
+
+  .event-card__direct-link {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-strong);
+    text-decoration: none;
+    transition: color 0.2s ease, gap 0.2s ease;
+  }
+
+  .event-card__direct-link:hover {
+    color: var(--event-color);
+    gap: 0.65rem;
+  }
+
+  .event-card__direct-link--secondary {
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .event-card:hover .event-card__direct-link--secondary {
+    color: var(--event-color);
+    gap: 0.65rem;
+  }
+
+  .event-card__arrow {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .event-card:hover .event-card__arrow,
+  .event-card__direct-link:hover .event-card__arrow {
+    transform: translate(2px, -2px);
+    stroke: var(--event-color);
+  }
+
+  @media (max-width: 480px) {
+    .event-card__specs {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>

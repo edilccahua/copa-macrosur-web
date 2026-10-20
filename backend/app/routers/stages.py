@@ -113,7 +113,11 @@ async def get_stage_results(slug: str, session: AsyncSession = Depends(get_sessi
     stmt_entries = (
         select(StageEntry)
         .where(StageEntry.stage_id == stage.id)
-        .order_by(StageEntry.category_id, StageEntry.category_rank)
+        .order_by(
+            StageEntry.category_id,
+            StageEntry.category_rank.is_(None),
+            StageEntry.category_rank.asc()
+        )
     )
     entries = (await session.exec(stmt_entries)).all()
 
@@ -133,6 +137,10 @@ async def get_stage_results(slug: str, session: AsyncSession = Depends(get_sessi
             "formatted_time": format_ms_to_time(e.finish_elapsed_ms or 0) if e.finish_elapsed_ms else "-",
             "points_earned": e.points_earned
         })
+
+    # Finalistas primero (por puesto), no finalistas al final
+    for cat_name, rows in by_category.items():
+        rows.sort(key=lambda r: (r["rank"] is None, r["rank"] if r["rank"] is not None else 9999))
 
     return {
         "stage": stage,

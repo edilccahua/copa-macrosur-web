@@ -39,6 +39,37 @@ def calculate_points_for_rank(rank: Optional[int], race_status: RaceStatusEnum) 
     return 0
 
 
+async def merge_duplicate_entries(session: AsyncSession, stage_id: int) -> int:
+    """
+    Fusiona identidades duplicadas dentro de una misma fecha: si un mismo Rider quedó
+    con más de un StageEntry (distintos dorsales/categorías por datos sucios de origen),
+    conserva el MEJOR resultado (menor finish_elapsed_ms; si no hay tiempo, menor dorsal)
+    y elimina el resto. Devuelve el número de entradas fusionadas (eliminadas).
+    """
+    stmt = select(StageEntry).where(StageEntry.stage_id == stage_id)
+    entries = (await session.exec(stmt)).all()
+
+    by_rider: Dict[int, List[StageEntry]] = {}
+    for e in entries:
+        by_rider.setdefault(e.rider_id, []).append(e)
+
+    merged = 0
+    for _rider_id, group in by_rider.items():
+        if len(group) <= 1:
+            continue
+        group.sort(key=lambda e: (
+            e.finish_elapsed_ms if e.finish_elapsed_ms is not None else 10 ** 15,
+            e.bib_number,
+        ))
+        for loser in group[1:]:
+            await session.delete(loser)
+            merged += 1
+
+    if merged:
+        await session.commit()
+    return merged
+
+
 async def recalculate_stage_ranks(session: AsyncSession, stage_id: int) -> None:
     """
     Ordena los finalistas por categoría en una fecha por tiempo neto (finish_elapsed_ms ASC)
@@ -167,6 +198,16 @@ async def recalculate_championship_standings(session: AsyncSession) -> None:
             standing.stages_completed = item["stages_completed"]
 
             session.add(standing)
+
+    # Limpieza de clasificaciones obsoletas: si un corredor dejó de tener resultados
+    # (p.ej. se corrigió un dorsal o se retiró de una categoría), su fila debe
+    # desaparecer para que la tabla refleje exactamente la realidad de la BD.
+    valid_pairs = set(rider_cat_data.keys())
+    stmt_all_stand = select(ChampionshipStanding)
+    all_stands = (await session.exec(stmt_all_stand)).all()
+    for st in all_stands:
+        if (st.rider_id, st.category_id) not in valid_pairs:
+            await session.delete(st)
 
     await session.commit()
 

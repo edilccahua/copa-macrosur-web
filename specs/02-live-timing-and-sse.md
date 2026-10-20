@@ -1,5 +1,9 @@
 # Spec 02: Cronometraje en Vivo, Endpoints de Sincronización Offline y SSE Streaming
 
+> **Estado:** COMPLETADO ✅  
+> **Fecha de Verificación:** 19 de Octubre de 2026  
+> **Evidencia:** `test_timing_sse.py` pasando con 0 sesiones DB retenidas en streaming, 409 Conflict en re-tap de meta, UUID idempotente para marcaciones offline-first, PWA Juez (`JudgeDashboard.svelte` con `idb`, WakeLock, Modo Ráfaga) y LiveLeaderboard SSE en Svelte 5 Runes puro.
+
 ## 1. Gestión de Largadas y Mangas (Start Waves)
 
 ### 1.1 Largada por Manga de Categorías: `POST /api/v1/stages/{stage_id}/waves/{wave_id}/start`

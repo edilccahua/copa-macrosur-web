@@ -3,53 +3,61 @@ import Base from '../layouts/Base.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import StandingsTable from '../components/svelte/StandingsTable.svelte';
+import { API_V1 } from '../lib/api';
 
-let individualStandings = [];
-let teamStandings = [];
+// SSR: la clasificación se resuelve contra la API en cada request (ver specs/03 §0).
+let payload: any = null;
+let fallbackRows: any[] = [];
+let fallbackTeams: any[] = [];
 
 try {
-  const [resInd, resTeam] = await Promise.all([
-    fetch('http://localhost:8000/api/v1/public/standings/individual'),
-    fetch('http://localhost:8000/api/v1/public/standings/teams')
-  ]);
-  if (resInd.ok) individualStandings = await resInd.json();
-  if (resTeam.ok) teamStandings = await resTeam.json();
+  const res = await fetch(`${API_V1}/public/standings?scope=PRO`);
+  if (res.ok) payload = await res.json();
 } catch (e) {
-  // Modo SSR offline fallback
+  // Modo SSR sin backend: la isla muestra el estado vacío con su mensaje.
 }
 
-const categories = [
-  { id: 1, name: 'ELITE', short_code: 'ELI' },
-  { id: 2, name: 'MASTER A', short_code: 'MSA' },
-  { id: 3, name: 'MASTER B', short_code: 'MSB' },
-  { id: 4, name: 'MASTER C', short_code: 'MSC' },
-  { id: 5, name: 'MASTER D', short_code: 'MSD' },
-  { id: 6, name: 'TURISMO OPEN VARONES', short_code: 'TOV' },
-  { id: 7, name: 'TURISMO MASTER VARONES', short_code: 'TMV' },
-  { id: 8, name: 'OPEN DAMAS', short_code: 'OPD' },
-  { id: 9, name: 'DAMAS MASTER', short_code: 'DMM' },
-  { id: 10, name: 'JUVENILES 15 - 17', short_code: 'JUV' },
-  { id: 11, name: 'E-BIKE OPEN', short_code: 'EBK' }
-];
+// La Copa de Equipos se carga aparte (mismo corte de fecha que la clasificación).
+try {
+  const res = await fetch(`${API_V1}/public/standings?kind=teams`);
+  if (res.ok) {
+    const teams = await res.json();
+    fallbackTeams = teams.rows ?? [];
+  }
+} catch (e) {}
+
+fallbackRows = payload?.rows ?? [];
+
+const context = payload?.context ?? {
+  stages: [],
+  selected_stage_id: null,
+  stages_counted: 0,
+  total_distance_km: 0,
+  groups: {},
+  scope_labels: {},
+  scope_order: [],
+  categories: [],
+};
 ---
+
 <Base title="Ranking General Acumulado — Kúspide MTB">
   <SiteHeader />
 
   <main class="container page-content">
     <div class="page-header">
       <div class="breadcrumb font-mono">CAMPEONATO MTB 2026 / CLASIFICACIÓN OFICIAL</div>
-      <h1 class="page-title">RANKING GENERAL ACUMULADO</h1>
-      <p class="page-desc">
-        Puntaje oficial sumado de las 4 fechas según el reglamento UCI. Los puestos desempatan por victorias de categoría y puesto en la última fecha disputada.
-      </p>
+      <h1 class="page-title">Ranking general <em>acumulado</em></h1>
     </div>
 
-    <!-- Isla Svelte 5 con Runes -->
     <StandingsTable
-      client:visible
-      initialIndividual={individualStandings}
-      initialTeams={teamStandings}
-      categories={categories}
+      client:load
+      stages={context.stages}
+      context={context}
+      initialRows={fallbackRows}
+      initialTeams={fallbackTeams}
+      initialStageId={context.selected_stage_id}
+      initialScope="PRO"
+      initialCategoryId={null}
     />
   </main>
 
@@ -58,35 +66,51 @@ const categories = [
 
 <style>
   .page-content {
-    padding-top: 3rem;
+    /* La clasificación es una tabla densa: aprovecha el ancho de la pantalla. */
+    --container-page: 108rem;
+    box-sizing: border-box;
+    min-width: 0;
+    padding-top: 2.5rem;
+    scroll-margin-top: calc(var(--nav-height, 3.0625rem) + 1rem);
+  }
+
+  @media (max-width: 47.99em) {
+    .page-content {
+      /* El navbar sticky mide 3rem en móvil: la cinta nunca queda debajo. */
+      padding-top: calc(1.5rem + env(safe-area-inset-top));
+      scroll-margin-top: calc(var(--nav-height-mobile, 3rem) + 0.75rem);
+    }
   }
 
   .page-header {
     border-bottom: var(--hairline) solid var(--line);
-    padding-bottom: 2rem;
-    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    margin-bottom: 0;
   }
 
   .breadcrumb {
     font-size: 0.6875rem;
-    color: var(--accent, #ff5500);
+    color: var(--muted);
     letter-spacing: 0.12em;
     margin-bottom: 0.75rem;
   }
 
   .page-title {
     font-family: var(--font-display, var(--font-sans));
-    font-size: 2.25rem;
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    margin: 0 0 1rem 0;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    color: var(--ink-strong);
+    text-wrap: balance;
+    margin: 0;
   }
 
-  .page-desc {
-    max-width: 720px;
-    font-size: 0.9375rem;
-    color: var(--muted);
-    line-height: 1.6;
-    margin: 0;
+  .page-title em {
+    font-family: var(--font-serif, Georgia, serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
   }
 </style>

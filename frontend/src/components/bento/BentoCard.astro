@@ -176,7 +176,7 @@ const Tag = href ? 'a' : 'article';
      Sin esa variable, `grid-column: span var(--card-span)` quedaba inválido, la
      tarjeta caía a `auto` y la grilla de 12 columnas se derrumbaba a anchos de
      contenido. Medido: 14 de 14 tarjetas perdían el span. */
-  @media (min-width: 768px) {
+  @media (min-width: 48em) {
     .bento--span-3 {
       grid-column: span 3;
     }

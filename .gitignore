@@ -23,8 +23,24 @@ dist/
 .env.*.local
 !.env.example
 
+# Bases de datos locales (reproducibles con `python -m backend.app.seed`)
+*.db
+*.sqlite
+*.sqlite3
+
+# Artefactos de auditoría / capturas
+screenshot*.png
+
 # IDE & OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Artefactos de ejecución del plan (workspace SDD)
+.superpowers/
+
+# Archivos binarios de carrera: pesan MB y se regeneran; la fuente de verdad
+# es el seed + `races/` ya versionado en el repo de datos.
+races/*.pdf
+races/*.xlsx
