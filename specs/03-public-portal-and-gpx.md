@@ -26,6 +26,7 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 - **Sin mocks.** Si la API no responde, la página devuelve `503`; nunca se inventan datos de_argumento fictitious.
 - **Sin datos ficticios:** los perfiles de corredor y equipo muestran únicamente lo que devuelve la API.
 - **El `fetch` de servidor usa `PUBLIC_API_URL`** (`frontend/src/lib/api.ts`), igual que el cliente.
+- **El backend debe reiniciarse tras cambiar los modelos.** Un `uvicorn` sin `--reload` sigue sirviendo la versión anterior del esquema: la página lee `undefined` en los campos nuevos y, si tiene un mock de respaldo, muestra datos falsos en lugar de fallar. En desarrollo, `start.sh` lanza el backend con `--reload` y espera a que `/api/v1/stages` responda antes de levantar el frontend.
 - **Los recursos estáticos siguen serviéndose desde `public/`** (manifiesto PWA, `sw.js`, imágenes, GPX).
 - **`/en-vivo` y `/admin/juez` siguen usando `Base.astro`** y **no cargan GSAP ni Lenis** (ver `AGENTS.md` §2). El SSR no altera esa regla: el motion editorial sigue únicamente en `Showcase.astro`.
 - **Ejecución:** `npm run build && node dist/server/entry.mjs` (producción) o `npm run dev` (desarrollo). `start.sh` acepta `dev` (por defecto) y `prod`.
@@ -54,21 +55,26 @@ Diseño Bento Grid modular oscuro (estilo GetArtCraft consumiendo los estilos y 
 - **Showcase de Premios Especiales:** Cajas destacadas para premios de marca (ej. *Premio Especial Coca*, *Rey de la Montaña*).
 
 ### 1.2 Página de Fecha Individual (`/fechas/[slug]`)
-> Ruta **dinámica en SSR**: el `slug` se resuelve contra la API en cada request. Si la fecha no existe, la respuesta es `404`.
-1. **Cabecera y Ganadores:** Podio oficial por categoría y botón prominente hacia la tabla completa de resultados de esa fecha.
-2. **Bento de Estadísticas Extremas de la Fecha:**
-   - Tarjeta **"El Más Rápido (Scratch)"**: Nombre, categoría, dorsal y tiempo mínimo (`MIN(finish_elapsed_ms)`).
-   - Tarjeta **"El Más Persistente / Farolito en Meta"**: Nombre, dorsal y tiempo máximo (`MAX(finish_elapsed_ms)`).
-3. **Podio de Equipos de la Fecha:** Los 3 Teams con mayor cantidad de puntos sumados en la jornada.
-4. **Bento de Ruta Interactiva y Descarga GPX (Isla Svelte 5 `client:visible`):**
-   - Botón de descarga directa del archivo `.gpx` alojado en Cloudflare R2.
-   - Mapa interactivo (`MapLibre GL` o `Leaflet` con capa oscura) dibujando `Stage.route_geojson` y marcando la ubicación de los `Checkpoints` (Partida, Intermedios, Meta).
-   - Gráfico interactivo de altimetría: al deslizar el dedo o ratón sobre el perfil de elevación, un indicador se desplaza en tiempo real sobre el trazado del mapa mostrando la ubicación exacta de la subida.
-5. **Bento de Segmentos Strava de la Fecha:**
-   - Lista de segmentos oficiales de la ruta con distancia, pendiente media (`%`) y el Top 10 de tiempos registrados en el día (alimentado por `StravaEffort`).
-6. **Bento de Premios de la Fecha:** Ganadores y descripción de premios especiales de la jornada.
-7. **Collage Fotográfico (Cloudflare R2):**
-   - Galería de alta velocidad con miniaturas optimizadas (`webp`/`avif`) desde el bucket R2 de la fecha, visor modal tipo lightbox y enlace al álbum completo en alta resolución.
+> Ruta **dinámica en SSR**: el `slug` se resuelve contra la API en cada request. Si la fecha no existe, la respuesta es `404`; si el backend no responde, `503`. **La página no contiene ningún dato literal**: todo viene de `GET /api/v1/stages/{slug}/summary` (ver §1.4).
+>
+> **Rediseño del 19 de Octubre de 2026.** Antes la página tenía un espejo hardcodeado de las cuatro fechas (`stagesDb`) que servía de red de seguridad cuando el API fallaba. Eso ocultaba la caída del API (el `uvicorn` llevaba horas sirviendo un modelo viejo sin `title`/`short_name`/`start_location`, la página leía `undefined` y caía al mock) y mostraba cifras distintas de las de la BD (40.9 km en vez de 40.85). El mock se eliminó.
+
+1. **Hero con datos reales:** póster oficial, nombre de la fecha sin el prefijo `Fecha N:`, fecha, punto de partida y hora, **distancia y desnivel por vuelta Y total** (`Stage.distance_km` y `Stage.elevation_gain_m` son **por vuelta**; el total es `× Stage.laps`), estado y sinopsis derivada de los datos. Botones a la tabla de resultados, al ranking acumulado y a la ruta de Strava.
+2. **Navegación de campeonato:** fecha anterior y siguiente (`navigation` del resumen), cuenta regresiva en las fechas con inscripción abierta y badge `[ EN VIVO ]` cuando `Stage.status == LIVE`.
+3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha.
+4. **Podio oficial por categoría** (`StagePodiumGrid`): top-3 de cada categoría con puesto, dorsal, tiempo oficial, puntos y club, enlazados al perfil del corredor y del equipo. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
+5. **Podio de clubes de la fecha** (`StageTeamPodium`): los 3 equipos con más puntos **sumados en esa jornada** (no el acumulado del campeonato), con el número de corredores que puntuaron y su mejor puesto. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
+6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo). Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro.
+7. **Ruta y altimetría** (isla Svelte 5 `RouteMapGpx`, `client:visible`):
+   - **Mapa vectorial SVG** que dibuja la geometría real de `Stage.route_geojson` (500 puntos como máximo), proyectada con la proporción del circuito y con los `Checkpoints` de la fecha marcados y etiquetados (Partida, intermedios, Meta).
+   - **Perfil de altimetría** sincronizado: al mover el cursor, el punto de la traza se desplaza y se muestran el kilómetro, la altitud y la diferencia respecto a la partida.
+   - Botón de descarga del `.gpx`.
+   - **Sin geometría inventada:** si la fecha no tiene trazado, el bloque lo dice. No se usa `MapLibre` ni `Leaflet` (no son dependencias del proyecto; el SVG nativo basta y no carga tiles de terceros).
+8. **Segmentos Strava de la fecha:** distancia, pendiente media, el **KOM** (el `StravaEffort` con `is_kom_qom`), el **Top 5** de tiempos del segmento y el enlace al segmento en Strava.
+9. **Premios de la jornada:** título, patrocinador, descripción del premio y **ganador** resuelto desde `SpecialAward.winner_rider_id`. El logotipo del patrocinador sale de `sponsor_logo_url`.
+10. **Numeración de secciones:** consecutiva y sin huecos. Los bloques que no aplican a una fecha (sin podio, sin equipos, sin Strava, sin premios) se omiten enteros.
+
+**Fuera de alcance (documentado, no implementado):** la galería fotográfica de Cloudflare R2 con lightbox queda pendiente: `Stage.gallery_r2_prefix` es `NULL` en las cuatro fechas y no hay endpoint que la sirva. Requiere primero sembrar las fotos en el bucket.
 
 ### 1.3 Tabla de Posiciones y Acumulado (`/ranking-general` y `/fechas/[slug]/resultados`)
 
@@ -246,20 +252,50 @@ Isla Svelte 5 (`<StandingsTable client:visible />`):- **Selector de Pestaña Pri
      - Columnas: `Puesto`, `Cambio (▲ / ▼ / =)`, `Equipo`, `Puntos Acumulados`, `Oros (1°)` | `Platas (2°)` | `Bronces (3°)`, `Corredores Puntuadores` y `Tiempo Total`.
      - Clic en el nombre del Team navega a su ficha `/equipos/[slug]`.
 
-### 1.4 Perfil Público del Ciclista (`/corredor/[slug]`)
+### 1.4 Endpoint de presentación de una fecha (`GET /api/v1/stages/{slug}/summary`)
+
+> **Añadido el 19 de Octubre de 2026.** La ficha de una fecha necesita muchos
+> agregados que ningún endpoint cubría (cifras de jornada, podio por categoría,
+> podio de equipos, checkpoints). Calcularlos en el servidor evita que la
+> página los recalcule y garantiza que la ficha y la tabla de resultados
+> muestran los mismos números.
+
+**Servicio:** `backend/app/services/stage_summary_service.py` (seis funciones de
+agregado, sin acceso a disco ni a la red) + `backend/app/routers/stages.py`.
+
+| Función | Devuelve |
+| :--- | :--- |
+| `compute_stage_stats(session, stage_id)` | `StageStatsRead`: inscritos, finalizados, no finalizados, puntos, distancia y desnivel **por vuelta y total**, vueltas, tiempo y velocidad del ganador, nº de categorías. |
+| `compute_category_podium(session, stage_id)` | `List[CategoryPodiumRead]`: top-3 por categoría con `PodiumEntryRead` (puesto, dorsal, nombre, slug, club, tiempo formateado, puntos). |
+| `compute_stage_team_podium(session, stage_id)` | `List[TeamPodiumRead]`: los 3 equipos con más puntos **de esa jornada**, con corredores puntuadores y mejor puesto. |
+| `compute_stage_strava(session, stage_id)` | `List[StravaSegmentSummaryRead]`: segmentos con distancia, pendiente, **top 10** de efforts y el `kom`. |
+| `compute_stage_checkpoints(session, stage_id)` | `List[CheckpointRead]`: Partida, intermedios y Meta, en orden. |
+| `compute_stage_awards(session, stage_id)` | `List[AwardSummaryRead]`: premios con patrocinador, descripción y ganador resuelto. |
+
+**Respuesta:** `{stage, stats, podium, teams, strava, checkpoints, awards, extremes, navigation}`.
+`extremes` tiene siempre las claves `scratch` y `farolito`, que pueden ser `null`.
+`navigation` trae `prev_slug`/`prev_name` y `next_slug`/`next_name`.
+Si la fecha no existe: `404` con `{"detail": "Etapa no encontrada."}`.
+
+**Tests:** `backend/tests/test_stage_summary.py` (17 tests) fija las cifras
+oficiales (225 inscripciones / 198 con tiempo / 667 puntos en La Joya) y los
+cinco casos límite: fecha no disputada, circuito por vueltas, extremos
+independientes, club partido por salto de línea y colecciones vacías.
+
+### 1.5 Perfil Público del Ciclista (`/corredor/[slug]`)
 > Ruta **dinámica en SSR**: perfil resuelto contra `GET /api/v1/riders/{slug}`. Sin mock: si el corredor no existe, la respuesta es `404`.
 Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 - Ficha del ciclista: Nombre, DNI enmascarado (`***4567`), Team actual (con enlace a su equipo o indicador "Corredor Libre"), Categoría y Puesto en el Ranking General.
 - Historial en las 4 fechas: Puesto en cada carrera, tiempo oficial en meta y en puntos intermedios, dorsal utilizado en cada fecha y puntos sumados.
 - Tiempos en Segmentos de Strava asociados al corredor.
 
-### 1.5 Perfil Público del Equipo (`/equipos/[slug]`)
+### 1.6 Perfil Público del Equipo (`/equipos/[slug]`)
 > Ruta **dinámica en SSR**: perfil resuelto contra `GET /api/v1/teams/{slug}`. Sin mock: si el equipo no existe, la respuesta es `404`.
 - Cabecera del Team: Nombre oficial, logo (Cloudflare R2), descripción y puesto en la Copa de Equipos.
 - Estadísticas del Team: Puntos acumulados, total de victorias de categoría (medallas), cantidad de corredores activos.
 - Plantilla de Corredores: Listado de todos los ciclistas que corrieron representando al Team en cualquiera de las fechas, con su categoría y los puntos aportados al equipo.
 
-### 1.6 Inscripciones y Buzón de Reclamos (`/inscripciones` y `/reclamos`)
+### 1.7 Inscripciones y Buzón de Reclamos (`/inscripciones` y `/reclamos`)
 - **Pre-inscripciones (`/inscripciones`):**
   - Formulario público para la fecha activa:
     - `DNI`: Campo obligatorio con validación estricta (8 dígitos para DNI peruano o formato de extranjería).
