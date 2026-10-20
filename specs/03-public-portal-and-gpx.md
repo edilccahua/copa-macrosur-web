@@ -174,14 +174,35 @@ Diseño Bento Grid modular oscuro (estilo GetArtCraft consumiendo los estilos y 
 4. **Leaderboard de podio por categoría** (`StageLeaderboard`): una fila por categoría con el **recuadro del código corto** (`EBK`, `ELI`, `MSA`…), el nombre de la categoría y los tres ganadores con su club. **Sin dorsal, sin tiempo y sin puntos**: el detalle completo está en `/fechas/{slug}/resultados`. El acento de cada categoría es el de su grupo (`PRO` / `NORMAL` / `E-MTB`); al pasar el ratón, el recuadro invierte sus colores. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
 5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales, índice + categoría, nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce). Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
 6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo). Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro.
-7. **Perfil de etapa** (isla Svelte 5 `RouteMapGpx`, `client:visible`): silueta de la geometría **real** de `Stage.route_geojson`, con **líneas de msnm**, los **puertos** de la ruta con su categoría (HC/1/2/3/4) y su nombre, los **checkpoints** etiquetados (Partida, intermedios, Meta) y el eje de kilometraje. Un cursor sincronizado muestra el kilómetro y la altitud.
-   - **La escala vertical se DECLARA** (`ESCALA VERTICAL ×28`): un perfil de etapa estira la vertical, y un lector de mapas necesita saber cuánto. Se calcula de la geometría, no se elige a ojo.
-   - El **desnivel** que se muestra es el **acumulado real** (359 m en La Joya), no la diferencia entre el máximo y el mínimo (648 m): un vaivén no es un desnivel.
-   - Las pendientes se miden sobre la altitud **suavizada** (media móvil de 3 puntos): la geometría se guarda simplificada a 500 puntos y esa simplificación inflaba un tramo de 70 m hasta el 53% de pendiente.
-   - Si la geometría es de **una vuelta** de un circuito por vueltas, se avisa debajo del gráfico.
-8. **Segmentos Strava de la fecha:** los segmentos de la **ruta oficial** de Strava (25 en total entre las tres fechas), ordenados por tipo (subidas, bajadas, llanos) y dentro de cada grupo por longitud. Cada uno con su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava. Encima, dos tarjetas: el **King of the Mountain** (la subida más empinada) y la **Queen of the Mountain** (la bajada más empinada), con el corredor más rápido de cada tramo.
-9. **Premios de la jornada:** título, patrocinador, descripción del premio y **ganador** resuelto desde `SpecialAward.winner_rider_id`. El logotipo del patrocinador sale de `sponsor_logo_url`.
-10. **Numeración de secciones:** consecutiva y sin huecos. Los bloques que no aplican a una fecha (sin podio, sin equipos, sin Strava, sin premios) se omiten enteros.
+7. **Perfil de etapa** (`StageProfile.astro` + `backend/scripts/build_stage_profile.py`):
+   - El perfil **no se dibuja en el navegador**: lo genera un script de Python
+     como SVG con la tipografía del sistema (Geist Mono para las cifras, Archivo
+     para los rótulos) y se sirve desde `/profiles/{slug}.svg`. Lleva la
+     silueta real de `Stage.route_geojson`, la retícula de altitudes en msnm, los
+     **puertos** con su categoría (HC/1/2/3/4) y su nombre, los **checkpoints**
+     etiquetados y la banda de kilometraje.
+   - **La escala vertical se DECLARA** (`ESCALA VERTICAL ×19`): un perfil de
+     etapa estira la vertical, y un lector de mapas necesita saber cuánto. Se
+     calcula de la geometría, no se elige a ojo.
+   - El **desnivel** que se muestra es el **acumulado real** (359 m en La Joya),
+     no la diferencia entre el máximo y el mínimo (648 m): un vaivén no es un
+     desnivel.
+   - Las pendientes se miden sobre la altitud **suavizada** (media móvil de 3
+     puntos): la geometría se guarda simplificada a 500 puntos y esa
+     simplificación inflaba un tramo de 70 m hasta el 53% de pendiente.
+   - Si la geometría es de **una vuelta** de un circuito por vueltas, se avisa
+     debajo del gráfico.
+   - Al lado van las cifras de la jornada y la lista de puertos e hitos.
+8. **Segmentos Strava de la fecha:** los segmentos de la **ruta oficial** de Strava (25 en total entre las tres fechas), con tres reglas de selección (`backend/app/services/strava_selection.py`):
+   1. **Filtro por fecha de medición.** Strava lista en un mismo segmento los intentos de muchas fechas (2019, 2023, 2024 y el de la carrera). Solo cuenta el intento medido en la fecha de la carrera (±1 día). La fecha del intento se guarda en `strava_efforts.measured_on`.
+   2. **Cruce con los pilotos.** Solo cuenta el intento de un corredor inscrito en esa fecha. El cruce usa `strava_athlete_id` (fiable) y, como respaldo, el nombre normalizado.
+   3. **Selección.** Se descarta el segmento que cubre ≥80% de la etapa —**es la ruta, no un tramo**— y se muestran los **cinco** más relevantes: primero las subidas y bajadas más empinadas, luego los más largos.
+
+   Cada segmento muestra su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava. Encima, dos tarjetas: el **King of the Mountain** (la subida más empinada) y la **Queen of the Mountain** (la bajada más empinada), con el corredor más rápido de cada tramo.
+9. **La E-MTB no compite por el título de la fecha.** El E-BIKE OPEN conserva su propio leaderboard de categoría, pero un e-bike no puede ser el scratch ni el KOM/QOM de la jornada.
+10. **El ganador es el de mayor VELOCIDAD**, no el de menor tiempo: en un circuito por vueltas no todos completan lo mismo, y el tiempo más bajo puede ser el de quien dio menos vueltas. En Z Xtreme el scratch pasa de SERGIO PINEDA (2 vueltas, 23.7 km/h) a RONALD LUZA (3 vueltas, 26.7 km/h).
+11. **Premios de la jornada:** título, patrocinador, descripción del premio y **ganador** resuelto desde `SpecialAward.winner_rider_id`. El logotipo del patrocinador sale de `sponsor_logo_url`.
+12. **Numeración de secciones:** consecutiva y sin huecos. Los bloques que no aplican a una fecha (sin podio, sin equipos, sin Strava, sin premios) se omiten enteros.
 
 **Fuera de alcance (documentado, no implementado):** la galería fotográfica de Cloudflare R2 con lightbox queda pendiente: `Stage.gallery_r2_prefix` es `NULL` en las cuatro fechas y no hay endpoint que la sirva. Requiere primero sembrar las fotos en el bucket.
 
@@ -453,8 +474,10 @@ Si la fecha no existe: `404` con `{"detail": "Etapa no encontrada."}`.
 
 **Datos de mapa y de puertos:**
 - `StravaSegment` lleva `location`, `elevation_min_m`, `elevation_max_m`, `kind` y `category`. Los segmentos son los de la **ruta oficial** de Strava de cada fecha (25 en total entre las tres fechas) y se sincronizan con `backend/scripts/sync_all_strava_segments.py` (CDP sobre la sesión Strava del administrador; nunca en la nube).
+- `StravaEffort` lleva **`measured_on`** (la fecha del intento) y **`strava_athlete_id`**. Sin la fecha no se puede distinguir un intento de la carrera de otro de 2019: Strava lista en un mismo segmento los de muchas fechas, todos juntos.
 - `RouteSummit` guarda las cimas de la ruta con su nombre real. El nombre sale del **reverse-geocode de OpenStreetMap (Nominatim)** sobre la coordenada de la cima y se resuelve **al sembrar**, nunca en cada request: la red no está en el camino de una página.
 - La categoría de puerto sigue las reglas del Tour: **HC** (≥1000 m y ≥8%), **1** (≥700 m y ≥6%), **2** (≥400 m y ≥4%), **3** (≥200 m y ≥3%), **4** (≥100 m y ≥2%).
+- El perfil de etapa se **genera como imagen**: `backend/scripts/build_stage_profile.py` escribe `/profiles/{slug}.svg`. Se regenera cuando cambia la geometría o las cimas.
 
 **Tests:** `backend/tests/test_route_profile.py` (8 tests) y `backend/tests/test_stage_summary.py` (32 tests) fijan las cifras
 oficiales (225 inscripciones / 198 con tiempo / 667 puntos en La Joya), el
