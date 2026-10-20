@@ -11,7 +11,7 @@ from backend.app.core.db import init_db, async_session_factory
 from backend.app.models.entities import (
     Category, Stage, StageStatusEnum, StartWave, Checkpoint,
     Team, Rider, StageEntry, RaceStatusEnum, PaymentStatusEnum,
-    SpecialAward, StravaSegment, StravaEffort, ExtraEvent, RouteSummit
+    SpecialAward, StravaSegment, StravaEffort, ExtraEvent, RouteSummit, PrizeTier
 )
 from backend.app.services.excel_service import (
     import_riders_from_excel, resolve_category, resolve_or_create_team,
@@ -32,10 +32,10 @@ CATEGORIES_DEF = [
     {"name": "MASTER B", "short_code": "MSB", "aliases": ["MASTER B", "MASTER B (40-49 AÑOS)"]},
     {"name": "MASTER C", "short_code": "MSC", "aliases": ["MASTER C", "MASTER C (50-59 AÑOS)"]},
     {"name": "MASTER D", "short_code": "MSD", "aliases": ["MASTER D", "MASTER D (60 A MAS AÑOS)", "MASTER D (60 + AÑOS)"]},
-    {"name": "TURISMO OPEN VARONES", "short_code": "TOV", "aliases": ["TURISMO OPEN", "TURISMO VARONES", "TURISMO OPEN VARONES", "TURISMO OPEN VARON"]},
-    {"name": "TURISMO MASTER VARONES", "short_code": "TMV", "aliases": ["TURISMO MASTER", "TURISMO MASTER VARONES", "TURISMO MASTER VARON"]},
+    {"name": "TURISMO OPEN VARONES", "short_code": "TOV", "aliases": ["TURISMO OPEN", "TURISMO VARONES", "TURISMO OPEN VARONES", "TURISMO OPEN VARON", "TURISMO OPEN VARON (18-34)"]},
+    {"name": "TURISMO MASTER VARONES", "short_code": "TMV", "aliases": ["TURISMO MASTER", "TURISMO MASTER VARONES", "TURISMO MASTER VARON", "TURISMO MASTER VARON(35+)"]},
     {"name": "OPEN DAMAS", "short_code": "OPD", "aliases": ["OPEN DAMAS", "OPEN DAMAS (18-34 AÑOS", "OPEN DAMAS (18-34 AÑOS)", "DAMAS OPEN"]},
-    {"name": "DAMAS MASTER", "short_code": "DMM", "aliases": ["DAMAS MASTER", "DAMAS MASTER (35 A MAS)"]},
+    {"name": "DAMAS MASTER", "short_code": "DMM", "aliases": ["DAMAS MASTER", "DAMAS MASTER (35 A MAS)", "MASTER DAMAS (35+)"]},
     {"name": "JUVENILES 15 - 17", "short_code": "JUV", "aliases": ["JUVENILES", "JUVENILES 15 - 17", "JUVENIL"]},
 ]
 
@@ -119,13 +119,16 @@ RACE_CONFIG: List[Dict[str, Any]] = [
         "slug": "quequena-xtreme",
         "date": datetime.date(2026, 12, 13),
         "status": StageStatusEnum.UPCOMING,
-        "start_location": "Plaza Principal de Quequeña",
+        # Sin ruta publicada no se afirma nada: la fecha y el nombre son lo
+        # único que dicen los pósters oficiales. Antes la BD traía 45 km y
+        # +950 m, inventados en el plan, y la página los mostraba como dato.
+        "start_location": None,
         "start_time": "08:00 AM",
         "poster_url": "/images/posters/f4-quequena-xtreme-card.webp",
         "judge_pin": "***REMOVED-JUDGE-PIN-F4***",
         "laps": 1,
-        "distance_km": 45.0,
-        "elevation_gain_m": 950,
+        "distance_km": None,
+        "elevation_gain_m": None,
         "excel": [],
         "pdf": [],
         "gpx": [],
@@ -238,10 +241,19 @@ async def upsert_stage(session: AsyncSession, cfg: Dict[str, Any]) -> Stage:
 
 
 async def seed_checkpoints_and_waves(
-    session: AsyncSession, stage: Stage, cat_map: Dict[str, Category], distance_km: float
+    session: AsyncSession, stage: Stage, cat_map: Dict[str, Category], distance_km: Optional[float]
 ) -> None:
+    # Los checkpoints se inventan con la distancia: sin ruta no hay control
+    # intermedio que colocar. Antes la Fecha 4 (que no tiene GPX) recibió un
+    # "Control Intermedio Cumbre" a 22.5 km y una meta a 45 km: puros inventos.
     stmt_cp = select(Checkpoint).where(Checkpoint.stage_id == stage.id)
-    if not (await session.exec(stmt_cp)).first():
+    existing_cp = (await session.exec(stmt_cp)).all()
+    if not distance_km:
+        # Sin ruta no hay checkpoints: los que hubiera (inventados con una
+        # distancia que no existe) se borran.
+        for cp in existing_cp:
+            await session.delete(cp)
+    elif not existing_cp:
         session.add_all([
             Checkpoint(stage_id=stage.id, name="Partida", order_index=0, distance_from_start_km=0.0, is_finish_line=False),
             Checkpoint(stage_id=stage.id, name="Control Intermedio Cumbre", order_index=1, distance_from_start_km=distance_km / 2, is_finish_line=False),
@@ -634,6 +646,20 @@ async def load_results(
 
         results = extract_race_results_from_pdf(pdf_path)
         print(f"   -> {len(results)} tiempos oficiales extraídos del PDF")
+
+        # Lo que PUBLICA el organizador, para poder contrastarlo con lo que
+        # recalcula el motor. En Z Xtreme el PDF no imprime el 6º lugar de
+        # OPEN DAMAS: los puntos publicados (554) no coinciden con los que
+        # reparte el motor al rellenar el hueco (555). La ficha muestra las
+        # dos cifras y explica la diferencia (specs/01 §3.1).
+        stage.official_results = len(results)
+        stage.official_points = sum(int(r.get("points") or 0) for r in results)
+        session.add(stage)
+        await session.commit()
+        print(
+            f"   -> PDF oficial: {stage.official_results} resultados, "
+            f"{stage.official_points} puntos publicados"
+        )
         matched, unmatched, bibs_applied = await cross_pdf_results(session, stage, results)
         print(f"   -> {matched} inscritos cruzados con tiempo")
         if bibs_applied:
@@ -668,23 +694,64 @@ async def load_results(
 
 
 async def seed_special_awards(session: AsyncSession, stage_1_id: int) -> None:
-    stmt = select(SpecialAward).where(SpecialAward.stage_id == stage_1_id)
+    """Los premios especiales de la Fecha 1.
+
+    Montos en DÓLARES, como el resto de la escala de premios (decisión del
+    organizador, 20-Oct-2026). Antes estaban en soles y convivían con una
+    escala en dólares: dos monedas en la misma página.
+
+    Se hace UPSERT: si el premio ya existe, se actualizan sus textos (para
+    que un cambio de monto no requiera borrar la fila).
+    """
+    definitions = [
+        {
+            "title": "Premio Especial Coca",
+            "sponsor_name": "Tradición Andina",
+            "sponsor_logo_url": "/images/premio_coca.jpg",
+            "prize_description": "USD 100 + Trofeo Conmemorativo Coca de Bronce",
+            "metric_value": "Premio a la Resistencia y Espíritu Deportivo",
+        },
+        {
+            "title": "Rey de la Montaña (KOM)",
+            "sponsor_name": "Kuspide Performance",
+            "sponsor_logo_url": "/images/rey_montana.jpg",
+            "prize_description": "USD 150 + Maillot de Lunares de Líder Escalador",
+            "metric_value": "Mejor tiempo en el sector de ascenso Cumbre",
+        },
+    ]
+    print("Sembrando premios especiales...")
+    for definition in definitions:
+        stmt = select(SpecialAward).where(
+            SpecialAward.stage_id == stage_1_id,
+            SpecialAward.title == definition["title"],
+        )
+        award = (await session.exec(stmt)).first()
+        if award is None:
+            session.add(SpecialAward(stage_id=stage_1_id, **definition))
+            continue
+        for field, value in definition.items():
+            setattr(award, field, value)
+        session.add(award)
+    await session.commit()
+
+
+async def seed_prize_tiers(session: AsyncSession) -> None:
+    """La escala de premios en dólares, por categoría y por ámbito.
+
+    Decidida por el organizador (20-Oct-2026). Vive en la BD y no en el
+    frontend: la página de premios la lee de la API.
+    """
+    stmt = select(PrizeTier)
     if (await session.exec(stmt)).first():
         return
-    print("Sembrando premios especiales...")
+    print("Sembrando la escala de premios...")
     session.add_all([
-        SpecialAward(
-            stage_id=stage_1_id, title="Premio Especial Coca", sponsor_name="Tradición Andina",
-            sponsor_logo_url="/images/premio_coca.jpg",
-            prize_description="S/ 300 + Trofeo Conmemorativo Coca de Bronce",
-            metric_value="Premio a la Resistencia y Espíritu Deportivo",
-        ),
-        SpecialAward(
-            stage_id=stage_1_id, title="Rey de la Montaña (KOM)", sponsor_name="Kúspide Performance",
-            sponsor_logo_url="/images/rey_montana.jpg",
-            prize_description="S/ 500 + Maillot de Lunares de Líder Escalador",
-            metric_value="Mejor tiempo en el sector de ascenso Cumbre",
-        ),
+        PrizeTier(scope="FECHA", position=1, amount_usd=70, label="1er puesto de cada categoría", currency="USD"),
+        PrizeTier(scope="FECHA", position=2, amount_usd=50, label="2do puesto de cada categoría", currency="USD"),
+        PrizeTier(scope="FECHA", position=3, amount_usd=30, label="3er puesto de cada categoría", currency="USD"),
+        PrizeTier(scope="ACUMULADO", position=1, amount_usd=300, label="Campeón de cada categoría", currency="USD"),
+        PrizeTier(scope="ACUMULADO", position=2, amount_usd=200, label="Subcampeón de cada categoría", currency="USD"),
+        PrizeTier(scope="ACUMULADO", position=3, amount_usd=100, label="Tercer puesto de cada categoría", currency="USD"),
     ])
     await session.commit()
 
@@ -875,6 +942,7 @@ async def seed_data() -> None:
             await load_results(session, stage, cfg, cat_map)
 
         await seed_special_awards(session, stages[1].id)
+        await seed_prize_tiers(session)
         await seed_strava(session, stages[1].id, stages[2].id, stages[3].id)
         await seed_extra_events(session)
 

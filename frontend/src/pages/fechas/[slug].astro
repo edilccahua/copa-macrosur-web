@@ -47,19 +47,22 @@ const displayName = String(stage?.title || stage?.name || '').replace(
 
 // La distancia y el desnivel se leen de las dos medidas de la BD: por vuelta
 // Y total. Mezclarlas fue el bug que mostraba +840 m en un sitio y +280 m en
-// otro.
-const distLabel =
-  stats && stats.laps > 1
-    ? `${stats.distance_km_per_lap} KM × ${stats.laps} VUELTAS = ${stats.distance_km_total} KM`
-    : stats
-      ? `${stats.distance_km_per_lap} KM`
-      : '';
-const elevLabel =
-  stats && stats.laps > 1
-    ? `+${stats.elevation_m_per_lap} M/VUELTA · +${stats.elevation_m_total} M TOTAL`
-    : stats
-      ? `+${stats.elevation_m_per_lap} M`
-      : '';
+// otro. Una fecha SIN ruta (la Fecha 4) no tiene cifras: se dice "por
+// confirmar" en vez de inventar un 45 km.
+const distLabel = !stats
+  ? ''
+  : stats.distance_km_per_lap == null
+    ? 'POR CONFIRMAR'
+    : stats.laps > 1
+      ? `${stats.distance_km_per_lap} KM × ${stats.laps} VUELTAS = ${stats.distance_km_total} KM`
+      : `${stats.distance_km_per_lap} KM`;
+const elevLabel = !stats
+  ? ''
+  : stats.elevation_m_per_lap == null
+    ? 'POR CONFIRMAR'
+    : stats.laps > 1
+      ? `+${stats.elevation_m_per_lap} M/VUELTA · +${stats.elevation_m_total} M TOTAL`
+      : `+${stats.elevation_m_per_lap} M`;
 
 const statusLabel =
   stage?.status === 'FINISHED'
@@ -71,11 +74,20 @@ const statusLabel =
         : 'Próximamente';
 
 const synopsis =
-  stats && stats.laps > 1
-    ? `Circuito de ${stats.distance_km_per_lap} km por vuelta y +${stats.elevation_m_per_lap} m de desnivel por vuelta: ${stats.laps} vueltas para un total de ${stats.distance_km_total} km y +${stats.elevation_m_total} m.`
-    : stats && stats.entries_total > 0
-      ? `Recorrido de ${stats.distance_km_per_lap} km con +${stats.elevation_m_per_lap} m de desnivel positivo acumulado.`
-      : 'Recorrido de MTB XC por confirmar.';
+  stats && stats.distance_km_per_lap == null
+    ? 'Recorrido de MTB XC por confirmar.'
+    : stats && stats.laps > 1
+      ? `Circuito de ${stats.distance_km_per_lap} km por vuelta y +${stats.elevation_m_per_lap} m de desnivel por vuelta: ${stats.laps} vueltas para un total de ${stats.distance_km_total} km y +${stats.elevation_m_total} m.`
+      : stats && stats.distance_km_per_lap != null
+        ? `Recorrido de ${stats.distance_km_per_lap} km con +${stats.elevation_m_per_lap} m de desnivel positivo acumulado.`
+        : 'Recorrido de MTB XC por confirmar.';
+
+/**
+ * Lo que PUBLICA el PDF oficial de resultados frente a lo que recalcula el
+ * motor (specs/01 §3.1) se explica en el bloque de cifras de la jornada
+ * (`StageStatsRow`): normalmente coinciden; en Z Xtreme no, porque el PDF no
+ * imprime el 6º lugar de OPEN DAMAS.
+ */
 
 const posterCard = stage?.poster_url ?? '';
 const posterFull = posterCard.replace('-card.webp', '-full.webp');
@@ -91,6 +103,46 @@ const segments = [...(summary?.strava ?? [])].sort((a, b) => {
   if (byKind !== 0) return byKind;
   return b.distance_km - a.distance_km;
 });
+
+/**
+ * Los cuatro títulos de montaña de la fecha, en el orden en que se muestran.
+ * El KOM y el QOM son la misma subida: el mejor varón y la mejor dama. Los
+ * Kamikaze son el mejor varón y la mejor dama en el descenso de la jornada.
+ */
+const mountainTitles = [
+  {
+    key: 'kom',
+    label: 'KING OF THE MOUNTAIN',
+    scope: 'VARÓN',
+    accent: 'scope-pro',
+    icon: 'mountain' as const,
+    data: summary?.kom ?? null,
+  },
+  {
+    key: 'qom',
+    label: 'QUEEN OF THE MOUNTAIN',
+    scope: 'DAMAS',
+    accent: 'scope-team',
+    icon: 'mountain' as const,
+    data: summary?.qom ?? null,
+  },
+  {
+    key: 'kamikaze-male',
+    label: 'EL KAMIKAZE',
+    scope: 'VARÓN',
+    accent: 'scope-pro',
+    icon: 'descent' as const,
+    data: summary?.kamikaze_male ?? null,
+  },
+  {
+    key: 'kamikaze-female',
+    label: 'LA KAMIKAZE',
+    scope: 'DAMAS',
+    accent: 'scope-team',
+    icon: 'descent' as const,
+    data: summary?.kamikaze_female ?? null,
+  },
+].filter((title) => title.data !== null);
 
 /**
  * Numeración de las secciones: consecutiva y sin huecos, aunque una fecha no
@@ -120,8 +172,13 @@ const sections: { key: string; label: string; present: boolean }[] = [
     present: Boolean(summary?.route_profile),
   },
   {
+    key: 'titles',
+    label: 'TÍTULOS DE MONTAÑA (KOM / QOM)',
+    present: mountainTitles.length > 0,
+  },
+  {
     key: 'strava',
-    label: 'SEGMENTOS OFICIALES STRAVA (KOM / QOM)',
+    label: 'SEGMENTOS OFICIALES STRAVA',
     present: segments.length > 0,
   },
   {
@@ -139,7 +196,7 @@ function sectionNumber(key: string): string | null {
 }
 ---
 
-<Showcase title={`${displayName} — Kúspide MTB`} ghostWord={stage ? `FECHA ${stage.stage_number}` : undefined}>
+<Showcase title={`${displayName} — Copa MacroSur MTB`} ghostWord={stage ? `FECHA ${stage.stage_number}` : undefined}>
   <SiteHeader />
 
   <main class="container stage-page">
@@ -265,7 +322,7 @@ function sectionNumber(key: string): string | null {
                 <div class="hero-buttons">
                   {stage.status === 'FINISHED' ? (
                     <a
-                      href={`/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=${stage.stage_number}`}
+                      href={`/ranking-general?modo=fecha&tabla=PRO&fecha=${stage.stage_number}`}
                       class="btn btn--solid"
                     >
                       Ver Resultados →
@@ -393,56 +450,48 @@ function sectionNumber(key: string): string | null {
             </section>
           )}
 
+          {/* ── Títulos de montaña (KOM / QOM / Kamikaze) ─────────────── */}
+          {mountainTitles.length > 0 && (
+            <section class="titles-section">
+              <SectionLabel number={sectionNumber('titles')!} label="TÍTULOS DE MONTAÑA (KOM / QOM)" />
+
+              <p class="titles-note">
+                El <strong>KOM</strong> y el <strong>QOM</strong> premian al mejor escalador y a la mejor
+                escaladora en la subida más exigente de la jornada. El <strong>Kamikaze</strong> premia a
+                quien baja más rápido el descenso más pronunciado.
+              </p>
+
+              <div class="titles">
+                {mountainTitles.map((title) => (
+                  <article class={`title title--${title.key} ${title.accent}`}>
+                    <div class="title__label font-mono">
+                      <Icon name={title.icon} size={13} class="title__icon" />
+                      {title.label}
+                      <span class="title__scope">{title.scope}</span>
+                    </div>
+                    <div class="title__name">{title.data!.athlete_name}</div>
+                    <div class="title__segment">{title.data!.segment_name}</div>
+                    <div class="title__meta font-mono">
+                      <Icon name="clock" size={12} />
+                      {title.data!.formatted_time} // {title.data!.average_grade}% //{' '}
+                      {title.data!.distance_km} KM
+                    </div>
+                    {title.data!.location && (
+                      <div class="title__place font-mono">
+                        <Icon name="map" size={12} />
+                        {title.data!.location}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* ── Segmentos Strava ─────────────────────────────────────── */}
           {segments.length > 0 && (
             <section class="strava-section">
-              <SectionLabel number={sectionNumber('strava')!} label="SEGMENTOS OFICIALES STRAVA (KOM / QOM)" />
-
-              {/* Los dos títulos de montaña de la fecha */}
-              <div class="titles">
-                {summary.kom && (
-                  <article class="title title--kom">
-                    <div class="title__label font-mono">
-                      <Icon name="mountain" size={13} class="title__icon" />
-                      KING OF THE MOUNTAIN
-                    </div>
-                    <div class="title__name">{summary.kom.athlete_name}</div>
-                    <div class="title__segment">{summary.kom.segment_name}</div>
-                    <div class="title__meta font-mono">
-                      <Icon name="clock" size={12} />
-                      {summary.kom.formatted_time} // {summary.kom.average_grade}% //{' '}
-                      {summary.kom.distance_km} KM
-                    </div>
-                    {summary.kom.location && (
-                      <div class="title__place font-mono">
-                        <Icon name="map" size={12} />
-                        {summary.kom.location}
-                      </div>
-                    )}
-                  </article>
-                )}
-                {summary.qom && (
-                  <article class="title title--qom">
-                    <div class="title__label font-mono">
-                      <Icon name="descent" size={13} class="title__icon" />
-                      QUEEN OF THE MOUNTAIN
-                    </div>
-                    <div class="title__name">{summary.qom.athlete_name}</div>
-                    <div class="title__segment">{summary.qom.segment_name}</div>
-                    <div class="title__meta font-mono">
-                      <Icon name="clock" size={12} />
-                      {summary.qom.formatted_time} // {summary.qom.average_grade}% //{' '}
-                      {summary.qom.distance_km} KM
-                    </div>
-                    {summary.qom.location && (
-                      <div class="title__place font-mono">
-                        <Icon name="map" size={12} />
-                        {summary.qom.location}
-                      </div>
-                    )}
-                  </article>
-                )}
-              </div>
+              <SectionLabel number={sectionNumber('strava')!} label="SEGMENTOS OFICIALES STRAVA" />
 
               <div class="strava-grid">
                 {segments.map((seg) => (
@@ -874,37 +923,53 @@ function sectionNumber(key: string): string | null {
   }
 
   /* ── Títulos de montaña ──────────────────────────────────────────── */
+  /* El color del título distingue el género: azul para varones, rosa para
+     damas (las clases `scope-pro` / `scope-team` ya definen los tokens del
+     ranking). El icono y la etiqueta distinguen subida de descenso. */
+  .titles-section {
+    margin-top: 2rem;
+  }
+
+  .titles-note {
+    max-width: 68ch;
+    margin-top: 0.75rem;
+    font-size: var(--text-sm);
+    line-height: 1.65;
+    color: var(--muted);
+  }
+
+  .titles-note strong {
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
+
   .titles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
     gap: 1rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
+    margin-top: 1.25rem;
   }
 
   .title {
     padding: 1.25rem 1.5rem;
     border: var(--hairline) solid var(--line);
     background: var(--bg-raised);
-    box-shadow: inset 3px 0 0 0 var(--line-strong);
+    box-shadow: inset 3px 0 0 0 var(--scope, var(--line-strong));
   }
 
-  .title--kom {
-    box-shadow: inset 3px 0 0 0 var(--podium-1, #a97a12);
-  }
-
-  .title--qom {
-    box-shadow: inset 3px 0 0 0 var(--podium-2, #6f7784);
+  .title--kamikaze-male,
+  .title--kamikaze-female {
+    border-style: dashed;
   }
 
   .title__label {
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    font-size: 0.625rem;
-    letter-spacing: 0.14em;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--faint);
+    color: var(--scope-ink, var(--faint));
     margin-bottom: 0.5rem;
   }
 
@@ -912,12 +977,14 @@ function sectionNumber(key: string): string | null {
     flex: 0 0 auto;
   }
 
-  .title--kom .title__label {
-    color: var(--podium-1, #a97a12);
-  }
-
-  .title--qom .title__label {
-    color: var(--podium-2, #6f7784);
+  .title__scope {
+    margin-left: auto;
+    padding: 0.125rem 0.375rem;
+    border: var(--hairline) solid currentColor;
+    font-size: 0.5625rem;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    opacity: 0.8;
   }
 
   .title__name {

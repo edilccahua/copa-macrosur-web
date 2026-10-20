@@ -2,18 +2,49 @@
 /**
  * premios.astro — Página de premios del campeonato.
  *
- * En blanco por ahora (decisión del organizador, 20-Oct-2026): la estructura
- * está lista para llenarse con los `SpecialAward` de la base de datos (hoy
- * hay 2 registrados) en cuanto se definan.
+ * La ESCALA de premios sale de la BD (`prize_tiers`, en dólares): por
+ * categoría y por ámbito —por fecha 70/50/30 y acumulada 300/200/100—. No
+ * está escrita a mano en la página: si el organizador cambia un monto, se
+ * cambia en un sitio.
+ *
+ * Los PREMIOS ESPECIALES (Premio Coca y Rey de la Montaña) salen de
+ * `special_awards`, en la base de datos.
  */
 import Showcase from '../layouts/Showcase.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
+import { API_V1, getPrizeTiers, type PrizeTier } from '../lib/api';
+
+/** La escala de premios, leída de la API. */
+const tiers: PrizeTier[] = await getPrizeTiers();
+const porFecha = tiers.filter((t) => t.scope === 'FECHA').sort((a, b) => a.position - b.position);
+const acumulado = tiers
+  .filter((t) => t.scope === 'ACUMULADO')
+  .sort((a, b) => a.position - b.position);
+
+/** Los premios especiales de la Fecha 1, con su ganador si ya se conoce. */
+let awards: {
+  title: string;
+  sponsor_name?: string | null;
+  sponsor_logo_url?: string | null;
+  prize_description?: string | null;
+  metric_value?: string | null;
+  winner_name?: string | null;
+}[] = [];
+try {
+  const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
+  if (res.ok) {
+    const data = await res.json();
+    awards = Array.isArray(data.awards) ? data.awards : [];
+  }
+} catch (e) {
+  awards = [];
+}
 ---
 
 <Showcase
-  title="Premios — Kúspide MTB"
+  title="Premios — Copa MacroSur MTB"
   sections={[{ label: 'Premios', id: 'premios' }]}
 >
   <SiteHeader />
@@ -23,22 +54,112 @@ import SectionLabel from '../components/bento/SectionLabel.astro';
       <div class="page-tag font-mono" data-draw-eyebrow>[ KÚSPIDE XTREME SPORTS // PREMIOS ]</div>
       <h1 class="page-title">PREMIOS</h1>
       <p class="page-desc">
-        Premios oficiales de la Copa MacroSur MTB 2026: montaña, por etapa y
-        distintivos de la organización. Los ganadores de cada jornada se
-        anuncian al cerrar la fecha.
+        Cada categoría reparte premio por separado: el de la jornada y el del
+        campeonato. Los ganadores de cada fecha se anuncian al cerrar la jornada.
       </p>
     </header>
 
     <section class="premios-section">
-      <SectionLabel number="01" label="PREMIOS DE LA EDICIÓN 2026" kicker="COPA MACROSUR MTB" />
+      <SectionLabel number="01" label="PREMIO POR CATEGORÍA, POR FECHA" kicker="EN DÓLARES" />
 
-      <div class="empty-state" data-reveal>
-        <div class="empty-state__label font-mono">[ EN PREPARACIÓN ]</div>
-        <p class="empty-state__text">
-          Los premios de esta edición se anuncian próximamente. Vuelve pronto.
-        </p>
-      </div>
+      {
+        porFecha.length > 0 ? (
+          <table class="tier-table">
+            <thead>
+              <tr>
+                <th class="font-mono">PUESTO</th>
+                <th class="font-mono">CATEGORÍA</th>
+                <th class="font-mono">PREMIO</th>
+              </tr>
+            </thead>
+            <tbody>
+              {porFecha.map((tier) => (
+                <tr>
+                  <td class="tier-table__pos font-mono">
+                    {tier.position}º
+                  </td>
+                  <td>{tier.label}</td>
+                  <td class="tier-table__amount font-mono">
+                    {tier.currency} {tier.amount_usd}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div class="empty-state" data-reveal>
+            <div class="empty-state__label font-mono">[ EN PREPARACIÓN ]</div>
+            <p class="empty-state__text">
+              Los premios de esta edición se anuncian próximamente. Vuelve pronto.
+            </p>
+          </div>
+        )
+      }
     </section>
+
+    <section class="premios-section">
+      <SectionLabel number="02" label="PREMIO POR CATEGORÍA, DEL CAMPEONATO" kicker="EN DÓLARES" />
+
+      {
+        acumulado.length > 0 ? (
+          <table class="tier-table">
+            <thead>
+              <tr>
+                <th class="font-mono">PUESTO</th>
+                <th class="font-mono">CATEGORÍA</th>
+                <th class="font-mono">PREMIO</th>
+              </tr>
+            </thead>
+            <tbody>
+              {acumulado.map((tier) => (
+                <tr>
+                  <td class="tier-table__pos font-mono">
+                    {tier.position}º
+                  </td>
+                  <td>{tier.label}</td>
+                  <td class="tier-table__amount font-mono">
+                    {tier.currency} {tier.amount_usd}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div class="empty-state" data-reveal>
+            <div class="empty-state__label font-mono">[ EN PREPARACIÓN ]</div>
+            <p class="empty-state__text">Los premios acumulados se anuncian pronto.</p>
+          </div>
+        )
+      }
+    </section>
+
+    {
+      awards.length > 0 && (
+        <section class="premios-section">
+          <SectionLabel number="03" label="PREMIOS ESPECIALES" kicker="FECHA 1" />
+
+          <ul class="awards">
+            {awards.map((award) => (
+              <li class="award">
+                {award.sponsor_logo_url && (
+                  <img class="award__logo" src={award.sponsor_logo_url} alt="" loading="lazy" />
+                )}
+                <div>
+                  <h3 class="award__name">{award.title}</h3>
+                  {award.prize_description && (
+                    <p class="award__prize font-mono">{award.prize_description}</p>
+                  )}
+                  {award.metric_value && <p class="award__metric">{award.metric_value}</p>}
+                  <p class="award__winner font-mono">
+                    {award.winner_name ? `GANADOR: ${award.winner_name}` : 'GANADOR POR ANUNCIAR'}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
   </main>
 
   <SiteFooter />
@@ -100,5 +221,98 @@ import SectionLabel from '../components/bento/SectionLabel.astro';
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
     color: var(--muted);
+  }
+
+  /* ── La escala de premios ───────────────────────────────────────────── */
+  .tier-table {
+    width: 100%;
+    margin-top: 1.5rem;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .tier-table th {
+    padding: 0.75rem 1rem;
+    border-bottom: var(--hairline) solid var(--line);
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-medium, 500);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .tier-table td {
+    padding: 0.9rem 1rem;
+    border-bottom: var(--hairline) solid var(--line);
+    font-size: var(--text-sm);
+    color: var(--ink);
+  }
+
+  .tier-table__pos {
+    width: 4rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .tier-table__amount {
+    width: 8rem;
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-strong);
+  }
+
+  /* ── Los premios especiales ─────────────────────────────────────────── */
+  .awards {
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .award {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: 1rem;
+    align-items: center;
+    padding-block: 1rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .award__logo {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: cover;
+    border: var(--hairline) solid var(--line);
+  }
+
+  .award__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium, 500);
+    letter-spacing: var(--tracking-tight);
+    color: var(--ink-strong);
+  }
+
+  .award__prize {
+    margin: 0.25rem 0 0;
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    color: var(--ink);
+  }
+
+  .award__metric {
+    margin: 0.15rem 0 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .award__winner {
+    margin: 0.35rem 0 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
   }
 </style>

@@ -47,6 +47,20 @@ const cells: { label: string; value: string; icon: IconName }[] = [
   },
   { label: 'CATEGORÍAS', value: undisclosed ? '—' : String(stats.categories_count), icon: 'bike' },
 ];
+
+/**
+ * Lo que PUBLICA el PDF oficial frente a lo que recalcula el motor.
+ *
+ * Normalmente coinciden. En la Fecha 2 no: el PDF no imprime el 6º lugar de
+ * OPEN DAMAS, así que publica 554 puntos y el motor, al rellenar el hueco,
+ * reparte 555. Cuando difieren, la ficha enseña los dos números y explica por
+ * qué: el del organizador y el del motor, sin que nadie tenga que fiarse de
+ * una cifra que no aparece en el documento oficial.
+ */
+const officialDiffers =
+  !undisclosed &&
+  stats.official_points != null &&
+  stats.official_points !== stats.points_total;
 ---
 
 {
@@ -66,6 +80,16 @@ const cells: { label: string; value: string; icon: IconName }[] = [
         </div>
       ))}
     </dl>
+  )
+}
+
+{
+  officialDiffers && (
+    <p class="stats__note font-mono">
+      [ PUNTOS: {stats.official_points} EN EL PDF OFICIAL · {stats.points_total} TRAS EL
+      RECÁLCULO DEL MOTOR ] El PDF oficial no imprime el 6º lugar de Open Damas: al
+      rellenar el hueco, el motor reparte un punto más.
+    </p>
   )
 }
 
@@ -120,6 +144,20 @@ const cells: { label: string; value: string; icon: IconName }[] = [
     background: var(--bg-raised);
     font-size: 0.6875rem;
     letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* La nota de los puntos: solo aparece cuando el PDF oficial y el motor no
+     coinciden. Va en el mismo tono que el resto de las etiquetas. */
+  .stats__note {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 1rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
   }

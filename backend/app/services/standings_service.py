@@ -24,6 +24,7 @@ Desempate del ranking por ámbito (specs/01 §3.2 para el ranking por categoría
 
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import case, func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -137,6 +138,78 @@ async def _category_index(session: AsyncSession) -> Dict[int, Category]:
     return {c.id: c for c in cats}
 
 
+def _category_ids(
+    cats: Dict[int, Category],
+    scope: str,
+    category_id: Optional[int],
+) -> Optional[List[int]]:
+    """Ids de categoría de un ámbito (o de una categoría concreta)."""
+    if category_id is not None:
+        return [category_id]
+    codes = scope_short_codes(scope)
+    matched = [c.id for c in cats.values() if c.short_code in codes]
+    return matched or None
+
+
+async def _scope_stats(
+    session: AsyncSession,
+    stage_ids: List[int],
+    category_ids: Optional[List[int]],
+) -> Dict[str, Any]:
+    """
+    Cifras de las carreras indicadas, dentro de un ámbito.
+
+    - `participants`: corredores DISTINTOS que competed (en una sola carrera es
+      el número de inscripciones; en la ventana acumulada, los distintos).
+    - `finishers`: corredores distintos que cerraron al menos una vez.
+    - `avg_time_ms`: media de los tiempos de TODAS las cogidas terminadas.
+
+    La media mezcla categorías (un ELITE a 1:08 y un MASTER D a 1:50), así que
+    la interfaz la rotula y la explica: es un dato de contexto, no un récord.
+    """
+    if not stage_ids:
+        return {"participants": 0, "finishers": 0, "non_finishers": 0, "avg_time_ms": None}
+
+    filters = [StageEntry.stage_id.in_(stage_ids)]
+    if category_ids:
+        filters.append(StageEntry.category_id.in_(category_ids))
+
+    counts = (
+        await session.exec(
+            select(
+                func.count(func.distinct(StageEntry.rider_id)),
+                func.count(
+                    func.distinct(
+                        case(
+                            (StageEntry.race_status == RaceStatusEnum.FINISHED, StageEntry.rider_id),
+                        )
+                    )
+                ),
+            ).where(*filters)
+        )
+    ).first()
+    participants = int(counts[0] or 0) if counts else 0
+    finishers = int(counts[1] or 0) if counts else 0
+
+    # `avg` sin agrupar devuelve un escalar, no una tupla.
+    avg_value = (
+        await session.exec(
+            select(func.avg(StageEntry.finish_elapsed_ms)).where(
+                *filters,
+                StageEntry.race_status == RaceStatusEnum.FINISHED,
+                StageEntry.finish_elapsed_ms.is_not(None),
+            )
+        )
+    ).first()
+
+    return {
+        "participants": participants,
+        "finishers": finishers,
+        "non_finishers": max(0, participants - finishers),
+        "avg_time_ms": int(round(float(avg_value))) if avg_value else None,
+    }
+
+
 async def _finished_entries(
     session: AsyncSession,
     stage_limit: Optional[int],
@@ -216,13 +289,7 @@ async def compute_standings(
     exact = normalize_mode(mode) == MODE_FECHA
     cats = await _category_index(session)
 
-    category_ids: Optional[List[int]] = None
-    if category_id is not None:
-        category_ids = [category_id]
-    else:
-        codes = scope_short_codes(scope)
-        matched = [c.id for c in cats.values() if c.short_code in codes]
-        category_ids = matched or None
+    category_ids = _category_ids(cats, scope, category_id)
     entries = await _finished_entries(session, stage_limit, category_ids, exact=exact)
     if not entries:
         return []
@@ -422,6 +489,8 @@ async def standings_context(
     session: AsyncSession,
     stage_limit: Optional[int] = None,
     mode: str = MODE_ACUMULADO,
+    scope: str = "COMBINED",
+    category_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Datos de cabecera: etapas disputadas, fechas disponibles y distancia acumulada.
@@ -462,11 +531,24 @@ async def standings_context(
         distance += (s.distance_km or 0.0) * (s.laps or 1)
         stages_count += 1
 
+    # Las cifras de lo que se está viendo: en modo "fecha", las de esa
+    # carrera; en modo "acumulado", las de la ventana completa (corredores
+    # distintos que compitieron y cerraron al menos una vez).
+    counted_ids = [
+        s.id for s in finished
+        if target_id is not None and (s.id == target_id if exact else s.id <= target_id)
+    ]
+    cat_index = await _category_index(session)
+    stats = await _scope_stats(
+        session, counted_ids, _category_ids(cat_index, scope, category_id)
+    )
+
     return {
         "stages": available,
         "selected_stage_id": target_id,
         "stages_counted": stages_count,
         "total_distance_km": round(distance, 2),
+        "stats": stats,
         "groups": {k: list(v) for k, v in SCOPE_GROUPS.items()},
         "scope_labels": dict(SCOPE_LABELS),
         "scope_labels_long": dict(SCOPE_LABELS_LONG),

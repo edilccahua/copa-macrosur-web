@@ -161,10 +161,11 @@ async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStat
 
     def _speed(row) -> float:
         elapsed = int(row[0] or 0)
-        if elapsed <= 0 or stage.distance_km <= 0:
+        per_lap = float(stage.distance_km or 0)
+        if elapsed <= 0 or per_lap <= 0:
             return 0.0
         laps = max(1, int(row[1] or 1))
-        return (stage.distance_km * laps) / (elapsed / 3_600_000)
+        return (per_lap * laps) / (elapsed / 3_600_000)
 
     winner = max(winner_rows, key=_speed) if winner_rows else None
     winner_time_ms = int(winner[0]) if winner and winner[0] is not None else None
@@ -183,12 +184,28 @@ async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStat
     categories = int(categories_count or 0)
 
     laps = max(1, stage.laps or 1)
-    distance_km_total = round(stage.distance_km * laps, 2)
-    elevation_m_total = stage.elevation_gain_m * laps
+    # Una fecha sin ruta publicada (la Fecha 4) no tiene cifras: `None`, no 0.
+    distance_km_per_lap = (
+        round(float(stage.distance_km), 2) if stage.distance_km is not None else None
+    )
+    distance_km_total = (
+        round(float(stage.distance_km) * laps, 2)
+        if stage.distance_km is not None
+        else None
+    )
+    elevation_m_per_lap = stage.elevation_gain_m
+    elevation_m_total = (
+        int(stage.elevation_gain_m) * laps if stage.elevation_gain_m is not None else None
+    )
 
     winner_avg_speed_kmh: Optional[float] = None
-    if winner_time_ms and winner_time_ms > 0 and stage.distance_km > 0:
-        winner_distance_km = stage.distance_km * max(1, winner_laps)
+    if (
+        winner_time_ms
+        and winner_time_ms > 0
+        and stage.distance_km is not None
+        and stage.distance_km > 0
+    ):
+        winner_distance_km = float(stage.distance_km) * max(1, winner_laps)
         hours = winner_time_ms / 3_600_000
         winner_avg_speed_kmh = round(winner_distance_km / hours, 2)
 
@@ -203,14 +220,16 @@ async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStat
         finishers=finishers,
         non_finishers=non_finishers,
         points_total=points_total,
-        distance_km_per_lap=stage.distance_km,
+        distance_km_per_lap=distance_km_per_lap,
         distance_km_total=distance_km_total,
-        elevation_m_per_lap=stage.elevation_gain_m,
+        elevation_m_per_lap=elevation_m_per_lap,
         elevation_m_total=elevation_m_total,
         laps=laps,
         winner_time_ms=winner_time_ms,
         winner_avg_speed_kmh=winner_avg_speed_kmh,
         categories_count=categories,
+        official_results=stage.official_results,
+        official_points=stage.official_points,
     )
 
 
@@ -465,18 +484,28 @@ async def compute_stage_strava(
 async def compute_stage_mountain_titles(
     session: AsyncSession, stage: Stage
 ) -> Dict[str, Any]:
-    """El King of the Mountain y la Queen of the Mountain de la fecha.
+    """Los cuatro títulos de montaña de la fecha.
 
-    El **KOM** es el segmento de **subida** más empinado: la pendiente media
-    positiva más alta y, a igualdad, el más largo. El **QOM** es el de
-    **bajada** más empinada: la pendiente media negativa más pronunciada y, a
-    igualdad, el más largo.
+    · **KOM** (King of the Mountain): el escalador **varón** más rápido en la
+      subida más empinada de la jornada.
+    · **QOM** (Queen of the Mountain): la escaladora **mujer** más rápida en esa
+      misma subida. El QOM nunca sale de un varón: se resuelve por el género del
+      atleta.
+    · **El Kamikaze**: el varón más rápido en el descenso más pronunciado.
+    · **La Kamikaze**: la mujer más rápida en ese mismo descenso.
 
     Se aplican las mismas reglas que en los segmentos: el corredor que
     acompaña a cada título es el más rápido **de la fecha de la carrera** y
-    de un corredor que compitió en ella. El segmento que cubre la carrera
-    entera no puede ser un título: es la ruta.
+    de un corredor que compitió en ella. Si el tramo no tiene intentos de la
+    jornada se recurre al mejor intento registrado **del mismo género**. El
+    segmento que cubre la carrera entera no puede ser un título: es la ruta.
     """
+    empty = {
+        "kom": None,
+        "qom": None,
+        "kamikaze_male": None,
+        "kamikaze_female": None,
+    }
     segments = (
         await session.exec(
             select(StravaSegment)
@@ -485,7 +514,7 @@ async def compute_stage_mountain_titles(
         )
     ).all()
     if not segments:
-        return {"kom": None, "qom": None}
+        return empty
 
     stage_distance_km = float(stage.distance_km or 0) * max(1, stage.laps or 1)
     # El segmento que cubre la carrera entera es la ruta, no un título.
@@ -497,7 +526,7 @@ async def compute_stage_mountain_titles(
         )
     ]
     if not candidates:
-        return {"kom": None, "qom": None}
+        return empty
 
     segment_ids = [segment.id for segment in candidates]
     efforts = (
@@ -515,6 +544,23 @@ async def compute_stage_mountain_titles(
     ).all()
     rider_ids = [r for r in stage_rider_ids if r is not None]
     stage_date = stage.date.isoformat() if stage.date else None
+
+    # El género del intento viene de Strava; si falta, se deduce del corredor
+    # inscrito al que está enlazado.
+    rider_gender = {
+        rider_id: gender
+        for rider_id, gender in (
+            await session.exec(select(Rider.id, Rider.gender))
+        ).all()
+    }
+
+    def _gender_of(effort: StravaEffort) -> Optional[str]:
+        if effort.athlete_gender in ("M", "F"):
+            return effort.athlete_gender
+        gender = rider_gender.get(effort.rider_id) if effort.rider_id else None
+        if hasattr(gender, "value"):
+            gender = gender.value
+        return gender if gender in ("M", "F") else None
 
     def _read_title(segment: StravaSegment, effort: StravaEffort) -> MountainTitleRead:
         seconds = int(effort.elapsed_time_sec or 0)
@@ -534,31 +580,55 @@ async def compute_stage_mountain_titles(
     climbs = [s for s in candidates if float(s.average_grade or 0) > 0]
     descents = [s for s in candidates if float(s.average_grade or 0) < 0]
 
-    kom_segment = None
-    if climbs:
-        kom_segment = max(
-            climbs,
-            key=lambda s: (float(s.average_grade or 0), float(s.distance_m or 0)),
-        )
-    qom_segment = None
-    if descents:
-        qom_segment = min(
-            descents,
-            key=lambda s: (float(s.average_grade or 0), -float(s.distance_m or 0)),
+    def _has_race_day(segment: StravaSegment) -> bool:
+        """¿Alguien cronometró este tramo el día de la carrera?"""
+        return any(
+            effort.segment_id == segment.id
+            and is_measured_on_stage(effort.measured_on, stage_date)
+            for effort in efforts
         )
 
-    def _title(segment) -> Optional[MountainTitleRead]:
-        """El título de un segmento, con su corredor más rápido.
+    # La subida y el descenso que definen la jornada: el más empinado y, a
+    # igualdad de pendiente, el más largo. Se prefiere un tramo que tenga
+    # intentos de la fecha: si el descenso más empinado solo guarda tiempos de
+    # hace años, el título sería de otra carrera.
+    climb_segment = None
+    if climbs:
+        climb_segment = max(
+            climbs,
+            key=lambda s: (
+                _has_race_day(s),
+                float(s.average_grade or 0),
+                float(s.distance_m or 0),
+            ),
+        )
+    descent_segment = None
+    if descents:
+        descent_segment = max(
+            descents,
+            key=lambda s: (
+                _has_race_day(s),
+                -float(s.average_grade or 0),
+                float(s.distance_m or 0),
+            ),
+        )
+
+    def _title(
+        segment: Optional[StravaSegment], gender: str
+    ) -> Optional[MountainTitleRead]:
+        """El título de un segmento para un género, con su corredor más rápido.
 
         Se prefiere el intento **de la fecha de la carrera**. Si el tramo no
-        tiene ninguno (una bajada que nadie cronometró ese día), se recurre al
-        mejor intento registrado: el título existe y el努力 es real, aunque
-        no sea de nuestra jornada.
+        tiene ninguno de ese género (una bajada que ninguna dama cronometró ese
+        día), se recurre al mejor intento registrado del mismo género: el
+        título existe y el intento es real, aunque no sea de nuestra jornada.
         """
         if segment is None:
             return None
         efforts_of_segment = [
-            effort for effort in efforts if effort.segment_id == segment.id
+            effort
+            for effort in efforts
+            if effort.segment_id == segment.id and _gender_of(effort) == gender
         ]
         if not efforts_of_segment:
             return None
@@ -574,8 +644,10 @@ async def compute_stage_mountain_titles(
         return _read_title(segment, best)
 
     return {
-        "kom": _title(kom_segment),
-        "qom": _title(qom_segment),
+        "kom": _title(climb_segment, "M"),
+        "qom": _title(climb_segment, "F"),
+        "kamikaze_male": _title(descent_segment, "M"),
+        "kamikaze_female": _title(descent_segment, "F"),
     }
 
 
@@ -612,11 +684,20 @@ async def compute_stage_route_profile(
 ) -> Optional[RouteProfileRead]:
     """El perfil de altimetría de la ruta, con su traza punto a punto.
 
-    Sale de la geometría real (`route_geojson`), no de multiplicar la
+    El perfil sale de la geometría real (`route_geojson`), no de multiplicar la
     distancia por las vueltas: en un circuito por vueltas la geometría es de
     UNA vuelta y `geometry_covers_full_stage` lo avisa.
+
+    El desnivel que muestra es el de la RUTA OFICIAL (`Stage.elevation_gain_m`),
+    no el que sale de la traza simplificada a 500 puntos: la simplificación
+    pierde unos treinta metros de subida y la ficha mostraba las dos cifras
+    (cabecera +384 m, perfil +359 m). Con un solo desnivel, manda el oficial.
     """
-    profile = build_route_profile(stage.route_geojson, stage_laps=stage.laps or 1)
+    profile = build_route_profile(
+        stage.route_geojson,
+        stage_laps=stage.laps or 1,
+        official_gain_m=stage.elevation_gain_m,
+    )
     if profile is None:
         return None
     return RouteProfileRead(**profile)

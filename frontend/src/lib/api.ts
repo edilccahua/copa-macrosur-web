@@ -19,8 +19,9 @@ export interface StageOption {
   title?: string | null;
   slug: string;
   date: string;
-  distance_km: number;
-  elevation_gain_m?: number;
+  /** `null` en una fecha sin ruta publicada: no se puede afirmar la cifra. */
+  distance_km: number | null;
+  elevation_gain_m?: number | null;
   start_location?: string | null;
   start_time?: string | null;
   laps: number;
@@ -72,6 +73,16 @@ export interface CategoryOption {
   name: string;
 }
 
+export interface StandingsStats {
+  /** Corredores distintos que compitieron (en la ventana que se está viendo). */
+  participants: number;
+  /** Corredores distintos que cerraron al menos una vez. */
+  finishers: number;
+  non_finishers: number;
+  /** Media de los tiempos de las cogidas terminadas (mezcla categorías). */
+  avg_time_ms: number | null;
+}
+
 export interface StandingsContext {
   stages: StageOption[];
   selected_stage_id: number | null;
@@ -84,6 +95,8 @@ export interface StandingsContext {
   scope_labels_long: Record<string, string>;
   scope_order: string[];
   categories: CategoryOption[];
+  /** Cifras de la carrera (o de la ventana acumulada). */
+  stats: StandingsStats;
 }
 
 export interface StandingsResponse {
@@ -134,17 +147,22 @@ export interface StageStats {
   entries_total: number;
   finishers: number;
   non_finishers: number;
+  /** Puntos que reparte el motor de scoring (specs/01 §3.1). */
   points_total: number;
-  /** Distancia POR VUELTA (así se guarda en la BD). */
-  distance_km_per_lap: number;
-  /** Distancia total de la carrera (por_lap × laps). */
-  distance_km_total: number;
-  elevation_m_per_lap: number;
-  elevation_m_total: number;
+  /** Distancia POR VUELTA (así se guarda en la BD). `null` = sin ruta. */
+  distance_km_per_lap: number | null;
+  /** Distancia total de la carrera (per_lap × laps). */
+  distance_km_total: number | null;
+  elevation_m_per_lap: number | null;
+  elevation_m_total: number | null;
   laps: number;
   winner_time_ms: number | null;
   winner_avg_speed_kmh: number | null;
   categories_count: number;
+  /** Resultados que PUBLICA el PDF oficial de resultados. */
+  official_results: number | null;
+  /** Puntos que PUBLICA el PDF oficial. Puede diferir de `points_total`. */
+  official_points: number | null;
 }
 
 export interface PodiumEntry {
@@ -307,6 +325,10 @@ export interface StageSummary {
   summits: Summit[];
   kom: MountainTitle | null;
   qom: MountainTitle | null;
+  /** El varón más rápido en el descenso más pronunciado de la fecha. */
+  kamikaze_male: MountainTitle | null;
+  /** La mujer más rápida en ese mismo descenso. */
+  kamikaze_female: MountainTitle | null;
   navigation: {
     prev_slug: string | null;
     prev_name: string | null;
@@ -326,4 +348,25 @@ export async function getStageSummary(slug: string): Promise<StageSummary> {
   if (res.status === 404) throw new Error('stage-not-found');
   if (!res.ok) throw new Error(`summary HTTP ${res.status}`);
   return res.json();
+}
+
+/**
+ * Un peldaño de la escala de premios: un puesto de una categoría.
+ * Los montos vienen en dólares de la BD (`prize_tiers`); la página no los
+ * escribe a mano.
+ */
+export interface PrizeTier {
+  scope: 'FECHA' | 'ACUMULADO' | string;
+  position: number;
+  amount_usd: number;
+  label: string;
+  currency: string;
+}
+
+/** La escala de premios de la copa, por fecha y acumulada. */
+export async function getPrizeTiers(): Promise<PrizeTier[]> {
+  const res = await fetch(`${API_V1}/public/prizes`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? (data as PrizeTier[]) : [];
 }

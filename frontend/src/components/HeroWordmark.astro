@@ -10,22 +10,57 @@
  * La animación la aplica `src/scripts/showcase-motion.ts` con los tiempos del
  * `introTuner` del original:
  *   wordAt 0.35 · wordDur 0.85 · copyAt 1.05 · instrAt 0.70
+ *
+ * PALABRAS: el rótulo del campeonato tiene DOS palabras ("COPA MACROSUR").
+ * La referencia original es de una sola ("ARTCRAFT"), así que aquí cada palabra
+ * es un bloque y el espacio va en el `column-gap` del contenedor: si el
+ * espacio fuese un `<span>` más, el colapso de espacios en línea lo borraría
+ * y se leería "COPAMACROSUR".
+ *
+ * El bloque de palabras lleva `flex-wrap`: en pantallas estrechas el rótulo
+ * baja a dos líneas en vez de desbordar (el ancho de una línea no se controla
+ * con el tamaño de letra, sino con el salto de línea).
  */
 interface Props {
   text?: string;
 }
 
 const { text = 'ARTCRAFT' } = Astro.props;
-const letters = [...text];
+
+/**
+ * Palabras y letras, con un índice GLOBAL para la animación (la secuencia de
+ * entrada es continua entre palabras). Se calcula aquí y no en la plantilla
+ * para que el índice no dependa del orden de render.
+ *
+ * Las letras van agrupadas por palabra (`wordmark__word`) y el espacio va en
+ * el `column-gap` del contenedor. Con un `<span>` más para el espacio, el
+ * colapso de espacios en línea lo borraría y las palabras se leerían juntas.
+ */
+const rendered = text
+  .split(' ')
+  .filter(Boolean)
+  .map((word) => ({ word, letters: [...word] }));
+
+let letterIndex = 0;
 ---
 <div class="wordmark" data-hero-wordmark aria-hidden="true">
-  {letters.map((letter, index) => <span class="wordmark__letter" data-letter={index}>{letter}</span>)}
+  {
+    rendered.map(({ letters }) => (
+      <span class="wordmark__word">
+        {letters.map((letter) => (
+          <span class="wordmark__letter" data-letter={letterIndex++}>{letter}</span>
+        ))}
+      </span>
+    ))
+  }
 </div>
 
 <style>
   .wordmark {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
+    column-gap: 0.22em;
     font-family: var(--font-display);
     /* El máximo es el valor medido; por debajo se adapta. */
     font-size: clamp(2.5rem, 12vw, 95.4px);
@@ -37,8 +72,21 @@ const letters = [...text];
     user-select: none;
   }
 
+  .wordmark__word {
+    display: inline-flex;
+  }
+
   .wordmark__letter {
     display: inline-block;
     will-change: transform;
+  }
+
+  /* En móvil el rótulo baja a dos líneas: dos palabras de 4 y 8 letras a
+     12vw no caben en 390 px, y una sola línea se saldría del papel. */
+  @media (max-width: 47.99em) {
+    .wordmark {
+      font-size: clamp(2.25rem, 11.5vw, 4.5rem);
+      line-height: 0.92;
+    }
   }
 </style>
