@@ -69,8 +69,9 @@
   --hairline: 1px;
 }
 
-/* --- Tema CLARO (el del origen por defecto: :root { color-scheme: light }) - */
-:root {
+/* --- Tema CLARO (por defecto o por atributo explícito) -------------------- */
+:root,
+:root[data-theme="light"] {
   --bg: #f2f1ee;
   --bg-raised: #faf9f7;
   --bg-sunken: #e9e8e4;
@@ -135,7 +136,8 @@
    El Δ de una clasificación es información de RANKING, no de estilo: subir es
    verde y bajar es rojo en cualquier tema y en cualquier pestaña. Por eso viven
    aquí y no en el componente. */
-:root {
+:root,
+:root[data-theme="light"] {
   --status-up: #16a34a;
   --status-down: #ef4444;
   --status-flat: #10101473;

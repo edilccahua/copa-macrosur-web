@@ -17,6 +17,7 @@
  *  · Por fecha: 100/50/30 USD en CADA UNA de las 11 categorías, en cada una
  *    de las cuatro fechas.
  */
+import type { IconName } from '../components/Icon.astro';
 
 export type PrizePosition = 1 | 2 | 3;
 
@@ -32,6 +33,12 @@ export interface AccumulatedPrize {
   label: string;
   /** Texto de contexto. */
   blurb: string;
+  /**
+   * Icono del ámbito: inline, sin caja, en el color de acento de la tarjeta.
+   * Distinto en cada agrupación (regla: el tipo se dice con la palabra y el
+   * ícono, specs/03 §Reglas 4).
+   */
+  icon: IconName;
   tiers: PrizeStep[];
 }
 
@@ -42,6 +49,7 @@ export const ACCUMULATED_PRIZES: AccumulatedPrize[] = [
     label: 'PRO',
     blurb:
       'Al líder de puntos del acumulado PRO, sumando Elite, Master A, Master B y Master C.',
+    icon: 'bolt',
     tiers: [
       { position: 1, amountUsd: 300 },
       { position: 2, amountUsd: 200 },
@@ -53,6 +61,7 @@ export const ACCUMULATED_PRIZES: AccumulatedPrize[] = [
     label: 'NORMAL',
     blurb:
       'Al líder de puntos del acumulado NORMAL, sumando Turismo, Master D, Damas y Juveniles.',
+    icon: 'users',
     tiers: [
       { position: 1, amountUsd: 300 },
       { position: 2, amountUsd: 200 },
@@ -60,6 +69,12 @@ export const ACCUMULATED_PRIZES: AccumulatedPrize[] = [
     ],
   },
 ];
+
+/**
+ * El premio por fecha se reparte en CADA una de las 11 categorías, en cada
+ * una de las cuatro fechas: no hay un único ganador, hay once podios.
+ */
+export const PER_DATE_PRIZE_ICON: IconName = 'trophy';
 
 /** 100 / 50 / 30 USD en cada categoría, en cada fecha. */
 export const PER_DATE_PRIZES: PrizeStep[] = [

@@ -130,7 +130,7 @@ function switchTheme(theme: 'light' | 'dark'): void {
   window.clearTimeout(switchTimer);
   switchTimer = window.setTimeout(() => {
     root.classList.remove('theme-switching');
-  }, 460);
+  }, 300);
 }
 
 let switchTimer: number | undefined;
@@ -584,11 +584,17 @@ function initRouter(): void {
     ruler?.destroyPageRuler();
   });
 
-  // Antes del intercambio se corrige el item activo: la cabecera persiste y
-  // su HTML no se vuelve a pintar. El cajón se cierra: si no, quedaría
-  // abierto sobre la página nueva.
+  // Antes del intercambio se corrige el item activo y se transfiere el tema al
+  // nuevo documento: así se evita el destello en blanco (FOUC) al navegar.
+  // El cajón se cierra si estaba abierto.
   document.addEventListener('astro:before-swap', (event) => {
-    const to = (event as Event & { to?: URL }).to;
+    const swapEvent = event as Event & { to?: URL; newDocument?: Document };
+    const currentTheme = effectiveTheme();
+    if (swapEvent.newDocument) {
+      swapEvent.newDocument.documentElement.setAttribute('data-theme', currentTheme);
+    }
+
+    const to = swapEvent.to;
     const pathname = to?.pathname ?? window.location.pathname;
     applyActiveNav(pathname);
     if (drawerIsOpen()) {

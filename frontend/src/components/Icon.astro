@@ -9,8 +9,15 @@
  *
  * Cada icono es un trazo de 24×24, sin relleno, salvo donde hace falta.
  */
+/**
+ * Los nombres de icono del set. Se exportan para que los datos de cada
+ * bloque (premios, títulos de montaña) declaren el icono que les toca sin
+ * repetir la lista.
+ */
+export type IconName = keyof typeof PATHS;
+
 interface Props {
-  name: keyof typeof PATHS;
+  name: IconName;
   size?: number;
   class?: string;
 }

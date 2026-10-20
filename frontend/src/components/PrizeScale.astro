@@ -7,11 +7,37 @@
  * de acento superior; cambia la media 16:10 por el podio de montos, que es lo
  * que el lector necesita comparar.
  *
- * El acento identifica el ámbito:
- *   · PRO / NORMAL → el color de su grupo (`--scope`, tokens.css)
+ * La "vida" de la tarjeta NO es una franja ni un chip con borde (specs/03
+ * §Reglas 1 y 4: el acento va arriba y sin chips con borde). Es el mismo
+ * mecanismo de `PodiumPanel`: un RÓTULO EN MONO CON COLOR, en la esquina
+ * superior izquierda, con el icono del ámbito en línea y sin recuadro.
+ *
+ *   · PRO / NORMAL → el color de su grupo (`--scope-ink`, tokens.css)
  *   · GOLD         → el oro de la copa (`--copa-gold`)
+ *
+ * El pie lleva el estado del premio: el ganador provisional del acumulado o,
+ * en los premios que se pagan en cada fecha, la frecuencia con que se cobran.
  */
+import Icon from './Icon.astro';
+import type { IconName } from './Icon.astro';
 import type { PrizeStep } from '../data/prizes';
+
+/**
+ * El ganador provisional de un premio acumulado: el líder de puntos de la
+ * agrupación mientras el campeonato no se cierra.
+ */
+export interface PrizeLeader {
+  /** Nombre del líder. */
+  name: string;
+  /** Slug del perfil público (`/corredor/{slug}`). */
+  slug?: string;
+  /** Puntos acumulados. */
+  points: number;
+  /** Fechas ya disputadas. */
+  stagesCounted: number;
+  /** Fechas del campeonato (0 = se desconoce). */
+  totalStages: number;
+}
 
 interface Props {
   /** Rótulo superior, p. ej. "ACUMULADO". */
@@ -30,6 +56,12 @@ interface Props {
   accent?: 'pro' | 'normal' | 'gold' | 'neutral';
   /** Si se pasa, la tarjeta entera es un enlace. */
   href?: string;
+  /** Icono del ámbito: en línea, sin caja, en el color de acento. */
+  icon?: IconName;
+  /** Ganador provisional del premio acumulado. */
+  leader?: PrizeLeader | null;
+  /** Estado del premio cuando no hay un ganador único (p. ej. "CADA FECHA"). */
+  status?: string;
 }
 
 const {
@@ -41,15 +73,40 @@ const {
   tags = [],
   accent = 'gold',
   href,
+  icon,
+  leader = null,
+  status,
 } = Astro.props;
 
 const Tag = href ? 'a' : 'article';
 const accentClass =
   accent === 'gold' ? 'prize--gold' : accent === 'neutral' ? 'prize--neutral' : `scope-${accent}`;
+
+/**
+ * Con el campeonato cerrado el líder ya no es provisional: el premio está
+ * repartido. Mientras falten fechas, lo es.
+ */
+const leaderLabel =
+  leader && leader.totalStages > 0 && leader.stagesCounted >= leader.totalStages
+    ? 'GANADOR'
+    : 'GANADOR PROVISIONAL';
+
+const leaderDetail = leader
+  ? leader.totalStages > 0
+    ? `${leader.points} PTS · ${leader.stagesCounted} DE ${leader.totalStages} FECHAS`
+    : `${leader.points} PTS`
+  : '';
 ---
 
 <Tag class:list={['prize', accentClass]} href={href}>
   <header class="prize__head">
+    {
+      icon && (
+        <span class="prize__icon" aria-hidden="true">
+          <Icon name={icon} size={14} />
+        </span>
+      )
+    }
     <span class="prize__label">{label}</span>
     <span class="prize__slash" aria-hidden="true">/</span>
     <span class="prize__currency font-mono">{currency}</span>
@@ -81,7 +138,27 @@ const accentClass =
     )
   }
 
-  <slot />
+  {
+    (leader || status) && (
+      <div class="prize__foot">
+        {leader ? (
+          <>
+            <p class="prize__foot-label font-mono">{leaderLabel}</p>
+            <p class="prize__foot-name">
+              {leader.slug ? (
+                <a href={`/corredor/${leader.slug}`}>{leader.name}</a>
+              ) : (
+                leader.name
+              )}
+            </p>
+            <p class="prize__foot-detail font-mono">{leaderDetail}</p>
+          </>
+        ) : (
+          <p class="prize__foot-label font-mono">{status}</p>
+        )}
+      </div>
+    )
+  }
 
   {href && <span class="prize__explore">Ver todos los premios →</span>}
 </Tag>
@@ -99,18 +176,22 @@ const accentClass =
       var(--default-transition-timing-function);
   }
 
-  /* Sin borde de acento superior: la tarjeta se lee por su contenido. */
+  /* Sin borde de acento superior: la tarjeta se lee por su contenido.
+     El color vive en el rótulo y en el icono (specs/03 §Reglas 1 y 4). */
   .prize--gold {
     --prize-accent: var(--copa-gold);
+    --prize-accent-ink: var(--copa-gold);
   }
 
   .prize--neutral {
     --prize-accent: var(--line-strong);
+    --prize-accent-ink: var(--line-strong);
   }
 
   /* scope-pro / scope-normal: vienen de tokens.css. */
   .prize:not(.prize--gold):not(.prize--neutral) {
     --prize-accent: var(--scope, var(--line-strong));
+    --prize-accent-ink: var(--scope-ink, var(--line-strong));
   }
 
   a.prize:hover {
@@ -119,17 +200,25 @@ const accentClass =
 
   .prize__head {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.375rem;
     min-height: 1.25rem;
   }
 
+  /* El icono va EN LÍNEA: sin caja, sin borde, sin fondo. */
+  .prize__icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--prize-accent-ink);
+  }
+
   .prize__label {
-    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
     font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    color: var(--muted);
+    color: var(--prize-accent-ink);
   }
 
   .prize__slash {
@@ -185,8 +274,10 @@ const accentClass =
     color: var(--faint);
   }
 
+  /* Los montos van en monoespaciada, como las filas del podio. */
   .prize__amount {
     justify-self: end;
+    font-family: var(--font-mono);
     font-size: var(--text-base);
     font-weight: var(--font-weight-bold);
     font-variant-numeric: tabular-nums;
@@ -210,6 +301,48 @@ const accentClass =
     border: var(--hairline) solid var(--line);
   }
 
+  /* ── El pie: el estado del premio ─────────────────────────────────────── */
+  .prize__foot {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .prize__foot-label {
+    margin: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--prize-accent-ink);
+  }
+
+  .prize__foot-name {
+    margin: 0.3rem 0 0;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--ink-strong);
+  }
+
+  .prize__foot-name a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .prize__foot-name a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.1875rem;
+  }
+
+  .prize__foot-detail {
+    margin: 0.25rem 0 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
   .prize__explore {
     margin-top: auto;
     padding-top: 0.75rem;
@@ -224,5 +357,12 @@ const accentClass =
   a.prize:hover .prize__explore {
     text-decoration: underline;
     text-underline-offset: 0.1875rem;
+  }
+
+  /* Con el pie de estado, el enlace de exploración no repite el separador. */
+  .prize:has(.prize__foot) .prize__explore {
+    margin-top: 0;
+    padding-top: 0.5rem;
+    border-top: 0;
   }
 </style>
