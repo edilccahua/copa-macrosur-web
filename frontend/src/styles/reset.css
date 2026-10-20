@@ -24,16 +24,18 @@ html {
      propia hoja (importada en src/scripts/showcase-motion.ts). */
 }
 
-/* Las páginas de escaparate REEMPLAZAN la barra nativa por el regulador
-   lateral, así que la del navegador se oculta. Es una CLASE en <html>, no un
-   `data-ruler`: ese atributo lo lleva el regulador y `querySelector` habría
-   devuelto el <html> en lugar de la banda. */
-.no-scrollbar {
-  scrollbar-width: none;
-}
+/* El regulador lateral REEMPLAZA a la barra nativa, así que la del
+   navegador se oculta. Pero sólo donde el regulador está visible: por
+   debajo de 48em la banda no se dibuja (en móvil no cabe) y sin barra
+   nativa el usuario se queda sin indicación de scroll. */
+@media (min-width: 48em) {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 body {
