@@ -10,11 +10,14 @@
  * `window.__kuspideLenis`.
  *
  * Geometría copiada de `copiaartcraft/src/components/PageRuler.astro`: la
- * banda es de ALTURA COMPLETA (`inset-block: 0`) y va por encima de la
- * cabecera (`z-index: 40`), de modo que el regulador y el menú forman un
- * solo instrumento continuo. Para que la banda no se coma los clics del
- * menú, la zona interactiva (`.ruler__grab`) empieza bajo la cabecera y la
- * banda entera es `pointer-events: none`.
+ * banda va pegada al **borde inferior del menú** (`inset-block:
+ * var(--header-offset) 0`), ni por encima (sus marcas se dibujarían sobre
+ * la cabecera) ni con hueco (parecería un elemento aparte). La escala
+ * arranca en ese borde y sube con el scroll.
+ *
+ * Para que la banda no se coma los clics del menú, el regulador entero es
+ * `pointer-events: none` y sólo `.ruler__grab` —que empieza bajo la
+ * cabecera— es agarrable.
  */
 
 let cleanup: (() => void) | null = null;
@@ -44,10 +47,14 @@ export function initPageRuler(): void {
   const thumb = band.querySelector<HTMLElement>('[data-ruler-thumb]');
   const strips = [...band.querySelectorAll<HTMLElement>('.ruler-digit-strip')];
 
-  /** Desplazamiento inicial medido de la escala. */
-  const OFFSET = 60;
-  /** Alto de cada dígito del rodillo, en rem (coincide con el CSS). */
-  const DIGIT_REM = 0.625;
+  /**
+   * La banda empieza en el borde inferior del menú. Todo lo que mide la
+   * regleta es RELATIVO a ese borde: así la escala queda pegada al menú
+   * (no parece un elemento aparte) y nunca se dibuja por encima de él.
+   */
+  const BAND_TOP = Math.round(band.getBoundingClientRect().top) || 50;
+  /** Margen de la lectura numérica dentro de la banda. */
+  const READOUT_TOP = 10;
 
   /**
    * El alto del documento se MIDE UNA VEZ y se vuelve a medir cuando cambia
@@ -66,9 +73,11 @@ export function initPageRuler(): void {
     viewport: window.innerHeight
   });
 
+  const DIGIT_REM = 0.625;
+
   const progressFromY = (y: number) => {
     const { viewport } = metrics();
-    return Math.min(1, Math.max(0, (y - OFFSET) / Math.max(1, viewport - OFFSET)));
+    return Math.min(1, Math.max(0, (y - BAND_TOP) / Math.max(1, viewport - BAND_TOP)));
   };
 
   const scrollToProgress = (progress: number, immediate = false) => {
@@ -87,30 +96,31 @@ export function initPageRuler(): void {
   const update = () => {
     const { documentHeight: docH, viewport } = metrics();
     const scrolled = window.scrollY;
-    const usable = Math.max(1, viewport - OFFSET);
+    const usable = Math.max(1, viewport - BAND_TOP);
     const active = band.classList.contains('is-active');
 
     // La MISMA escala se comprime: de la altura del documento (58,2px por
     // unidad) a la ventana (8,4px por unidad). Una sola escala, así que no
-    // puede verse duplicada.
+    // puede verse duplicada. En reposo, la escala arranca pegada al borde
+    // inferior del menú y sube con el scroll.
     if (scale) {
       scale.style.height = `${active ? usable : docH}px`;
-      scale.style.transform = `translateY(${active ? OFFSET : OFFSET - scrolled}px)`;
+      scale.style.transform = `translateY(${active ? 0 : -scrolled}px)`;
     }
 
     const maximum = Math.max(1, docH - viewport);
     const progress = Math.min(1, Math.max(0, scrolled / maximum));
 
     if (readout) {
-      readout.style.transform = `translateY(${OFFSET + progress * usable}px)`;
+      readout.style.transform = `translateY(${READOUT_TOP + progress * usable}px)`;
     }
 
     // Pulgar: alto proporcional a la porción visible del documento, y baja
     // acompañando el scroll.
     if (thumb) {
-      const thumbHeight = Math.max(24, usable * (usable / Math.max(1, docH - OFFSET)));
+      const thumbHeight = Math.max(24, usable * (usable / Math.max(1, docH - BAND_TOP)));
       thumb.style.height = `${thumbHeight}px`;
-      thumb.style.transform = `translateY(${OFFSET + progress * (usable - thumbHeight)}px)`;
+      thumb.style.transform = `translateY(${READOUT_TOP + progress * (usable - thumbHeight)}px)`;
     }
 
     // Contador de rodillo: cada columna se desplaza hasta su dígito.

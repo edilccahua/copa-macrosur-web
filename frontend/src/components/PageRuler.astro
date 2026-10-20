@@ -89,9 +89,11 @@ const ticks = Array.from({ length: 101 }, (_, i) => i);
     .ruler {
       display: block;
       position: fixed;
-      /* BANDA DE ALTURA COMPLETA, como en la referencia: el regulador y el
-         menú son un solo instrumento y no queda un hueco entre ambos. */
-      inset-block: 0;
+      /* La banda empieza JUSTO en el borde inferior del menú: ni por encima
+         (las marcas se dibujarían sobre la cabecera) ni con hueco (parecería
+         un elemento aparte). El margen de la escala lo pone el JS, relativo
+         a este borde. */
+      inset-block: var(--header-offset, 3.0625rem) 0;
       right: 0;
       width: 3.75rem;
       z-index: 40;
@@ -140,8 +142,10 @@ const ticks = Array.from({ length: 101 }, (_, i) => i);
     .ruler__grab:hover ~ .ruler__scale,
     .ruler:focus-visible .ruler__scale,
     .ruler.is-scrubbing .ruler__scale {
-      height: calc(100vh - 3.75rem) !important;
-      transform: translateY(3.75rem) !important;
+      /* Comprimida, la escala ocupa EXACTO la banda: desde el borde inferior
+         del menú hasta el final de la ventana. */
+      height: calc(100vh - var(--header-offset, 3.0625rem)) !important;
+      transform: translateY(0) !important;
       transition:
         height 300ms var(--ease-in-out),
         transform 300ms var(--ease-in-out);
