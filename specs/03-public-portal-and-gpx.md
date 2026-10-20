@@ -85,10 +85,22 @@ coincidían).
 | :--- | :--- |
 | Barra | 48 px, `display:flex; justify-content:space-between`, full‑bleed |
 | Marca | wordmark + separador vertical a la derecha |
-| Items | `padding: 0 .625rem` · 0.6875rem mono · tracking 0.15em · versalitas |
-| Activo | **pastilla invertida** (`--invert-bg` / `--invert-fg`) |
-| Hover | **sólo cambia el color** (en la referencia el puntero no lleva pastilla) |
+| Items | `padding: 0 .75rem` · 0.6875rem mono · tracking 0.15em · versalitas |
+| Pastilla | un `<span>` interior con `padding: .125rem .375rem` (medido en la referencia: chip de 45×21 px dentro de una celda de 65×48) |
+| Activo | **pastilla invertida** sobre el texto (`--invert-bg` / `--invert-fg`) |
+| Hover | **la misma pastilla invertida** (en la referencia es `group-hover:bg-invert` sobre el span) |
 | Grupos | separación con `margin-left` + `border-left` + `padding-left` (13 px) |
+
+**La pastilla va sobre el TEXTO, no sobre la celda.** Es el detalle que
+distingue la referencia de una imitación: el fondo invertido está en un
+`<span>` interior al enlace, no en el enlace. Por eso el item activo **no
+ocupa todo su espacio** (21 px de alto dentro de una celda de 48) y por eso
+el puntero puede mostrar **la misma pastilla** que el activo. Con el fondo en
+el enlace entero, la pastilla llenaba la celda y el hover sólo podía ser un
+cambio de color de la letra.
+
+Entre dos pastillas quedan **24 px** (12 px de padding del enlace + 6 px de
+pastilla a cada lado); la referencia deja 20 px.
 
 El menú va **pegado a la marca, a la izquierda** (como la referencia): el hueco
 grande queda a la derecha, entre el nav y las celdas de iconos. El nav de
@@ -110,8 +122,8 @@ ancla se interceptan en `site-shell.ts`:
 - Entra con un desplazamiento corto (`translateY(-10px)` + opacidad, 260 ms) y
   los items se **escalonan** (35 ms de retraso por item).
 - **Dice en qué página estamos**: una línea `PÁGINA ACTUAL · <DESTINO>` en la
-  cabecera del cajón, y el item activo con **pastilla invertida + una barra de
-  acento** a la izquierda.
+  cabecera del cajón, y el item activo con la **misma pastilla invertida** de
+  la barra + una **barra de acento** a la izquierda.
 - Accesibilidad: al abrir, el foco entra en el cajón y queda **atrapado**
   (Tab cicla dentro); con Escape se cierra y el foco vuelve al botón; el
   velo cierra al tocarlo; se cierra solo al navegar o al pasar a escritorio.

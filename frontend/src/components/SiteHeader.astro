@@ -49,7 +49,7 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
                   data-nav-anchor={item.anchor ? 'true' : undefined}
                   aria-current={isActivePath(path, item) ? 'page' : undefined}
                 >
-                  {item.label}
+                  <span class="hdr__label">{item.label}</span>
                 </a>
               ))}
             </div>
@@ -129,7 +129,7 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
             aria-current={isActivePath(path, item) ? 'page' : undefined}
             style={`--i: ${index + 1};`}
           >
-            {item.label}
+            <span class="hdr__label">{item.label}</span>
           </a>
         ))
       )
@@ -266,7 +266,10 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
     display: flex;
     align-items: center;
     flex: 0 0 auto;
-    padding-inline: 0.625rem;
+    /* El aire entre items: con la pastilla encima del texto (6 px) y 12 px de
+       padding en el enlace, entre dos pastillas quedan 24 px. En la referencia
+       son 20 px (10 px de padding + 6 px de pastilla en cada lado). */
+    padding-inline: 0.75rem;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: var(--font-weight-medium, 500);
@@ -275,18 +278,32 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
     white-space: nowrap;
     color: var(--muted);
     text-decoration: none;
+  }
+
+  /**
+   * La pastilla va sobre el TEXTO, no sobre la celda entera.
+   *
+   * Es lo que hace getartcraft.com: dentro del enlace hay un `<span>` con
+   * `px-1.5 py-0.5` que lleva el fondo invertido, tanto en el item activo
+   * como al pasar el puntero (`group-hover:bg-invert`). Medido allí: chip de
+   * 45×21 px dentro de una celda de 65×48.
+   *
+   * Antes el fondo iba en el enlace entero: la pastilla ocupaba toda la
+   * celda (de altura completa) y el hover era sólo un cambio de color, que
+   * no es lo que hace la referencia.
+   */
+  .hdr__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.375rem;
     transition:
-      color var(--default-transition-duration) var(--default-transition-timing-function),
-      background-color var(--default-transition-duration) var(--default-transition-timing-function);
+      background-color var(--default-transition-duration) var(--default-transition-timing-function),
+      color var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
-  /* En la referencia el puntero SÓLO aclara el rótulo: la pastilla invertida
-     es del item activo. */
-  .hdr__link:hover {
-    color: var(--ink);
-  }
-
-  .hdr__link.is-active {
+  .hdr__link:hover .hdr__label,
+  .hdr__link.is-active .hdr__label {
     background: var(--invert-bg);
     color: var(--invert-fg);
   }
@@ -418,9 +435,10 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
     text-decoration: none;
   }
 
-  /* "Dónde estoy": pastilla invertida + una barra de acento a la izquierda,
-     que se lee de un vistazo en pantalla pequeña. */
-  .hdr__drawer-link.is-active {
+  /* "Dónde estoy": la misma pastilla invertida que en la barra (el mismo
+     lenguaje visual) + una barra de acento a la izquierda, que se lee de un
+     vistazo en pantalla pequeña. */
+  .hdr__drawer-link.is-active .hdr__label {
     background: var(--invert-bg);
     color: var(--invert-fg);
   }
