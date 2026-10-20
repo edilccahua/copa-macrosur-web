@@ -40,7 +40,6 @@ await page.evaluate(() => {
   window.__marcador = 'vivo';
 });
 
-const opacidades = [];
 await page.evaluate(() => {
   window.__op = [];
   const iv = setInterval(() => {
