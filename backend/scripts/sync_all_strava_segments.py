@@ -31,7 +31,14 @@ import urllib.error
 import urllib.request
 
 API_BASE = "http://127.0.0.1:8000/api/v1"
-ADMIN_KEY = "***REMOVED-ADMIN-API-KEY***"
+# La clave de administrador NUNCA esta en el repositorio: sale del
+# entorno (`ADMIN_API_KEY` en el `.env` de la raiz).
+ADMIN_KEY = os.environ.get("ADMIN_API_KEY", "").strip()
+if not ADMIN_KEY:
+    raise SystemExit(
+        "Falta ADMIN_API_KEY. Definela en el `.env` de la raiz del repositorio "
+        "o en el entorno antes de ejecutar este script."
+    )
 
 MESES = {
     "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,

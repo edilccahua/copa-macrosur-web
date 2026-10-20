@@ -421,8 +421,10 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
   Copa de Equipos. Cada una enlaza a `/ranking-general?tabla=PRO|NORMAL|EQUIPO`.
 - **Sección 03 · Premios:** escala en dólares con tarjetas `PrizeScale`:
   acumulado PRO y NORMAL (300/200/100 USD), premio por fecha en cada una de
-  las 11 categorías (100/50/30 USD) y premios especiales. Enlaza a `/premios`.
-  Ver §1.7.
+  las 11 categorías (100/50/30 USD) y premios especiales. Cada tarjeta lleva
+  su rótulo en color y en monoespaciada (el color del ámbito) con el icono en
+  línea, y su pie dice el ganador provisional o la cadencia del premio.
+  Enlaza a `/premios`. Ver §1.7.
 - **Sección 04 · Transmisión:** tarjeta editorial con el póster de la fecha,
   meta a cuadros y señal de llegadas. El enlace a `/en-vivo` **solo se activa**
   en estado `live` (día de carrera desde las 08:00 de Lima hasta que el admin
@@ -575,6 +577,13 @@ quedaba en 784 en vez de 2883 → 2883.
    > **20-Oct-2026:** se retiró la franja de acento de 2px del borde superior
    > de las tarjetas de premios (`PrizeScale`) y de la tarjeta de transmisión:
    > repetían la señal en cada bloque. La tarjeta mantiene el hairline.
+   > **20-Oct-2026 (2):** la escala de premios SÍ lleva color, pero **en el
+   > rótulo y en el icono en línea**, nunca en la caja. Es el mecanismo de
+   > `PodiumPanel` (`[ COPA DE EQUIPOS ]` en `--scope-ink`): el rótulo va en
+   > monoespaciada, en versalitas y con el color del ámbito, y el icono va
+   > **en línea y sin recuadro**. El accumulate es el único color de la
+   > tarjeta; los montos, los nombres y el cuerpo siguen en tinta. Sigue
+   > **prohibido** el chip con borde alrededor del icono.
 4. **Sin bordes punteados, sin chips con borde, sin pesos 800.** La escala
    tipográfica de la casa es `620` + `font-stretch: 118%` (o
    `var(--font-weight-medium)`); los pesos 700/800 que aparecían en los
@@ -962,6 +971,24 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   de PRO y al que más suma dentro de NORMAL.
 - El premio por fecha **no es una bolsa común de NORMAL**: hay un podio por
   categoría, 11 por fecha. La página lista las 11 categorías.
+- **Cada tarjeta de la escala dice la FRECUENCIA de su premio, y el
+  ganador cuando lo hay** (20-Oct-2026). Antes las tres usaban etiquetas
+  intercambiadas: "POR ANUNCIAR" estaba en los títulos de montaña, que se
+  pagan **en cada fecha** (no hay "un anuncio" pendiente: hay un ganador por
+  fecha), y los acumulados —que sí tienen un único ganador, al cierre del
+  campeonato— no mostraban a nadie.
+  | Tarjeta | Etiqueta | Contenido |
+  | :--- | :--- | :--- |
+  | `PRO` / `NORMAL` (acumulado) | `GANADOR PROVISIONAL` | el líder de la agrupación con sus puntos (`{pts} PTS · {n} DE {m} FECHAS`), enlazado a su perfil. Pasa a `GANADOR` cuando las cuatro fechas están disputadas |
+  | `CADA CATEGORÍA` (por fecha) | `CADA FECHA` | no hay un ganador único: hay once podios por fecha |
+  | `KOM` / `QOM` / `KAMIKAZE` | `UNO POR FECHA` (en la cabecera) | el ganador de la fecha, o `SIN GANADOR TODAVÍA` si todavía no hay intentos |
+  - El líder provisional sale de `GET /api/v1/public/standings?scope=PRO|NORMAL`
+    (la fila 1). En la portada no cuesta una petición extra: la sección 02 ya
+    lee la misma clasificación.
+  - El recuento de fechas sale de `GET /api/v1/public/remontada`
+    (`stages_counted` / `total_stages`).
+  - La tarjeta es **la misma** en la portada, en `/premios` y en la ficha de
+    una fecha: mismo rótulo en color, mismo icono y mismo pie.
 - **BD pendiente:** `prize_tiers` todavía conserva la escala anterior
   (por fecha 70/50/30 y acumulado por categoría). Mientras no se migre, la
   escala vive en `frontend/src/data/prizes.ts` y la deuda está documentada en

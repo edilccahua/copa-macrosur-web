@@ -117,7 +117,10 @@ class Stage(SQLModel, table=True):
     # `distance_km` y `elevation_gain_m` son POR VUELTA y `laps` es el máximo de vueltas.
     laps: int = Field(default=1)
     gallery_r2_prefix: Optional[str] = Field(default=None)
-    judge_pin: str = Field(default="***REMOVED-JUDGE-PIN-DEFAULT***")
+    # PIN de juez de esta fecha. NUNCA hay un valor por defecto: se siembra
+    # desde el entorno (ver `backend/app/core/secrets.py`) y se rota cambiando
+    # la variable `JUDGE_PIN_F{n}` y reejecutando el sembrado.
+    judge_pin: str = Field(default="")
     # Enlace público a la ruta de Strava de esta fecha (si existe)
     strava_route_url: Optional[str] = Field(default=None)
     # Cifras PUBLICADAS en el PDF oficial de resultados, para poder contrastar
