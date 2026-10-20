@@ -8,6 +8,9 @@
  * `import()` dinámico, y sólo en las páginas que lo piden. Así `/en-vivo` y
  * `/admin/juez` no descargan GSAP ni Lenis (AGENTS.md §2) y, a la vez, al
  * navegar con el router el movimiento se rearma para la página que entra.
+ *
+ * (No puede ser un import estático: GSAP toca `window` al cargarse y el
+ * SSR se ejecuta en Node.)
  */
 import Base from './Base.astro';
 import PageIndex from '../components/PageIndex.astro';

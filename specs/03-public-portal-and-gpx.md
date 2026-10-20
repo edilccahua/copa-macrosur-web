@@ -291,6 +291,7 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 | `SITE_NAME` | `Copa MacroSur MTB` | `<title>` de todas las páginas y textos legales |
 | `SITE_TAGLINE` | `Edición 2026 · Kuspide Xtreme Sports` | pie de página |
 | `BRAND_WORDMARK` | `COPA MACROSUR MTB` | rótulo grande del hero |
+| `BRAND_ACCENT` | `MTB` | palabra del rótulo que va en el oro de la copa |
 | `BRAND_EDITION` | `EDICIÓN 2026` | línea superior del hero |
 | `BRAND_NAV` | `KÚSPIDE` | **marca del menú principal (cabecera)** |
 
@@ -302,6 +303,23 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
   duplicaban la BD y por eso se quedaron desfasadas (decían 55.4 km y +920 m
   para La Joya cuando la ruta oficial son 40.85 km y +384 m). Se conserva el
   TIPO `CraftApp`, que necesita el componente portado `AppCard.astro`.
+
+**El color de la copa: `--copa-gold`**
+
+- El oro es el color de los pósters oficiales: allí "MTB" y "EDICIÓN 2026" son
+  las dos únicas palabras en amarillo. El sitio lleva ese mismo lockup: el
+  rótulo va en la tinta con **"MTB" en oro**, y la línea `[ EDICIÓN 2026 ]`
+  también en oro.
+- En **claro** el oro es oscuro (`#9a6a00`): sobre el papel claro un oro
+  claro no llegaría al contraste mínimo de un texto grande. En **oscuro** es
+  el oro del póster (`#f0c22e`).
+- Es el **único** color del hero, y no compite con el color por vista del
+  sistema (specs/03 §2, "Identidad cromática"): en la portada el color es el
+  de la copa; en la tabla de clasificaciones, el del grupo de categorías.
+- La palabra de acento va **siempre en su propia línea** (`wordmark--stacked`):
+  si el salto dependiera del ancho, el rótulo cambiaría de una línea a dos al
+  cruzar un punto de inflexión, y el salto se vería.
+
 
 **Hero**
 
@@ -315,8 +333,8 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
 
 | Elemento | Escritorio | Móvil (< 48em) |
 | :--- | :--- | :--- |
-| Eyebrow | `[ EDICIÓN 2026 ]` | igual |
-| Rótulo | `COPA MACROSUR MTB` (una línea si cabe; si no, dos) | dos líneas |
+| Eyebrow | `[ EDICIÓN 2026 ]` (en oro) | igual |
+| Rótulo | `COPA MACROSUR` + `MTB` en oro, **apilados** | `COPA` / `MACROSUR` / `MTB` |
 | Titular | `Cuatro fechas de MTB en *Arequipa.*` | 2 renglones |
 | Bajada | **no hay**: el párrafo se eliminó | — |
 | Botones | solo `Ver ranking` (fantasma) | igual |
@@ -342,6 +360,28 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
 - El rótulo agrupa las letras por palabra (`wordmark__word`) y el espacio va
   en el `column-gap`. Con un `<span>` más para el espacio, el colapso de
   espacios en línea lo borraría y se leería "COPAMACROSURMTB".
+
+**La entrada del hero: cuánto se tarda en ver el texto**
+
+> **Ajustado el 20 de Octubre de 2026.** El contenido del hero está oculto
+> desde el PRIMER pintado (`html.motion-ready` en `motion.css`): es lo que
+> evita el destello, y lo verifica `tools/detect-fouc.mjs`. Pero con los
+> tiempos del original la intro no empezaba hasta un segundo después de que
+> cargara el módulo de movimiento, así que el hero se quedaba en blanco.
+> Medido: **2,4 s** (desarrollo) hasta ver el último texto.
+>
+> Los tiempos (`INTRO` en `showcase-motion.ts`) se ajustaron: `wordAt` 0,35 →
+> 0,12 · `wordDur` 0,85 → 0,7 · `copyAt` 1,05 → 0,5, y el revelado del hero
+> dura 0,6 s en vez de los 0,9 s del revelado por scroll. Medido después:
+> **1,3 s en producción** y 1,7 s en desarrollo (donde Vite sirve 130 módulos
+> y el hilo principal se atasca). La cascada se mantiene: el rótulo se forma
+> y el texto sale detrás.
+>
+> El módulo de movimiento **no** puede importarse de forma estática en la
+> plantilla `Showcase`: GSAP toca `window` al cargarse y el SSR corre en Node
+> (`ReferenceError`). Sigue siendo un `import()` dinámico desde
+> `site-shell.ts`, que además es lo que garantiza que `/en-vivo` y
+> `/admin/juez` no descarguen GSAP (AGENTS.md §2).
 
 **Banda de la próxima fecha (`hero__next`)**
 
@@ -374,9 +414,15 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
   parámetro se quitó de la ficha de fecha y el enlace iba desalineado.
 
 **Grilla de las 4 Fechas:** 4 tarjetas Bento modulares mostrando el cartel oficial (generado con Nanobanana y alojado en Cloudflare R2), fecha, distancia (`km`), desnivel (`+m`) y estado (`Finalizada`, `Inscripciones Abiertas`, `Próximamente`).
-- **Resumen del Ranking Acumulado:** Top 5 de cada categoría individual con enlace directo a `/ranking-general`.
-- **Showcase Copa de Equipos:** Tarjeta Bento destacada con el **Team Líder del Campeonato** (logo, puntos y victorias) y podio de los 3 mejores equipos.
-- **Showcase de Premios Especiales:** Cajas destacadas para premios de marca (ej. *Premio Especial Coca*, *Rey de la Montaña*).
+- **Sección 02 · Clasificación:** tres tarjetas con el mismo patrón (`.panel`,
+  podio de tres con `MedalIcon` y enlace a la clasificación completa):
+  **PRO · TODOS**, **NORMAL · TODOS** y **Copa de Equipos**. Las dos primeras
+  leen el acumulado de su agrupación (todas sus categorías); la tercera, la
+  Copa de Equipos. Cada una enlaza a `/ranking-general?tabla=PRO|NORMAL|EQUIPO`.
+- **Sección 03 · Premios:** escala en dólares con tarjetas `PrizeScale`:
+  acumulado PRO y NORMAL (300/200/100 USD), premio por fecha en cada una de
+  las 11 categorías (100/50/30 USD) y premios especiales. Enlaza a `/premios`.
+  Ver §1.7.
 
 ### 1.1.1 La banda de la derecha: regulador + índice de secciones
 
@@ -783,17 +829,26 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 
 ### 1.7 Página de Premios (`/premios`)
 
-- Página de presentación de los premios de la edición.
-- **20-Oct-2026: la escala de premios sale de la BD** (`prize_tiers`), en
-  **dólares**, por categoría y por ámbito. La página no escribe ningún monto.
+- Página de presentación de los premios de la edición, desarrollada con el
+  sistema de tarjetas del sitio (`PrizeScale`, adaptación de `BentoCard` /
+  `StageTeamCard`, con `MedalIcon` para los puestos).
+- **Esquema de la edición 2026** (fijado por el organizador):
 
-  | Ámbito | 1º | 2º | 3º |
-  | :--- | :--- | :--- | :--- |
-  | Por fecha | 70 USD | 50 USD | 30 USD |
-  | Del campeonato (acumulado) | 300 USD | 200 USD | 100 USD |
+  | Ámbito | 1º | 2º | 3º | Se paga a |
+  | :--- | :--- | :--- | :--- | :--- |
+  | Por fecha | 100 USD | 50 USD | 30 USD | Cada una de las 11 categorías |
+  | Acumulado del campeonato | 300 USD | 200 USD | 100 USD | Podio de la agrupación **PRO** y podio de la agrupación **NORMAL** |
 
-  El premio es **por categoría**: el 1º de cada una de las 11 categorías cobra
-  lo que dice su fila. Montos decididos por el organizador el 20-Oct-2026.
+- El acumulado **no es por categoría**: premia al que más puntos suma dentro
+  de PRO y al que más suma dentro de NORMAL.
+- El premio por fecha **no es una bolsa común de NORMAL**: hay un podio por
+  categoría, 11 por fecha. La página lista las 11 categorías.
+- **BD pendiente:** `prize_tiers` todavía conserva la escala anterior
+  (por fecha 70/50/30 y acumulado por categoría). Mientras no se migre, la
+  escala vive en `frontend/src/data/prizes.ts` y la deuda está documentada en
+  `docs/PREMIOS-PENDIENTE.md`.
+- La portada reproduce la misma escala en la sección `03 · Premios` y enlaza
+  a esta página.
 - Los **premios especiales** (Premio Especial Coca, Rey de la Montaña) salen
   de `special_awards`, también en dólares: USD 100 y USD 150 más el distintivo.
   Se muestran con su ganador cuando `winner_rider_id` está resuelto, y con

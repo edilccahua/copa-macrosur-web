@@ -152,6 +152,10 @@
   --medal-1: #eeaf0b;
   --medal-2: #8b9699;
   --medal-3: #c46c3b;
+  /* LA COPA: el oro de los pósters oficiales, donde "MTB" y "EDICIÓN 2026"
+     van en amarillo. En claro es un oro oscuro: sobre el papel claro un oro
+     claro no llegaría al contraste mínimo de un texto grande. */
+  --copa-gold: #9a6a00;
 }
 
 :root[data-theme='dark'] {
@@ -165,6 +169,7 @@
   --medal-1: #e0a72a;
   --medal-2: #9ba6ae;
   --medal-3: #cd7039;
+  --copa-gold: #f0c22e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -179,6 +184,7 @@
     --medal-1: #e0a72a;
     --medal-2: #9ba6ae;
     --medal-3: #cd7039;
+    --copa-gold: #f0c22e;
   }
 }
 
