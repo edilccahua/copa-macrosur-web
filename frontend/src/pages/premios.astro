@@ -127,7 +127,7 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
         {
           ACCUMULATED_PRIZES.map((prize) => (
             <PrizeScale
-              label="CAMPEONATO"
+              label="ACUMULADO"
               title={prize.label}
               body={prize.blurb}
               tiers={prize.tiers}
@@ -135,7 +135,7 @@ function toLeader(scope: ScopeData): PrizeLeader | null {
               accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
               icon={prize.icon}
               leader={toLeader(prize.scope === 'PRO' ? proScope : normalScope)}
-              tags={['ACUMULADO', 'PODIO DE LA AGRUPACIÓN']}
+              tags={['PODIO DE LA AGRUPACIÓN']}
             />
           ))
         }

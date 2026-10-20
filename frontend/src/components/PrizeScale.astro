@@ -107,12 +107,11 @@ const leaderDetail = leader
         </span>
       )
     }
-    <span class="prize__label">{label}</span>
-    <span class="prize__slash" aria-hidden="true">/</span>
+    <h2 class="prize__label">{title}</h2>
+    <span class="prize__scope font-mono">· {label}</span>
     <span class="prize__currency font-mono">{currency}</span>
   </header>
 
-  <h2 class="prize__title">{title}</h2>
   {body && <p class="prize__body">{body}</p>}
 
   <ol class="prize__tiers">
@@ -221,10 +220,12 @@ const leaderDetail = leader
     color: var(--prize-accent-ink);
   }
 
-  .prize__slash {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    color: var(--faint);
+  /* El calificador del rótulo ("· ACUMULADO"): mismo aire, misma tinta. */
+  .prize__scope {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--prize-accent-ink);
   }
 
   .prize__currency {
@@ -232,16 +233,6 @@ const leaderDetail = leader
     font-size: 0.625rem;
     letter-spacing: 0.12em;
     color: var(--faint);
-  }
-
-  .prize__title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
-    color: var(--ink-strong);
   }
 
   .prize__body {
@@ -274,11 +265,12 @@ const leaderDetail = leader
     color: var(--faint);
   }
 
-  /* Los montos van en monoespaciada, como las filas del podio. */
+  /* Los montos van en monoespaciada, como las filas del podio, pero en un
+     punto mayor: son el dato que la tarjeta vende. */
   .prize__amount {
     justify-self: end;
     font-family: var(--font-mono);
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     font-weight: var(--font-weight-bold);
     font-variant-numeric: tabular-nums;
     color: var(--ink-strong);
@@ -316,14 +308,15 @@ const leaderDetail = leader
     color: var(--prize-accent-ink);
   }
 
+  /* El nombre del ganador va en monoespaciada, como las filas de la
+     clasificación: la tarjeta no grita más que el podio de al lado. */
   .prize__foot-name {
-    margin: 0.3rem 0 0;
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
+    margin: 0.25rem 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
     font-weight: var(--font-weight-medium);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
-    color: var(--ink-strong);
+    letter-spacing: 0.02em;
+    color: var(--ink);
   }
 
   .prize__foot-name a {
