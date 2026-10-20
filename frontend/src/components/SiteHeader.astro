@@ -1,55 +1,68 @@
 ---
 /**
  * SiteHeader.astro — cabecera oficial de Kúspide MTB.
- * Replicación fiel de la estructura full-bleed y hairlines de GetArtCraft.
+ *
+ * Estructura tomada de getartcraft.com (medida, no de memoria):
+ *   marca │ GRUPO 1 │ GRUPO 2 │  ...  │  iconos  │ CTA
+ *   - la marca es el LOGO (no un item de menú): no existe "Campeonato"
+ *     porque iría al mismo sitio que el logo;
+ *   - cada grupo va separado por un hairline vertical;
+ *   - el item activo se invierte (pastilla) y lleva `aria-current`;
+ *   - el CTA es un bloque sólido pegado al borde derecho.
+ *
+ * La cabecera **persiste** entre navegaciones (`transition:persist`): el
+ * router de Astro reutiliza este mismo elemento, así que la entrada de la
+ * barra —que ahora es una animación CSS— ocurre UNA sola vez por sesión y
+ * NO se repite al cambiar de página.
  */
+import { NAV_GROUPS, HEADER_CTA, CONTACT_WHATSAPP } from '../lib/nav';
+import { isActivePath } from '../lib/nav';
+
 const path = Astro.url.pathname;
-const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
-
-const navItems = [
-  { label: 'Campeonato', href: '/' },
-  { label: 'Fechas', href: '/#fechas' },
-  { label: 'Eventos Ruta', href: '/eventos-especiales' },
-  { label: 'Ranking', href: '/ranking-general' },
-  { label: 'En Vivo', href: '/en-vivo' },
-  { label: 'Inscripciones', href: '/inscripciones' },
-  { label: 'Reclamos', href: '/reclamos' },
-];
-
-const cta = { label: 'Inscripción', href: '/inscripciones' };
 ---
-<header class="hdr" id="site-header">
+
+<header class="hdr" id="site-header" transition:persist="site-header">
   <div class="hdr__bar">
-    <a class="hdr__brand" href="/" aria-label="Kúspide MTB">
+    <a
+      class="hdr__brand"
+      href="/"
+      aria-label="Kúspide MTB — Campeonato 2026"
+      aria-current={path === '/' ? 'page' : undefined}
+    >
       <span class="brand-text">KÚSPIDE</span>
     </a>
 
     <nav class="hdr__nav" aria-label="Navegación principal">
       {
-        navItems.map((item) => (
-          <a class:list={['hdr__link', { 'is-active': isActive(item.href) }]} href={item.href}>
-            {item.label}
-          </a>
+        NAV_GROUPS.map((group) => (
+          <div class:list={['hdr__group', { 'hdr__group--sep': group.separated }]}>
+            {group.items.map((item) => (
+              <a
+                class:list={['hdr__link', { 'is-active': isActivePath(path, item) }]}
+                href={item.href}
+                data-nav-match={item.match.join('|')}
+                aria-current={isActivePath(path, item) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
         ))
       }
     </nav>
 
     <div class="hdr__spacer"></div>
 
-    <div class="hdr__cell">
-      <a href="https://wa.me/51994382248" target="_blank" rel="noopener noreferrer" aria-label="Contacto WhatsApp" title="WhatsApp Oficial Kúspide: 994 382 248">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-        </svg>
-      </a>
-    </div>
-
-    <div class="hdr__cell">
-      <a href="/admin/juez" aria-label="Panel del Juez" title="Panel Móvil del Juez">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="13" r="8"></circle>
-          <polyline points="12 9 12 13 15 15"></polyline>
-          <path d="M12 5V2M10 2h4"></path>
+    <div class="hdr__cell hdr__cell--hide-sm">
+      <a
+        href={CONTACT_WHATSAPP.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Contacto WhatsApp"
+        title={`WhatsApp oficial Kúspide: ${CONTACT_WHATSAPP.phone}`}
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.5 8.5 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
         </svg>
       </a>
     </div>
@@ -66,53 +79,44 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
       </button>
     </div>
 
-    <button class="hdr__cell hdr__burger" id="nav-toggle" type="button" aria-expanded="false" aria-label="Menú">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+    <button class="hdr__cell hdr__burger" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-panel" aria-label="Menú">
+      <svg class="i-bars" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
         <line x1="4" y1="7" x2="20" y2="7"></line>
         <line x1="4" y1="12" x2="20" y2="12"></line>
         <line x1="4" y1="17" x2="20" y2="17"></line>
       </svg>
+      <svg class="i-close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+      </svg>
     </button>
 
-    <a class="hdr__cta" href={cta.href}>
-      <span>{cta.label}</span>
+    <a class="hdr__cta" href={HEADER_CTA.href} data-nav-match={HEADER_CTA.match.join('|')}>
+      <span>{HEADER_CTA.label}</span>
     </a>
   </div>
 
   <div class="hdr__panel" id="nav-panel">
     {
-      navItems.map((item) => (
-        <a class:list={['hdr__panel-link', { 'is-active': isActive(item.href) }]} href={item.href}>
-          {item.label}
-        </a>
-      ))
+      NAV_GROUPS.map((group) =>
+        group.items.map((item) => (
+          <a
+            class:list={['hdr__panel-link', { 'is-active': isActivePath(path, item) }]}
+            href={item.href}
+            data-nav-match={item.match.join('|')}
+            aria-current={isActivePath(path, item) ? 'page' : undefined}
+          >
+            {item.label}
+          </a>
+        ))
+      )
     }
-    <a class="hdr__panel-link highlight font-mono" href="/admin/juez">[COMISARIO] Panel Juez Oficial</a>
+    <a class="hdr__panel-link hdr__panel-link--cta" href={HEADER_CTA.href}>{HEADER_CTA.label}</a>
+    <a class="hdr__panel-link hdr__panel-link--contact" href={CONTACT_WHATSAPP.href} target="_blank" rel="noopener noreferrer">
+      CONTACTO · {CONTACT_WHATSAPP.phone}
+    </a>
   </div>
 </header>
-
-<script>
-  const root = document.documentElement;
-  const themeButton = document.getElementById('theme-toggle');
-
-  themeButton?.addEventListener('click', () => {
-    const current =
-      root.dataset.theme ??
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    const next = current === 'dark' ? 'light' : 'dark';
-    root.dataset.theme = next;
-    try {
-      localStorage.setItem('kuspide-theme', next);
-    } catch (e) {}
-  });
-
-  const header = document.getElementById('site-header');
-  const navButton = document.getElementById('nav-toggle');
-  navButton?.addEventListener('click', () => {
-    const open = header?.classList.toggle('is-open') ?? false;
-    navButton.setAttribute('aria-expanded', String(open));
-  });
-</script>
 
 <style>
   .hdr {
@@ -121,6 +125,7 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
     z-index: 20;
     background: var(--bg);
     border-bottom: var(--hairline) solid var(--line);
+    /* La barra se recreate al cambiar de página; este es su único contenedor. */
   }
 
   .hdr__bar {
@@ -129,16 +134,46 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
     box-sizing: border-box;
     min-width: 0;
     height: var(--nav-height-mobile, 3rem);
-    /* El CTA no debe quedar pegado al scrollbar ni recortarse. */
     padding-inline-end: max(0.5rem, env(safe-area-inset-right));
   }
 
+  /* ── Entrada de la barra ────────────────────────────────────────────────
+     La animación vive en CSS, no en JS: el estado inicial está en la hoja de
+     estilos, así que no hay destello (el contenido no se pinta visible antes
+     de ocultarse) y no depende de que GSAP haya cargado. Como la cabecera
+     PERSISTE entre navegaciones, el elemento se crea una sola vez y la
+     animación ocurre una vez por sesión. */
+  @keyframes hdr-item-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .hdr__bar > * {
+    animation: hdr-item-in 0.45s var(--ease-out) both;
+    animation-delay: calc(var(--hdr-intro-delay, 0.05s) + var(--hdr-intro-stagger, 0.05s) * var(--i, 0));
+  }
+
+  .hdr__bar > :nth-child(1) { --i: 0; }
+  .hdr__bar > :nth-child(2) { --i: 1; }
+  .hdr__bar > :nth-child(3) { --i: 1; }
+  .hdr__bar > :nth-child(4) { --i: 2; }
+  .hdr__bar > :nth-child(5) { --i: 3; }
+  .hdr__bar > :nth-child(6) { --i: 4; }
+  .hdr__bar > :nth-child(7) { --i: 5; }
+
   .brand-text {
     font-family: var(--font-display);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 700;
     letter-spacing: 0.05em;
     color: var(--ink);
+    white-space: nowrap;
   }
 
   .hdr__brand,
@@ -146,7 +181,7 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-inline: 1rem;
+    padding-inline: 0.875rem;
     flex: 0 0 auto;
     border-left: var(--hairline) solid var(--line);
     color: var(--muted);
@@ -154,7 +189,7 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
   }
 
   .hdr__brand {
-    padding-inline: 1.25rem;
+    padding-inline: 1rem;
     border-left: 0;
     border-right: var(--hairline) solid var(--line);
     color: var(--ink);
@@ -168,6 +203,19 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
   .hdr__nav {
     display: none;
     align-items: stretch;
+    min-width: 0;
+  }
+
+  /* Grupos separados por un hairline vertical, como en getartcraft.com
+     (`<li class="border-l border-line ml-1.5 pl-1.5">`). */
+  .hdr__group {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .hdr__group--sep {
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
     border-left: var(--hairline) solid var(--line);
   }
 
@@ -175,22 +223,22 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
     display: flex;
     align-items: center;
     flex: 0 0 auto;
-    padding-inline: 1rem;
+    padding-inline: 0.75rem;
+    font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: var(--font-weight-medium, 500);
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.15em;
     white-space: nowrap;
     color: var(--muted);
-    border-right: var(--hairline) solid var(--line);
     text-decoration: none;
-    transition: color var(--default-transition-duration) var(--default-transition-timing-function);
+    transition:
+      color var(--default-transition-duration) var(--default-transition-timing-function),
+      background-color var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
-  .hdr__link:hover {
-    color: var(--ink);
-  }
-
+  /* La pastilla invertida: el activo y el que tiene el puntero encima. */
+  .hdr__link:hover,
   .hdr__link.is-active {
     background: var(--invert-bg);
     color: var(--invert-fg);
@@ -198,23 +246,25 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
 
   .hdr__spacer {
     flex: 1 1 auto;
+    min-width: 0;
   }
 
   .hdr__cta {
-    display: none;
+    display: flex;
     align-items: center;
     gap: 0.5rem;
     flex: 0 0 auto;
     box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
-    padding-inline: 1.5rem;
+    padding-inline: 1rem;
     background: var(--invert-bg);
     color: var(--invert-fg);
+    font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: var(--font-weight-medium, 500);
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.15em;
     white-space: nowrap;
     text-decoration: none;
     border-left: var(--hairline) solid var(--line);
@@ -238,6 +288,18 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
     display: block;
   }
 
+  .i-close {
+    display: none;
+  }
+
+  .hdr.is-open .i-bars {
+    display: none;
+  }
+
+  .hdr.is-open .i-close {
+    display: block;
+  }
+
   .hdr__panel {
     display: none;
     flex-direction: column;
@@ -251,10 +313,11 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
 
   .hdr__panel-link {
     padding: 0.875rem 1rem;
+    font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: var(--font-weight-medium, 500);
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.15em;
     color: var(--muted);
     border-bottom: var(--hairline) solid var(--line);
     text-decoration: none;
@@ -265,8 +328,38 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
     color: var(--invert-fg);
   }
 
-  .hdr__panel-link.highlight {
-    color: var(--muted);
+  .hdr__panel-link--cta {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .hdr__panel-link--contact {
+    color: var(--faint);
+    border-bottom: 0;
+  }
+
+  /* ── Móvil ─────────────────────────────────────────────────────────────── */
+  @media (max-width: 47.99em) {
+    /* El CTA de la barra se mantiene en móvil: es la acción principal y el
+       sitio es Mobile-First. Antes `display: none` lo eliminaba. */
+    .hdr__cta {
+      padding-inline: 0.75rem;
+      font-size: 0.625rem;
+      letter-spacing: 0.12em;
+    }
+
+    /* El contacto de WhatsApp vive en el panel móvil y en el pie. */
+    .hdr__cell--hide-sm {
+      display: none;
+    }
+
+    .hdr__brand {
+      padding-inline: 0.875rem;
+    }
+
+    .brand-text {
+      font-size: 0.75rem;
+    }
   }
 
   @media (min-width: 48em) {
@@ -284,10 +377,6 @@ const cta = { label: 'Inscripción', href: '/inscripciones' };
 
     .hdr__panel {
       display: none !important;
-    }
-
-    .hdr__cta {
-      display: flex;
     }
   }
 </style>

@@ -1,0 +1,227 @@
+---
+/**
+ * StageLeaderboard.astro — el leaderboard de podio por categoría.
+ *
+ * Una fila por categoría, compacta: el recuadro con el código corto de la
+ * categoría (MSA, ELI, TOV…), el nombre de la categoría y los tresESI
+ * ganhadores con su club. Sin dorsal, sin tiempo y sin puntos: el detalle
+ * completo está en `/fechas/{slug}/resultados`.
+ *
+ * La estructura sigue la del lineup de getartcraft.com/apps: el recuadro es
+ * el equivalente del `appcard__icon` y el hover invierte sus colores.
+ */
+import type { CategoryPodium } from '../lib/api';
+
+interface Props {
+  podium: CategoryPodium[];
+  id?: string;
+}
+
+const { podium, id } = Astro.props;
+
+/** El acento de la categoría sale de su grupo: PRO, NORMAL o E-MTB. */
+const groupClass = (group: string) => `app-group-${group.toLowerCase()}`;
+---
+
+<div class="leaderboard" id={id}>
+  {
+    podium.map((category) => (
+      <section class={`cat ${groupClass(category.group)}`}>
+        <header class="cat__head">
+          <span class="cat__code" aria-hidden="true">{category.short_code}</span>
+          <span class="cat__name">{category.category_name}</span>
+        </header>
+
+        <ol class="cat__podium">
+          {category.entries.map((entry) => (
+            <li class="cat__row" data-rank={entry.rank}>
+              <span class="cat__rank font-mono">{entry.rank}º</span>
+              <a class="cat__rider" href={`/corredor/${entry.rider_slug}`}>
+                {entry.rider_name}
+              </a>
+              <span class="cat__team">
+                {entry.team_slug ? (
+                  <a href={`/equipos/${entry.team_slug}`}>{entry.team_name}</a>
+                ) : (
+                  entry.team_name
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .leaderboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+    gap: 0 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 3.5rem;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .cat {
+    padding: 0.875rem 0;
+    border-bottom: var(--hairline) solid var(--line);
+    min-width: 0;
+  }
+
+  /* El acento por grupo, con el mecanismo `app-<slug>` del origen. */
+  .app-group-pro {
+    --app: #2f7bf5;
+    --app-ink: #1a5bc4;
+  }
+
+  .app-group-normal {
+    --app: #7bb51c;
+    --app-ink: #457008;
+  }
+
+  .app-group-ebike {
+    --app: #f26b1d;
+    --app-ink: #ad4306;
+  }
+
+  :global(:root[data-theme='dark']) .app-group-pro {
+    --app-ink: #7fb0ff;
+  }
+
+  :global(:root[data-theme='dark']) .app-group-normal {
+    --app-ink: #a6e04a;
+  }
+
+  :global(:root[data-theme='dark']) .app-group-ebike {
+    --app-ink: #ff9657;
+  }
+
+  .cat__head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* El recuadro de la categoría: el mismo cuadrado del lineup de artcraft. */
+  .cat__code {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: 0 0 auto;
+    background: var(--bg-sunken);
+    border: var(--hairline) solid var(--line);
+    font-family: var(--font-display);
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-semibold, 600);
+    letter-spacing: 0.02em;
+    color: var(--app-ink);
+    transition: background var(--default-transition-duration)
+      var(--default-transition-timing-function),
+      color var(--default-transition-duration) var(--default-transition-timing-function),
+      border-color var(--default-transition-duration) var(--default-transition-timing-function);
+  }
+
+  .cat:hover .cat__code {
+    background: var(--app-ink);
+    border-color: var(--app-ink);
+    color: var(--bg-raised);
+  }
+
+  .cat__name {
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.01em;
+    color: var(--ink-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cat__podium {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cat__row {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    grid-template-areas:
+      'rank rider'
+      'rank team';
+    align-items: baseline;
+    column-gap: 0.5rem;
+    padding: 0.2rem 0;
+  }
+
+  .cat__rank {
+    grid-area: rank;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--faint);
+  }
+
+  .cat__row[data-rank='1'] .cat__rank {
+    color: var(--podium-1, #a97a12);
+  }
+
+  .cat__row[data-rank='2'] .cat__rank {
+    color: var(--podium-2, #6f7784);
+  }
+
+  .cat__row[data-rank='3'] .cat__rank {
+    color: var(--podium-3, #8a5a34);
+  }
+
+  .cat__rider {
+    grid-area: rider;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color var(--default-transition-duration)
+      var(--default-transition-timing-function);
+  }
+
+  .cat__row[data-rank='1'] .cat__rider {
+    color: var(--ink-strong);
+  }
+
+  .cat:hover .cat__row[data-rank='1'] .cat__rider {
+    color: var(--app-ink);
+  }
+
+  .cat__rider:hover {
+    color: var(--app-ink);
+  }
+
+  .cat__team {
+    grid-area: team;
+    font-size: 0.6875rem;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cat__team a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .cat__team a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+  }
+</style>

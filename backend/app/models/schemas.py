@@ -144,6 +144,9 @@ class CategoryPodiumRead(BaseModel):
     category_id: int
     category_name: str
     short_code: str
+    # Grupo de la categoría: PRO | NORMAL | E-MTB. Es el acento que lleva el
+    # leaderboard de la ficha.
+    group: str = "PRO"
     entries: List[PodiumEntryRead]
 
 
@@ -154,6 +157,10 @@ class TeamPodiumRead(BaseModel):
     points: int
     riders_counted: int
     best_rank: int
+    # Medallas de la jornada: puestos 1º, 2º y 3º conseguidos.
+    first_places: int = 0
+    second_places: int = 0
+    third_places: int = 0
 
 
 class StravaEffortRead(BaseModel):

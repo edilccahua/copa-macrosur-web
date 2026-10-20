@@ -336,6 +336,27 @@ async def test_category_podium_returns_top3_per_category(async_session):
         assert all(e.rider_slug for e in cat.entries)
 
 
+async def test_category_podium_carries_the_scope_group(async_session):
+    """Cada categoría declara su grupo (PRO/NORMAL/E-MTB) para el acento."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=12, finishers=12, points=120, categories=2
+    )
+    session = async_session
+    cats = await _seed_categories(session, ["ELI", "TOV", "EBK"])
+    entries = (
+        await session.exec(select(StageEntry).where(StageEntry.stage_id == stage.id))
+    ).all()
+    for index, entry in enumerate(entries):
+        entry.category_id = cats[index % len(cats)].id
+    await session.commit()
+
+    podium = await compute_category_podium(session, stage.id)
+    groups = {c.short_code: c.group for c in podium}
+    assert groups["ELI"] == "PRO"
+    assert groups["TOV"] == "NORMAL"
+    assert groups["EBK"] == "E-MTB"
+
+
 async def test_category_podium_is_empty_for_undisputed_stage(async_session):
     """Una fecha sin resultados no inventa podios."""
     stage = await _seed_stage_with_results(
@@ -944,4 +965,28 @@ async def test_summary_endpoint_carries_profile_summits_and_titles(async_session
     assert "summits" in body
     assert "kom" in body
     assert "qom" in body
+
+
+async def test_team_podium_exposes_medals_of_the_day(async_session):
+    """El podio de clubes cuenta sus medallas: los puestos 1º, 2º y 3º."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=6, finishers=6, points=60, categories=1
+    )
+    session = async_session
+    entries = (
+        await session.exec(
+            select(StageEntry)
+            .where(StageEntry.stage_id == stage.id)
+            .order_by(StageEntry.category_rank)
+        )
+    ).all()
+    # Tres puestos 1º, dos 2º y un 3º.
+    for index, entry in enumerate(entries):
+        entry.category_rank = 1 if index < 3 else (2 if index < 5 else 3)
+    await session.commit()
+
+    podium = await compute_stage_team_podium(session, stage.id)
+    assert podium[0].first_places == 3
+    assert podium[0].second_places == 2
+    assert podium[0].third_places == 1
 

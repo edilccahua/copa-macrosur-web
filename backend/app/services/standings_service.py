@@ -71,6 +71,18 @@ def scope_short_codes(scope: str) -> List[str]:
     return list(SCOPE_GROUPS.get(scope, []))
 
 
+def scope_of_category(short_code: str) -> str:
+    """El ámbito al que pertenece una categoría.
+
+    Es la inversa de `SCOPE_GROUPS`: el leaderboard de la ficha lo usa para
+    dar a cada categoría su color de acento.
+    """
+    for scope, codes in SCOPE_GROUPS.items():
+        if short_code in codes:
+            return scope
+    return "PRO"
+
+
 # --- Utilidades --------------------------------------------------------------
 
 def _elapsed_label(ms: Optional[int]) -> str:
