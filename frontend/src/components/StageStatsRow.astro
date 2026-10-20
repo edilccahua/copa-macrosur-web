@@ -8,6 +8,7 @@
  * se dice con palabras, no con ceros falsos.
  */
 import type { StageStats } from '../lib/api';
+import Icon from './Icon.astro';
 
 interface Props {
   stats: StageStats;
@@ -25,16 +26,26 @@ const undisclosed = stats.entries_total === 0;
 const nonFinishersLabel =
   stats.non_finishers > 0 ? 'NO FINALIZARON' : 'AÚN NO COMPITEN';
 
-const cells = [
-  { label: 'INSCRITOS', value: undisclosed ? '—' : String(stats.entries_total) },
-  { label: 'FINALIZARON', value: undisclosed ? '—' : String(stats.finishers) },
-  { label: nonFinishersLabel, value: undisclosed ? '—' : String(stats.non_finishers) },
-  { label: 'PUNTOS', value: undisclosed ? '—' : String(stats.points_total) },
+/** El tipo de los iconos, para que TS no lo infiera como `string`. */
+type IconName =
+  | 'users'
+  | 'flag'
+  | 'endurance'
+  | 'trophy'
+  | 'bolt'
+  | 'bike';
+
+const cells: { label: string; value: string; icon: IconName }[] = [
+  { label: 'INSCRITOS', value: undisclosed ? '—' : String(stats.entries_total), icon: 'users' },
+  { label: 'FINALIZARON', value: undisclosed ? '—' : String(stats.finishers), icon: 'flag' },
+  { label: nonFinishersLabel, value: undisclosed ? '—' : String(stats.non_finishers), icon: 'endurance' },
+  { label: 'PUNTOS', value: undisclosed ? '—' : String(stats.points_total), icon: 'trophy' },
   {
     label: 'VEL. GANADOR',
     value: stats.winner_avg_speed_kmh != null ? `${stats.winner_avg_speed_kmh} KM/H` : '—',
+    icon: 'bolt',
   },
-  { label: 'CATEGORÍAS', value: undisclosed ? '—' : String(stats.categories_count) },
+  { label: 'CATEGORÍAS', value: undisclosed ? '—' : String(stats.categories_count), icon: 'bike' },
 ];
 ---
 
@@ -47,7 +58,10 @@ const cells = [
     <dl class="stats">
       {cells.map((cell) => (
         <div class="stats__cell">
-          <dt class="stats__label font-mono">{cell.label}</dt>
+          <dt class="stats__label font-mono">
+            <Icon name={cell.icon} size={12} class="stats__icon" />
+            {cell.label}
+          </dt>
           <dd class="stats__value font-mono">{cell.value}</dd>
         </div>
       ))}
@@ -75,11 +89,19 @@ const cells = [
   }
 
   .stats__label {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
     font-size: 0.625rem;
     font-weight: var(--font-weight-medium, 500);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--faint);
+  }
+
+  .stats__icon {
+    flex: 0 0 auto;
+    color: var(--accent);
   }
 
   .stats__value {
