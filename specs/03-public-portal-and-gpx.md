@@ -971,58 +971,44 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   de PRO y al que más suma dentro de NORMAL.
 - El premio por fecha **no es una bolsa común de NORMAL**: hay un podio por
   categoría, 11 por fecha. La página lista las 11 categorías.
-- **Cada tarjeta de la escala dice la FRECUENCIA de su premio, y el
-  ganador cuando lo hay** (20-Oct-2026). Antes las tres usaban etiquetas
+- **Cada celda de la tabla dice la FRECUENCIA de su premio, y el ganador
+  cuando lo hay** (20-Oct-2026). Antes las etiquetas estaban
   intercambiadas: "POR ANUNCIAR" estaba en los títulos de montaña, que se
   pagan **en cada fecha** (no hay "un anuncio" pendiente: hay un ganador por
   fecha), y los acumulados —que sí tienen un único ganador, al cierre del
   campeonato— no mostraban a nadie.
-  | Tarjeta | Etiqueta | Contenido |
+  | Celda | Estado | Contenido |
   | :--- | :--- | :--- |
-  | `PRO` / `NORMAL` (acumulado) | `GANADOR PROVISIONAL` | el líder de la agrupación con sus puntos (`{pts} PTS · {n} DE {m} FECHAS`), enlazado a su perfil. Pasa a `GANADOR` cuando las cuatro fechas están disputadas |
+  | `PRO` / `NORMAL` (acumulado) | `GANADOR PROVISIONAL` | el líder de la agrupación con sus puntos (`{pts} PTS · {n} DE {m} FECHAS`). Pasa a `GANADOR` cuando las cuatro fechas están disputadas |
   | `CADA CATEGORÍA` (por fecha) | `CADA FECHA` | no hay un ganador único: hay once podios por fecha |
-  | `KOM` / `QOM` / `KAMIKAZE` | `UNO POR FECHA` (en la cabecera) | el ganador de la fecha, o `SIN GANADOR TODAVÍA` si todavía no hay intentos |
+  | `KOM` / `QOM` / `KAMIKAZE` | `UNO POR FECHA` | el ganador de la fecha, o `SIN GANADOR TODAVÍA` si todavía no hay intentos |
   - El líder provisional sale de `GET /api/v1/public/standings?scope=PRO|NORMAL`
     (la fila 1). En la portada no cuesta una petición extra: la sección 02 ya
     lee la misma clasificación.
   - El recuento de fechas sale de `GET /api/v1/public/remontada`
     (`stages_counted` / `total_stages`).
-  - La tarjeta es **la misma** en la portada, en `/premios` y en la ficha de
-    una fecha: mismo rótulo en color, mismo icono y mismo pie.
-- **Escala tipográfica de la tarjeta de premios** (20-Oct-2026). La escala de
-  premios comparte escala con `PodiumPanel` (la tarjeta de clasificación de la
-  portada): es toda monoespaciada, con el rótulo a `.6875 rem` en versalitas,
-  el cuerpo a `--text-sm` en la sans del sitio y los datos a `.75–.875 rem`.
-  **Ningún texto de la tarjeta pasa de 14 px.** Antes había un titular en
-  display a 1.5 rem, los montos a 1 rem y el ganador provisional a 1.125 rem:
-  la sección de premios pesaba el doble que la clasificación que tiene justo
-  encima. La identidad (`PRO`, `NORMAL`, `CADA CATEGORÍA`) va en el rótulo,
-  con el mismo orden que `PodiumPanel` (`[ PRO · TODOS ]` → `[ PRO · ACUMULADO ]`).
-- **Identidad tipográfica de la página** (20-Oct-2026). La página se lee en
-  dos bandas:
-  - **Escala (secciones 01 y 02): tabla de datos.** Tablas cortas, rótulo en
-    monoespaciada con color, montos en `.875 rem`, cuerpo en la sans del
-    sitio. Escala compartida con `PodiumPanel` (ningún texto pasa de 14 px).
-  - **Premios especiales (secciones 03 y 04): cartel.** Aquí **el premio es
-    el titular**: la cifra (`USD 100`, `USD 15`) va en monoespaciada, en el
-    **oro de la copa** y a `.2xl` (24 px), por encima del nombre del premio
-    (`Premio CLARO`, `KOM`), que baja a `.xl`/`.lg` con la escala de titular
-    de la casa (620 + 118 %). Antes la cifra era una etiqueta de 10 px en la
-    esquina y el nombre se llevaba un titular de 2.75 rem: la jerarquía
-    estaba invertida.
-- **La cabecera de `/premios` tiene dos columnas.** El masthead es un grid: a
-  la izquierda, el antetítulo, el titular y la bajada; a la derecha, el
-  **panel de la escala de la edición** (`[ ESCALA DE LA EDICIÓN ]`) con las
-  tres escalas y el Premio CLARO, con las cifras en el oro de la copa. Sin
-  panel, la cabecera se queda a una columna (`PageHeader` acepta un
-  `<Fragment slot="aside">` opcional; `:empty` oculta la columna).
-- **El Premio CLARO ocupa tres columnas** en la banda ancha: el logotipo, la
-  descripción (criterio y regla) y **el ganador en su propia columna**, con
-  un filete vertical. Antes el ganador estaba debajo del texto y la mitad
-  derecha de la tarjeta se quedaba vacía.
-- **La introducción de los títulos de montaña también es de dos columnas**:
-  la nota a la izquierda y el panel `[ CÓMO SE RESUELVEN ]` a la derecha
-  (mismo componente `prize-note` que usa la sección 02).
+- **La página es UNA tabla, con una sola gramática** (20-Oct-2026). Los ocho
+  premios —los dos acumulados, el de cada categoría, el Premio CLARO y los
+  cuatro títulos de montaña— son celdas de la misma grilla (`PrizeCell`), con
+  la anatomía fija de la tabla de principios de la referencia
+  (`copiaartcraft/src/pages/apps.astro`, y `/apps` en vivo):
+  `emblema · índice` → `titular` → `regla de una línea` → `cifra y estado`.
+  - La grilla dibuja los filetes con `gap: 1px` sobre su propio fondo y las
+    celdas lo tapan con el fondo de la página: por eso es **una rejilla**, no
+    un mosaico de cajas. Cuatro columnas en la banda ancha, dos en tablet, una
+    en móvil.
+  - El emblema es un cuadro de 2.25 rem con el icono del ámbito (o el
+    logotipo del patrocinador, a su proporción). La cifra va en
+    monoespaciada y en el color del ámbito (el oro de la copa para el resto).
+  - **Sin panels, sin notas y sin párrafos que repitan lo que dice la celda.**
+    La cabecera es el masthead de la referencia (titular grande + bajada) y
+    debajo va la tabla. No hay nada más.
+- **La portada sigue con su propia tarjeta compacta** (`PrizeScale`), que
+  comparte escala con `PodiumPanel`: es toda monoespaciada, con el rótulo a
+  `.6875 rem` en versalitas, el cuerpo a `--text-sm` en la sans del sitio y
+  los datos a `.75–.875 rem`. **Ningún texto de la tarjeta pasa de 14 px.**
+  La identidad (`PRO`, `NORMAL`, `CADA CATEGORÍA`) va en el rótulo, con el
+  mismo orden que `PodiumPanel` (`[ PRO · TODOS ]` → `[ PRO · ACUMULADO ]`).
 - **BD pendiente:** `prize_tiers` todavía conserva la escala anterior
   (por fecha 70/50/30 y acumulado por categoría). Mientras no se migre, la
   escala vive en `frontend/src/data/prizes.ts` y la deuda está documentada en
