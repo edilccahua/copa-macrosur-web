@@ -2,20 +2,21 @@
 /**
  * SiteHeader.astro — cabecera oficial de Kúspide MTB.
  *
- * Estructura tomada de getartcraft.com (medida, no de memoria):
- *   marca │ GRUPO 1 │ GRUPO 2 │  ...  │  iconos  │ CTA
- *   - la marca es el LOGO (no un item de menú): no existe "Campeonato"
- *     porque iría al mismo sitio que el logo;
- *   - cada grupo va separado por un hairline vertical;
+ * Estructura tomada de getartcraft.com (medida en vivo, no de memoria):
+ *   marca │ GRUPO │ [iconos]
+ *   - la marca es el LOGO (un icono, no un item de menú). "KÚSPIDE" e
+ *     "INICIO" llevan a la portada, pero el que se marca como activo es
+ *     "INICIO";
+ *   - los items van en mono, versalitas, tracking 0.15em;
  *   - el item activo se invierte (pastilla) y lleva `aria-current`;
- *   - el CTA es un bloque sólido pegado al borde derecho.
+ *   - los grupos se separan con un hairline vertical.
  *
  * La cabecera **persiste** entre navegaciones (`transition:persist`): el
  * router de Astro reutiliza este mismo elemento, así que la entrada de la
- * barra —que ahora es una animación CSS— ocurre UNA sola vez por sesión y
- * NO se repite al cambiar de página.
+ * barra —que es una animación CSS— ocurre UNA sola vez por sesión y NO se
+ * repite al cambiar de página.
  */
-import { NAV_GROUPS, HEADER_CTA, CONTACT_WHATSAPP } from '../lib/nav';
+import { NAV_GROUPS, CONTACT_WHATSAPP } from '../lib/nav';
 import { isActivePath } from '../lib/nav';
 
 const path = Astro.url.pathname;
@@ -23,12 +24,7 @@ const path = Astro.url.pathname;
 
 <header class="hdr" id="site-header" transition:persist="site-header">
   <div class="hdr__bar">
-    <a
-      class="hdr__brand"
-      href="/"
-      aria-label="Kúspide MTB — Campeonato 2026"
-      aria-current={path === '/' ? 'page' : undefined}
-    >
+    <a class="hdr__brand" href="/" aria-label="Kúspide MTB — Campeonato 2026">
       <span class="brand-text">KÚSPIDE</span>
     </a>
 
@@ -41,6 +37,7 @@ const path = Astro.url.pathname;
                 class:list={['hdr__link', { 'is-active': isActivePath(path, item) }]}
                 href={item.href}
                 data-nav-match={item.match.join('|')}
+                data-nav-anchor={item.anchor ? 'true' : undefined}
                 aria-current={isActivePath(path, item) ? 'page' : undefined}
               >
                 {item.label}
@@ -51,49 +48,45 @@ const path = Astro.url.pathname;
       }
     </nav>
 
-    <div class="hdr__spacer"></div>
+    <div class="hdr__right">
+      <div class="hdr__cell hdr__cell--hide-sm">
+        <a
+          href={CONTACT_WHATSAPP.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Contacto WhatsApp"
+          title={`WhatsApp oficial Kúspide: ${CONTACT_WHATSAPP.phone}`}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.5 8.5 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+        </a>
+      </div>
 
-    <div class="hdr__cell hdr__cell--hide-sm">
-      <a
-        href={CONTACT_WHATSAPP.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Contacto WhatsApp"
-        title={`WhatsApp oficial Kúspide: ${CONTACT_WHATSAPP.phone}`}
-      >
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.5 8.5 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-        </svg>
-      </a>
-    </div>
+      <div class="hdr__cell">
+        <button id="theme-toggle" type="button" aria-label="Conmutar tema">
+          <svg class="i-moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+          </svg>
+          <svg class="i-sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.5"></path>
+          </svg>
+        </button>
+      </div>
 
-    <div class="hdr__cell">
-      <button id="theme-toggle" type="button" aria-label="Conmutar tema">
-        <svg class="i-moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+      <button class="hdr__cell hdr__burger" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-panel" aria-label="Menú">
+        <svg class="i-bars" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="7" x2="20" y2="7"></line>
+          <line x1="4" y1="12" x2="20" y2="12"></line>
+          <line x1="4" y1="17" x2="20" y2="17"></line>
         </svg>
-        <svg class="i-sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
-          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.5"></path>
+        <svg class="i-close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <line x1="18" y1="6" x2="6" y2="18"></line>
         </svg>
       </button>
     </div>
-
-    <button class="hdr__cell hdr__burger" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-panel" aria-label="Menú">
-      <svg class="i-bars" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-        <line x1="4" y1="7" x2="20" y2="7"></line>
-        <line x1="4" y1="12" x2="20" y2="12"></line>
-        <line x1="4" y1="17" x2="20" y2="17"></line>
-      </svg>
-      <svg class="i-close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-      </svg>
-    </button>
-
-    <a class="hdr__cta" href={HEADER_CTA.href} data-nav-match={HEADER_CTA.match.join('|')}>
-      <span>{HEADER_CTA.label}</span>
-    </a>
   </div>
 
   <div class="hdr__panel" id="nav-panel">
@@ -104,6 +97,7 @@ const path = Astro.url.pathname;
             class:list={['hdr__panel-link', { 'is-active': isActivePath(path, item) }]}
             href={item.href}
             data-nav-match={item.match.join('|')}
+            data-nav-anchor={item.anchor ? 'true' : undefined}
             aria-current={isActivePath(path, item) ? 'page' : undefined}
           >
             {item.label}
@@ -111,10 +105,6 @@ const path = Astro.url.pathname;
         ))
       )
     }
-    <a class="hdr__panel-link hdr__panel-link--cta" href={HEADER_CTA.href}>{HEADER_CTA.label}</a>
-    <a class="hdr__panel-link hdr__panel-link--contact" href={CONTACT_WHATSAPP.href} target="_blank" rel="noopener noreferrer">
-      CONTACTO · {CONTACT_WHATSAPP.phone}
-    </a>
   </div>
 </header>
 
@@ -125,11 +115,13 @@ const path = Astro.url.pathname;
     z-index: 20;
     background: var(--bg);
     border-bottom: var(--hairline) solid var(--line);
-    /* La barra se recreate al cambiar de página; este es su único contenedor. */
   }
 
+  /* Tres columnas: marca │ menú (centrado) │ iconos. El menú lleva espacio a
+     los dos lados para quedar centrado en el hueco que le queda. */
   .hdr__bar {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: stretch;
     box-sizing: border-box;
     min-width: 0;
@@ -161,11 +153,7 @@ const path = Astro.url.pathname;
 
   .hdr__bar > :nth-child(1) { --i: 0; }
   .hdr__bar > :nth-child(2) { --i: 1; }
-  .hdr__bar > :nth-child(3) { --i: 1; }
-  .hdr__bar > :nth-child(4) { --i: 2; }
-  .hdr__bar > :nth-child(5) { --i: 3; }
-  .hdr__bar > :nth-child(6) { --i: 4; }
-  .hdr__bar > :nth-child(7) { --i: 5; }
+  .hdr__bar > :nth-child(3) { --i: 2; }
 
   /* Una vez que la entrada ha terminado, la animación se DESACTIVA.
      Motivo: al navegar, el router reinserta la cabecera persistente en el
@@ -187,7 +175,23 @@ const path = Astro.url.pathname;
     white-space: nowrap;
   }
 
-  .hdr__brand,
+  /* La marca: como el icono de artcraft, es el logo. Un separador vertical
+     la separa del menú. */
+  .hdr__brand {
+    display: flex;
+    align-items: center;
+    padding-inline: 1.25rem;
+    border-right: var(--hairline) solid var(--line);
+    color: var(--ink);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .hdr__right {
+    display: flex;
+    align-items: stretch;
+  }
+
   .hdr__cell {
     display: flex;
     align-items: center;
@@ -199,14 +203,6 @@ const path = Astro.url.pathname;
     transition: color var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
-  .hdr__brand {
-    padding-inline: 1rem;
-    border-left: 0;
-    border-right: var(--hairline) solid var(--line);
-    color: var(--ink);
-    text-decoration: none;
-  }
-
   .hdr__cell:hover {
     color: var(--ink);
   }
@@ -214,7 +210,11 @@ const path = Astro.url.pathname;
   .hdr__nav {
     display: none;
     align-items: stretch;
+    justify-content: center;
     min-width: 0;
+    /* Espacio al principio y al final: el menú queda centrado en el hueco
+       que le dejan la marca y los iconos. */
+    padding-inline: 1.5rem;
   }
 
   /* Grupos separados por un hairline vertical, como en getartcraft.com
@@ -253,38 +253,6 @@ const path = Astro.url.pathname;
   .hdr__link.is-active {
     background: var(--invert-bg);
     color: var(--invert-fg);
-  }
-
-  .hdr__spacer {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .hdr__cta {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 0 0 auto;
-    box-sizing: border-box;
-    min-width: 0;
-    max-width: 100%;
-    padding-inline: 1rem;
-    background: var(--invert-bg);
-    color: var(--invert-fg);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: var(--font-weight-medium, 500);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    white-space: nowrap;
-    text-decoration: none;
-    border-left: var(--hairline) solid var(--line);
-    transition: background var(--default-transition-duration) var(--default-transition-timing-function);
-  }
-
-  .hdr__cta:hover {
-    background: var(--accent);
-    color: #fff;
   }
 
   .i-sun {
@@ -339,27 +307,10 @@ const path = Astro.url.pathname;
     color: var(--invert-fg);
   }
 
-  .hdr__panel-link--cta {
-    color: var(--ink);
-    font-weight: 700;
-  }
-
-  .hdr__panel-link--contact {
-    color: var(--faint);
-    border-bottom: 0;
-  }
-
   /* ── Móvil ─────────────────────────────────────────────────────────────── */
   @media (max-width: 47.99em) {
-    /* El CTA de la barra se mantiene en móvil: es la acción principal y el
-       sitio es Mobile-First. Antes `display: none` lo eliminaba. */
-    .hdr__cta {
-      padding-inline: 0.75rem;
-      font-size: 0.625rem;
-      letter-spacing: 0.12em;
-    }
-
-    /* El contacto de WhatsApp vive en el panel móvil y en el pie. */
+    /* El contacto de WhatsApp vive en el pie (en móvil la barra se queda
+       con lo esencial). */
     .hdr__cell--hide-sm {
       display: none;
     }

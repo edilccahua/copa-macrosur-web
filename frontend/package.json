@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "test:shell": "node tools/check-shell.mjs",
+    "test:menu": "node tools/check-menu.mjs",
     "test:fouc": "node tools/detect-fouc.mjs"
   },
   "dependencies": {

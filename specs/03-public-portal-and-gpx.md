@@ -61,20 +61,47 @@ Fuente única: `frontend/src/lib/nav.ts`. La barra, el panel móvil y el pie se
 derivan de ella (antes cada uno tenía su propia lista, con destinos que no
 coincidían).
 
+```
+[ KÚSPIDE ]  │        INICIO   FECHAS   CLASIFICACIONES   ESPECIALES   PREMIOS        │  [☀]
+               ↑ marca (logo)                                    ↑ menú centrado        ↑ iconos
+```
+
 | Elemento | Decisión |
 | :--- | :--- |
-| `KÚSPIDE` | **Wordmark‑logo**, no un item de menú. Es el enlace a la portada |
+| `KÚSPIDE` | **Wordmark‑logo**, no un item de menú. Enlaza a la portada, pero **nunca se marca** |
+| `INICIO` | La portada. Comparte destino con la marca, y es el que **se queda marcado** |
+| `FECHAS` | `/#fechas` (la sección del calendario de la portada) |
+| `CLASIFICACIONES` | `/ranking-general` (agrupa también `/corredor`, `/equipos`) |
+| `ESPECIALES` | `/eventos-especiales` (las clásicas de ruta) |
+| `PREMIOS` | `/premios` (página en blanco, lista para los `SpecialAward`) |
 | `Campeonato` | **Fuera**: iba al mismo sitio que el logo (la incompatibilidad Kúspide/Campeonato) |
-| `CLASIFICACIONES` | `/ranking-general` (agrupa también `/fechas`, `/corredor`, `/equipos`) |
-| `EVENTOS RUTA` | `/eventos-especiales`, en su propio grupo (hairline vertical) |
-| `INSCRIPCIÓN` | CTA único. Antes "Inscripciones" estaba **dos veces** y el CTA **desaparecía en móvil** |
 | `Reclamos` | Al **pie** (utilidad pública, no navegación principal) |
+| `INSCRIPCIÓN` | **Fuera de la barra**: estaba duplicada y no es un destino de navegación. Se llega desde la portada y el pie |
 | Panel del juez | **Cero enlaces públicos**. La URL la comparte el organizador |
 
-Estructura de grupos tomada de `getartcraft.com` (medida): marca │ grupo 1 │
-grupo 2 │ iconos │ CTA, con los grupos separados por un hairline vertical
-(`margin-left` + `padding-left` + `border-left`) y el item activo en
-**pastilla invertida**.
+Estructura y estilo tomados de `getartcraft.com` (medidos en vivo): marca │
+grupo de items │ iconos, con los items en mono 0.6875rem, versalitas,
+tracking 0.15em, y el item activo en **pastilla invertida** (`--invert-bg` /
+`--invert-fg`) como el `HOME` de la referencia.
+
+**El menú va centrado**: la barra es una rejilla de tres columnas
+(`marca │ 1fr │ iconos`) y el menú se centra en la columna central, con
+padding a los dos lados. Medido: 297 px de aire a la izquierda y 297 a la
+derecha a 1280 px.
+
+**El ancla del menú la resuelve el shell, no el router.** El router de Astro
+**no desplaza al fragmento** al navegar (verificado: la ruta cambia pero
+`scrollY` se queda en 0) y llega a perder el `#`. Por eso los items con
+ancla se interceptan en `site-shell.ts`:
+- si ya se está en la página → `preventDefault` + desplazamiento suave con
+  Lenis (`window.__kuspideScrollTo`, expuesto por el módulo de movimiento);
+- si no → `navigate()` (la API del router) y, en `astro:page-load`, se
+  desplaza al elemento.
+
+**Regresión automatizada:** `frontend/tools/check-menu.mjs` (items exactos, sin
+CTA ni enlaces al juez, menú centrado, item activo correcto en 7 rutas, la
+marca nunca marcada y el ancla de FECHAS desplazando al calendario) y
+`frontend/tools/check-shell.mjs`.
 
 ### 0.0.2 Puerta del panel del juez
 
@@ -452,7 +479,16 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 - Estadísticas del Team: Puntos acumulados, total de victorias de categoría (medallas), cantidad de corredores activos.
 - Plantilla de Corredores: Listado de todos los ciclistas que corrieron representando al Team en cualquiera de las fechas, con su categoría y los puntos aportados al equipo.
 
-### 1.7 Inscripciones y Buzón de Reclamos (`/inscripciones` y `/reclamos`)
+### 1.7 Página de Premios (`/premios`)
+
+- Página de presentación de los premios de la edición (premio de montaña,
+  premios por etapa, distintivos de la organización).
+- **Estado actual (20-Oct-2026): en blanco.** La estructura (título, bajada
+  y rótulo de sección) está montada y lista para llenarse con los
+  `SpecialAward` de la base de datos; el texto de "[ EN PREPARACIÓN ]"
+  desaparece cuando se publiquen.
+
+### 1.8 Inscripciones y Buzón de Reclamos (`/inscripciones` y `/reclamos`)
 - **Pre-inscripciones (`/inscripciones`):**
   - Formulario público para la fecha activa:
     - `DNI`: Campo obligatorio con validación estricta (8 dígitos para DNI peruano o formato de extranjería).

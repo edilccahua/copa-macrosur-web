@@ -9,9 +9,10 @@
  *   2. La cabecera PERSISTE y su animación de entrada NO se repite: al
  *      navegar, la opacidad de la barra no debe caer a 0.
  *   3. El item activo del menú se actualiza al navegar.
- *   4. El CTA y el conmutador de tema son CLICABLES en todos los anchos:
+ *   4. El conmutador de tema y el menú son CLICABLES en todos los anchos:
  *      el elemento que hay debajo del puntero debe ser el esperado (antes el
- *      regulador lateral se los comía entre 768 y 1171 px).
+ *      regulador lateral se comía los clics del extremo derecho entre 768 y
+ *      1171 px).
  *
  * Uso:  node tools/check-shell.mjs [url]
  */
@@ -71,27 +72,25 @@ ok(
   `la cabecera no desaparece al navegar (opacidad mínima ${minOp.toFixed(2)})`
 );
 
-// 4: el CTA y el tema son clicables en todos los anchos
+// 4: el conmutador de tema y el menú son clicables en todos los anchos
+// (antes el regulador lateral se comía los clics del extremo derecho)
 for (const width of [768, 900, 1024, 1280]) {
   await page.setViewportSize({ width, height: 800 });
   await page.waitForTimeout(350);
   const golpe = await page.evaluate(() => {
-    const cta = document.querySelector('.hdr__cta');
     const theme = document.getElementById('theme-toggle');
-    const ctaR = cta.getBoundingClientRect();
     const thR = theme.getBoundingClientRect();
-    const enCta = document.elementFromPoint(ctaR.right - 6, ctaR.y + ctaR.height / 2);
     const enTema = document.elementFromPoint(thR.x + thR.width / 2, thR.y + thR.height / 2);
+    const links = [...document.querySelectorAll('.hdr__link')];
+    const first = links[0].getBoundingClientRect();
+    const last = links[links.length - 1].getBoundingClientRect();
     return {
-      ctaVisible: ctaR.right <= window.innerWidth + 1 && ctaR.left >= 0,
-      ctaOk: !!(enCta && enCta.closest('.hdr__cta')),
       temaOk: !!(enTema && enTema.closest('#theme-toggle')),
-      ctaRight: Math.round(ctaR.right),
+      menuVisible: first.left >= 0 && last.right <= window.innerWidth + 1,
       vw: window.innerWidth
     };
   });
-  ok(golpe.ctaVisible, `${width}px · el CTA cabe en la pantalla (right=${golpe.ctaRight})`);
-  ok(golpe.ctaOk, `${width}px · el CTA es clicable`);
+  ok(golpe.menuVisible, `${width}px · el menú completo cabe en la pantalla`);
   ok(golpe.temaOk, `${width}px · el conmutador de tema es clicable`);
 }
 

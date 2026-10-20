@@ -21,6 +21,7 @@
  *  3. El ciclo de vida del movimiento: se destruye el de la página que sale
  *     y se arma el de la que entra.
  */
+import { navigate } from 'astro:transitions/client';
 
 /** Rutas que consideran activo un item del menú. */
 function matches(pathname: string, matchList: string): boolean {
@@ -51,12 +52,8 @@ export function applyActiveNav(pathname: string): void {
     }
   }
 
-  // La marca (logo) es el equivalente de "Inicio": activa en la portada.
-  const brand = document.querySelector<HTMLElement>('.hdr__brand');
-  if (brand) {
-    if (pathname === '/') brand.setAttribute('aria-current', 'page');
-    else brand.removeAttribute('aria-current');
-  }
+  // La MARCA (logo) no se marca nunca: "KÚSPIDE" e "INICIO" llevan a la
+  // misma página y el que queda activo es "INICIO".
 }
 
 // ── Tema ─────────────────────────────────────────────────────────────────────
@@ -144,6 +141,24 @@ function initDelegatedHandlers(): void {
     if (header?.classList.contains('is-open') && !target.closest('#site-header')) {
       toggleMobileMenu(false);
     }
+
+    // Anclas del menú (p.ej. "FECHAS" → /#fechas): el router de Astro no
+    // desplaza al ancla, así que se resuelve aquí.
+    const anchorLink = target.closest('a[data-nav-anchor]');
+    if (anchorLink) {
+      const href = anchorLink.getAttribute('href') ?? '';
+      const url = new URL(href, window.location.href);
+      if (url.hash) {
+        event.preventDefault();
+        if (url.pathname === window.location.pathname) {
+          history.pushState({}, '', url.pathname + url.hash);
+          scrollToHash(url.hash);
+        } else {
+          pendingAnchor = url.hash;
+          navigate(url.pathname + url.hash);
+        }
+      }
+    }
   });
 
   // Escape cierra el menú móvil.
@@ -185,6 +200,35 @@ function armHeaderIntroOnce(): void {
   // deja en 0,01 ms y dispara `animationend`; si el navegador no la soporta,
   // no dispara nada), la cabecera se fija visible equally.
   window.setTimeout(finish, 2000);
+}
+
+// ── Anclas dentro de la página ──────────────────────────────────────────────
+
+/**
+ * El item "FECHAS" apunta a `/#fechas` (la sección del calendario de la
+ * portada). El router de Astro **no resuelve el ancla**: verificado, la ruta
+ * cambia pero el scroll se queda en 0 y el fragmento llega a perderse. Por
+ * eso el ancla se resuelve aquí, con la API `navigate()` del router:
+ *
+ *   - si ya estamos en la portada → scroll suave al elemento;
+ *   - si no → se navega a la portada y, al terminar, se desplaza al elemento.
+ */
+let pendingAnchor: string | null = null;
+
+function scrollToHash(hash: string): void {
+  const id = hash.replace(/^#/, '');
+  if (!id) return;
+  const target = document.getElementById(id);
+  if (!target) return;
+
+  // El módulo de movimiento expone el desplazamiento para no duplicar la
+  // lógica de Lenis.
+  const scroll = (window as any).__kuspideScrollTo;
+  if (typeof scroll === 'function') {
+    scroll(target);
+  } else {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 // ── Ciclo de vida del movimiento ─────────────────────────────────────────────
@@ -280,6 +324,16 @@ function initRouter(): void {
       mod.init();
     } else {
       releasePendingReveals();
+    }
+
+    // Si la navegación trajo un ancla (p.ej. "FECHAS" → /#fechas desde otra
+    // página), se desplaza al elemento: el router no lo hace.
+    const anchor = pendingAnchor ?? window.location.hash;
+    if (anchor) {
+      pendingAnchor = null;
+      // Dos fotogramas: el primero para que el DOM esté montado y el
+      // segundo para que las fuentes y las imágenes ya den su altura.
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToHash(anchor)));
     }
   });
 }
