@@ -2,6 +2,9 @@
 import Base from '../../layouts/Base.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
+import { getStages } from '../../lib/stages';
+
+const stages = await getStages();
 ---
 <Base title="Consola del Organizador — Copa MacroSur MTB">
   <SiteHeader />
@@ -11,7 +14,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
       <span class="admin-badge font-mono">CONSOLA CENTRAL DE ADMINISTRACIÓN</span>
       <h1 class="admin-title">GESTIÓN DE CARRERA Y VALIDACIONES</h1>
       <p class="admin-desc">
-        Aprobación de vouchers de pago, ingesta masiva de Excel, actualización de rutas GPX y sincronización de esfuerzos.
+        Aprobación de vouchers de pago, ingesta masiva de Excel, actualización de rutas GPX, sincronización de esfuerzos y cierre de la transmisión en vivo.
       </p>
     </div>
 
@@ -77,6 +80,38 @@ import SiteFooter from '../../components/SiteFooter.astro';
           <button type="submit" class="btn-action font-mono">SUBIR Y CALCULAR ALTIMETRÍA</button>
           <div id="gpx-msg" class="action-msg font-mono"></div>
         </form>
+      </div>
+
+      <!-- Módulo 4: Transmisión en vivo -->
+      <div class="admin-card">
+        <div class="card-head font-mono">TRANSMISIÓN EN VIVO</div>
+        <div class="admin-form">
+          <p id="live-state" class="live-admin-state font-mono">Consultando estado…</p>
+
+          <div class="form-group">
+            <label class="font-mono">Etapa:</label>
+            <select id="live-stage" class="admin-select font-mono">
+              {
+                stages.map((stage) => (
+                  <option value={stage.id}>
+                    Fecha {stage.stage_number}:{' '}
+                    {stage.name.replace(/^Fecha\s+\d+\s*:\s*/i, '')}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+
+          <div class="live-admin-actions">
+            <button id="live-open" type="button" class="btn-action font-mono">
+              ABRIR TRANSMISIÓN
+            </button>
+            <button id="live-close" type="button" class="btn-action btn-action--danger font-mono">
+              CERRAR TRANSMISIÓN
+            </button>
+          </div>
+          <div id="live-msg" class="action-msg font-mono"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -186,6 +221,57 @@ import SiteFooter from '../../components/SiteFooter.astro';
       msg.innerText = '[ERROR] Error de conexión.';
     }
   });
+
+  // Transmisión en vivo: estado y cierre manual (specs/02 §6).
+  const liveStateEl = document.getElementById('live-state');
+  const liveSelect = document.getElementById('live-stage') as HTMLSelectElement | null;
+  const liveMsg = document.getElementById('live-msg');
+
+  const LIVE_LABELS: Record<string, string> = {
+    live: 'EN VIVO',
+    before_start: 'HOY · ABRE 08:00',
+    closed: 'CERRADA POR EL ADMIN',
+    no_race_today: 'HOY NO HAY CARRERA',
+  };
+
+  async function loadLiveStatus() {
+    if (!liveStateEl) return;
+    try {
+      const res = await fetch(`${API_V1}/public/live-status`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const label = LIVE_LABELS[data.state] ?? data.state;
+      liveStateEl.innerText = `ESTADO: ${label}${data.stage ? ' · ' + data.stage.name : ''}`;
+      if (data.stage && liveSelect) liveSelect.value = String(data.stage.id);
+    } catch (e) {
+      liveStateEl.innerText = 'ESTADO: no se pudo consultar el servidor.';
+    }
+  }
+
+  async function setLive(active: boolean) {
+    if (!liveSelect || !liveMsg) return;
+    liveMsg.innerText = active ? 'Abriendo transmisión…' : 'Cerrando transmisión…';
+    try {
+      const res = await fetch(`${API_V1}/stages/${liveSelect.value}/live`, {
+        method: 'POST',
+        headers: {
+          'X-Admin-Key': ADMIN_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ active }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail ?? 'Error');
+      liveMsg.innerText = active ? '[OK] Transmisión abierta.' : '[OK] Transmisión cerrada.';
+      await loadLiveStatus();
+    } catch (e) {
+      liveMsg.innerText = `[ERROR] ${e instanceof Error ? e.message : 'No se pudo actualizar.'}`;
+    }
+  }
+
+  document.getElementById('live-open')?.addEventListener('click', () => void setLive(true));
+  document.getElementById('live-close')?.addEventListener('click', () => void setLive(false));
+  loadLiveStatus();
 </script>
 
 <style>
@@ -300,6 +386,32 @@ import SiteFooter from '../../components/SiteFooter.astro';
 
   .btn-action:hover {
     background: var(--accent, #ff5500);
+  }
+
+  .btn-action--danger {
+    background: var(--status-down, #ef4444);
+    color: #fff;
+  }
+
+  .btn-action--danger:hover {
+    background: var(--danger, #b3261e);
+  }
+
+  .live-admin-state {
+    margin: 0 0 0.5rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .live-admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .live-admin-actions .btn-action {
+    flex: 1 1 10rem;
   }
 
   .action-msg {

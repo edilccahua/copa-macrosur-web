@@ -9,12 +9,41 @@ from backend.app.models.entities import (
     Stage, StageEntry, PaymentStatusEnum, FeedbackTicket, TicketStatusEnum,
     StravaSegment, StravaEffort, Rider
 )
-from backend.app.models.schemas import StravaSyncPayload
+from backend.app.models.schemas import StravaSyncPayload, LiveToggle
 from backend.app.services.gpx_service import parse_gpx_in_memory
 from backend.app.services.excel_service import normalize_name
+from backend.app.services.live_service import resolve_live_status, utc_now
 from backend.app.services.storage import upload_file_to_r2
 
 router = APIRouter(prefix="", tags=["Admin"])
+
+
+@router.post("/stages/{stage_id}/live")
+async def set_stage_live(
+    stage_id: int,
+    payload: LiveToggle,
+    session: AsyncSession = Depends(get_session),
+    admin_key: str = Depends(verify_admin_key),
+):
+    """Abre o cierra la transmisión de una etapa (specs/02 §6).
+
+    Abrir (`active: true`) limpia `live_closed_at`; cerrar (`active: false`)
+    lo marca con la hora UTC. El estado efectivo lo resuelve `live_service`:
+    fuera del día de la carrera la transmisión sigue apagada aunque esté
+    "abierta" en la BD.
+    """
+    stage = (
+        await session.exec(select(Stage).where(Stage.id == stage_id))
+    ).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    stage.live_closed_at = None if payload.active else utc_now()
+    session.add(stage)
+    await session.commit()
+    await session.refresh(stage)
+
+    return await resolve_live_status(session)
 
 
 @router.post("/stages/{stage_id}/upload-gpx")

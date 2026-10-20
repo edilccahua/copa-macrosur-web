@@ -1,0 +1,241 @@
+---
+/**
+ * PrizeScale.astro — tarjeta de escala de premios.
+ *
+ * Adaptación de `bento/BentoCard.astro` y `StageTeamCard.astro`: conserva el
+ * borde hairline, la superficie `--bg-raised`, las esquinas rectas y la marca
+ * de acento superior; cambia la media 16:10 por el podio de montos, que es lo
+ * que el lector necesita comparar.
+ *
+ * El acento identifica el ámbito:
+ *   · PRO / NORMAL → el color de su grupo (`--scope`, tokens.css)
+ *   · GOLD         → el oro de la copa (`--copa-gold`)
+ */
+import MedalIcon from './MedalIcon.astro';
+import type { PrizeStep } from '../data/prizes';
+
+interface Props {
+  /** Rótulo superior, p. ej. "ACUMULADO". */
+  label: string;
+  /** Título de la tarjeta, p. ej. "PRO". */
+  title: string;
+  /** Texto de contexto. */
+  body?: string;
+  /** Los tres peldaños del podio. */
+  tiers: PrizeStep[];
+  /** Moneda de los montos. */
+  currency?: string;
+  /** Etiquetas de contexto (categorías, fechas...). */
+  tags?: string[];
+  /** Acento de la tarjeta. */
+  accent?: 'pro' | 'normal' | 'gold' | 'neutral';
+  /** Si se pasa, la tarjeta entera es un enlace. */
+  href?: string;
+}
+
+const {
+  label,
+  title,
+  body,
+  tiers,
+  currency = 'USD',
+  tags = [],
+  accent = 'gold',
+  href,
+} = Astro.props;
+
+const Tag = href ? 'a' : 'article';
+const accentClass =
+  accent === 'gold' ? 'prize--gold' : accent === 'neutral' ? 'prize--neutral' : `scope-${accent}`;
+---
+
+<Tag class:list={['prize', accentClass]} href={href}>
+  <header class="prize__head">
+    <span class="prize__label">{label}</span>
+    <span class="prize__slash" aria-hidden="true">/</span>
+    <span class="prize__currency font-mono">{currency}</span>
+  </header>
+
+  <h2 class="prize__title">{title}</h2>
+  {body && <p class="prize__body">{body}</p>}
+
+  <ol class="prize__tiers">
+    {
+      tiers.map((tier) => (
+        <li class="prize__tier">
+          <MedalIcon rank={tier.position} size={20} class="prize__medal" />
+          <span class="prize__pos font-mono">{tier.position}º</span>
+          <span class="prize__amount tabular">
+            {currency} {tier.amountUsd}
+          </span>
+        </li>
+      ))
+    }
+  </ol>
+
+  {
+    tags.length > 0 && (
+      <ul class="prize__tags">
+        {tags.map((tag) => (
+          <li class="prize__tag font-mono">{tag}</li>
+        ))}
+      </ul>
+    )
+  }
+
+  <slot />
+
+  {href && <span class="prize__explore">Ver todos los premios →</span>}
+</Tag>
+
+<style>
+  .prize {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
+    text-decoration: none;
+    transition: border-color var(--default-transition-duration)
+      var(--default-transition-timing-function);
+  }
+
+  /* Marca de acento: la misma señal superior de BentoCard. */
+  .prize::before {
+    content: '';
+    display: block;
+    height: 2px;
+    background: var(--prize-accent, var(--line));
+  }
+
+  .prize--gold {
+    --prize-accent: var(--copa-gold);
+  }
+
+  .prize--neutral {
+    --prize-accent: var(--line-strong);
+  }
+
+  /* scope-pro / scope-normal: vienen de tokens.css. */
+  .prize:not(.prize--gold):not(.prize--neutral) {
+    --prize-accent: var(--scope, var(--line-strong));
+  }
+
+  a.prize:hover {
+    border-color: var(--prize-accent, var(--line-strong));
+  }
+
+  .prize__head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    min-height: 1.25rem;
+  }
+
+  .prize__label {
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+
+  .prize__slash {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--faint);
+  }
+
+  .prize__currency {
+    margin-left: auto;
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    color: var(--faint);
+  }
+
+  .prize__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--ink-strong);
+  }
+
+  .prize__body {
+    margin: 0;
+    max-width: 42ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--muted);
+  }
+
+  .prize__tiers {
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .prize__tier {
+    display: grid;
+    grid-template-columns: 1.25rem 2rem 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    padding-block: 0.55rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .prize__medal {
+    align-self: center;
+  }
+
+  .prize__pos {
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+  }
+
+  .prize__amount {
+    justify-self: end;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-strong);
+  }
+
+  .prize__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .prize__tag {
+    padding: 0.1875rem 0.5rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    border: var(--hairline) solid var(--line);
+  }
+
+  .prize__explore {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: var(--hairline) solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+  }
+
+  a.prize:hover .prize__explore {
+    text-decoration: underline;
+    text-underline-offset: 0.1875rem;
+  }
+</style>

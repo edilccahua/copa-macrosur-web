@@ -127,6 +127,10 @@ class Stage(SQLModel, table=True):
     # el motor reparte un punto más. `None` = la fecha no se ha disputado.
     official_results: Optional[int] = Field(default=None)
     official_points: Optional[int] = Field(default=None)
+    # Cierre MANUAL de la transmisión en vivo (specs/02 §6). La apertura es
+    # automática a las 08:00 de Lima el día de la carrera; el admin la cierra
+    # cuando termina de llegar el último ciclista. `NULL` = abierta/never closed.
+    live_closed_at: Optional[datetime.datetime] = Field(default=None)
 
     waves: List["StartWave"] = Relationship(back_populates="stage")
     checkpoints: List["Checkpoint"] = Relationship(back_populates="stage")

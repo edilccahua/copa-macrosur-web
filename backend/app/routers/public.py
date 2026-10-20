@@ -13,6 +13,7 @@ from backend.app.models.schemas import (
     PreRegistrationCreate, FeedbackTicketCreate, ExtraEventRead, PrizeTierRead,
 )
 from backend.app.services.excel_service import slugify, resolve_or_create_team
+from backend.app.services.live_service import resolve_live_status
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.standings_service import (
     compute_standings, compute_team_standings, normalize_mode, normalize_scope,
@@ -20,6 +21,17 @@ from backend.app.services.standings_service import (
 )
 
 router = APIRouter(prefix="/public", tags=["Public Portal"])
+
+
+@router.get("/live-status")
+async def get_live_status(session: AsyncSession = Depends(get_session)):
+    """¿Está abierta la transmisión de llegadas? (specs/02 §6).
+
+    La apertura es automática a las 08:00 de Lima el día de la carrera; el
+    cierre es manual del organizador. La portada y `/en-vivo` leen esto para
+    no mostrar un enlace "en vivo" cuando no hay carrera.
+    """
+    return await resolve_live_status(session)
 
 
 @router.get("/prizes", response_model=List[PrizeTierRead])
