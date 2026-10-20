@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # En desarrollo se acepta CUALQUIER puerto de localhost: así, si el
     # servidor del front cambia de puerto, el sitio no se rompe en silencio.
     # En producción queda desactivado.
-    CORS_ORIGIN_REGEX: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    CORS_ORIGIN_REGEX: str = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-zA-Z0-9-]+\.pages\.dev)$"
     
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
