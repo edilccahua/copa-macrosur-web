@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Response, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Response, Query, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from backend.app.core.config import settings
 from backend.app.core.db import get_session
+from backend.app.core.limits import detalle_excede_tope
 from backend.app.core.security import verify_admin_key
 from backend.app.services.excel_service import import_riders_from_excel, export_stage_results_to_excel
 
@@ -21,7 +23,14 @@ async def import_excel_endpoint(
     Procesa en memoria con openpyxl (cero disco local).
     Si hay errores de formato o validación, revierte todo y responde HTTP 422.
     """
-    content = await file.read()
+    # Tope del archivo: se lee UN byte más que el límite para saber que se
+    # pasó sin tragarse el archivo entero en memoria. El `Content-Length` ya
+    # lo mira el middleware, pero aquí el corte es el DEFINITIVO (el
+    # multipart engaña: el tamaño de la cabecera no es el del archivo).
+    limite = settings.MAX_UPLOAD_BYTES
+    content = await file.read(limite + 1)
+    if len(content) > limite:
+        raise HTTPException(status_code=413, detail=detalle_excede_tope(limite))
     result = await import_riders_from_excel(
         session=session,
         stage_id=stage_id,
