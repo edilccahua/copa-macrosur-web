@@ -6,29 +6,22 @@ import StandingsTable from '../components/svelte/StandingsTable.svelte';
 import { API_V1 } from '../lib/api';
 
 // SSR: la clasificación se resuelve contra la API en cada request (ver specs/03 §0).
-let payload: any = null;
-let fallbackRows: any[] = [];
-let fallbackTeams: any[] = [];
 
-try {
-  const res = await fetch(`${API_V1}/public/standings?scope=PRO`);
-  if (res.ok) payload = await res.json();
-} catch (e) {
-  // Modo SSR sin backend: la isla muestra el estado vacío con su mensaje.
-}
+// --- Argumentos de la URL ----------------------------------------------------
+// La tabla se puede abrir en cualquier vista y compartirla por enlace:
+//   ?modo=acumulado|fecha  ·  ?tabla=PRO|NORMAL|E-MTB|EQUIPO
+//   ?categoria=ELI          ·  ?fecha=2   (número de fecha, no el id)
+const qp = Astro.url.searchParams;
 
-// La Copa de Equipos se carga aparte (mismo corte de fecha que la clasificación).
-try {
-  const res = await fetch(`${API_V1}/public/standings?kind=teams`);
-  if (res.ok) {
-    const teams = await res.json();
-    fallbackTeams = teams.rows ?? [];
-  }
-} catch (e) {}
+const mode: 'acumulado' | 'fecha' = qp.get('modo') === 'fecha' ? 'fecha' : 'acumulado';
+const tabla = (qp.get('tabla') ?? 'PRO').toUpperCase();
+const kind: 'individual' | 'teams' = tabla === 'EQUIPO' ? 'teams' : 'individual';
+const scope = ['PRO', 'NORMAL', 'E-MTB'].includes(tabla) ? tabla : 'PRO';
+const catCode = (qp.get('categoria') ?? '').toUpperCase();
+const stageNumber = Number(qp.get('fecha'));
 
-fallbackRows = payload?.rows ?? [];
-
-const context = payload?.context ?? {
+// --- Contexto (fechas disponibles y catálogo de categorías) ------------------
+let context: any = {
   stages: [],
   selected_stage_id: null,
   stages_counted: 0,
@@ -38,6 +31,56 @@ const context = payload?.context ?? {
   scope_order: [],
   categories: [],
 };
+let fallbackRows: any[] = [];
+let fallbackTeams: any[] = [];
+
+try {
+  const res = await fetch(`${API_V1}/public/standings?scope=${scope}&mode=${mode}`);
+  if (res.ok) {
+    const payload = await res.json();
+    context = payload.context ?? context;
+    fallbackRows = payload.rows ?? [];
+  }
+} catch (e) {
+  // Modo SSR sin backend: la isla muestra el estado vacío con su mensaje.
+}
+
+// --- Los argumentos se resuelven contra el contexto -------------------------
+const stageArg = Number.isFinite(stageNumber) && stageNumber > 0
+  ? (context.stages.find((s: any) => s.stage_number === stageNumber) ?? null)
+  : null;
+const catArg = catCode
+  ? (context.categories.find((c: any) => c.short_code === catCode) ?? null)
+  : null;
+
+// Si la URL pide otra fecha, otra categoría, la Copa de Equipos o el modo
+// "fecha", se piden esos datos (el corte por defecto ya vino arriba).
+if (stageArg || catArg || kind === 'teams' || mode === 'fecha') {
+  const q = new URLSearchParams();
+  q.set('mode', mode);
+  q.set('scope', scope);
+  if (stageArg) q.set('stage', String(stageArg.id));
+  if (catArg) q.set('category_id', String(catArg.id));
+
+  try {
+    const [ind, tms] = await Promise.all([
+      fetch(`${API_V1}/public/standings?${q.toString()}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_V1}/public/standings?${q.toString()}&kind=teams`).then((r) =>
+        r.ok ? r.json() : null
+      ),
+    ]);
+    if (ind) {
+      fallbackRows = ind.rows ?? [];
+      context = ind.context ?? context;
+    }
+    if (tms) fallbackTeams = tms.rows ?? [];
+  } catch (e) {
+    // Sin backend: la isla reintenta al interactuar.
+  }
+}
+
+const initialStageId = stageArg ? stageArg.id : (context.selected_stage_id ?? null);
+const initialCategoryId = catArg ? catArg.id : null;
 ---
 
 <Base title="Ranking General Acumulado — Kúspide MTB">
@@ -46,7 +89,10 @@ const context = payload?.context ?? {
   <main class="container page-content">
     <div class="page-header">
       <div class="breadcrumb font-mono">CAMPEONATO MTB 2026 / CLASIFICACIÓN OFICIAL</div>
-      <h1 class="page-title">Ranking general <em>acumulado</em></h1>
+      <!-- El rótulo cambia con el modo (acumulado / de la fecha): lo ajusta la isla. -->
+      <h1 class="page-title">
+        <span data-mode-title>Ranking general</span> <em data-mode-word>acumulado</em>
+      </h1>
     </div>
 
     <StandingsTable
@@ -55,9 +101,11 @@ const context = payload?.context ?? {
       context={context}
       initialRows={fallbackRows}
       initialTeams={fallbackTeams}
-      initialStageId={context.selected_stage_id}
-      initialScope="PRO"
-      initialCategoryId={null}
+      initialStageId={initialStageId}
+      initialScope={scope}
+      initialCategoryId={initialCategoryId}
+      initialMode={mode}
+      initialKind={kind}
     />
   </main>
 

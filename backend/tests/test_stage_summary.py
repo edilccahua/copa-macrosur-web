@@ -38,8 +38,11 @@ from backend.app.services.stage_summary_service import (
     compute_category_podium,
     compute_stage_awards,
     compute_stage_checkpoints,
+    compute_stage_mountain_titles,
+    compute_stage_route_profile,
     compute_stage_stats,
     compute_stage_strava,
+    compute_stage_summits,
     compute_stage_team_podium,
 )
 
@@ -800,4 +803,145 @@ async def test_team_podium_counts_only_point_scorers(async_session):
     assert len(podium) == 1
     # 12 inscripciones, 8 con tiempo, todas con puntos > 0.
     assert podium[0].riders_counted == 8
+
+
+# --------------------------------------------------------------------------
+# Perfil de ruta, cimas y títulos de montaña
+# --------------------------------------------------------------------------
+
+
+async def test_summary_exposes_route_profile_with_the_real_trace(async_session):
+    """El resumen lleva el perfil con la traza punto a punto."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    session = async_session
+    stage.route_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [-71.0, -16.0, 1000.0, 0.0],
+                        [-71.1, -16.0, 1100.0, 5.0],
+                        [-71.2, -16.0, 1050.0, 10.0],
+                    ],
+                },
+            }
+        ],
+    }
+    await session.commit()
+
+    profile = await compute_stage_route_profile(session, stage)
+    assert profile is not None
+    assert profile.distance_km == 10.0
+    assert profile.elevation_gain_m == 100
+    assert profile.elevation_loss_m == 50
+    assert len(profile.points) == 3
+    assert profile.geometry_covers_full_stage is True
+
+
+async def test_summary_route_profile_is_none_without_geometry(async_session):
+    """Sin geometría no hay perfil: la página lo dice, no inventa."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    assert await compute_stage_route_profile(async_session, stage) is None
+
+
+async def test_mountain_titles_pick_the_steepest_climb_and_descent(async_session):
+    """El KOM es la subida más empinada; el QOM, la bajada más empinada."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    session = async_session
+    for seg_id, name, dist, grade, athlete, secs in [
+        ("1", "SUBIDA SUAVE", 5000.0, 3.0, "RIDER A", 600),
+        ("2", "SUBIDA EMPINADA", 1000.0, 9.0, "RIDER B", 300),
+        ("3", "BAJADA SUAVE", 5000.0, -2.0, "RIDER C", 400),
+        ("4", "BAJADA EMPINADA", 1000.0, -8.0, "RIDER D", 200),
+        ("5", "PLANO", 9000.0, 0.0, "RIDER E", 900),
+    ]:
+        segment = StravaSegment(
+            stage_id=stage.id,
+            strava_segment_id=seg_id,
+            name=name,
+            distance_m=dist,
+            average_grade=grade,
+        )
+        session.add(segment)
+        await session.flush()
+        session.add(
+            StravaEffort(
+                segment_id=segment.id,
+                athlete_name_raw=athlete,
+                elapsed_time_sec=secs,
+                is_kom_qom=0,
+            )
+        )
+    await session.commit()
+
+    titles = await compute_stage_mountain_titles(session, stage.id)
+    assert titles["kom"] is not None
+    assert titles["kom"].segment_name == "SUBIDA EMPINADA"
+    assert titles["kom"].athlete_name == "RIDER B"
+    assert titles["qom"] is not None
+    assert titles["qom"].segment_name == "BAJADA EMPINADA"
+    assert titles["qom"].athlete_name == "RIDER D"
+
+
+async def test_mountain_titles_are_none_without_segments(async_session):
+    """Sin segmentos no hay KOM ni QOM."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    titles = await compute_stage_mountain_titles(async_session, stage.id)
+    assert titles["kom"] is None
+    assert titles["qom"] is None
+
+
+async def test_strava_segments_expose_kind_and_location(async_session):
+    """Cada segmento declara su tipo y su lugar."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    session = async_session
+    for seg_id, grade, kind in [
+        ("1", 6.0, "CLIMB"),
+        ("2", -4.0, "DESCENT"),
+        ("3", 0.0, "FLAT"),
+    ]:
+        session.add(
+            StravaSegment(
+                stage_id=stage.id,
+                strava_segment_id=seg_id,
+                name=f"SEG {seg_id}",
+                distance_m=1000.0,
+                average_grade=grade,
+                kind=kind,
+                location="Uchumayo, Arequipa",
+            )
+        )
+    await session.commit()
+
+    segs = await compute_stage_strava(session, stage.id)
+    kinds = {s.name: s.kind for s in segs}
+    assert kinds == {"SEG 1": "CLIMB", "SEG 2": "DESCENT", "SEG 3": "FLAT"}
+    assert all(s.location == "Uchumayo, Arequipa" for s in segs)
+
+
+async def test_summary_endpoint_carries_profile_summits_and_titles(async_session, client):
+    """El resumen lleva el perfil, las cimas y los dos títulos de montaña."""
+    await _seed_stage_with_results(
+        async_session, entries=20, finishers=20, points=200, categories=3
+    )
+    res = await client.get("/api/v1/stages/la-joya-extreme/summary")
+    assert res.status_code == 200
+    body = res.json()
+    assert "route_profile" in body
+    assert "summits" in body
+    assert "kom" in body
+    assert "qom" in body
 

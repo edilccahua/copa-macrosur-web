@@ -14,7 +14,7 @@ const ALL_EVENTS = [
     id: 'la-joya-extreme',
     number: '01',
     badge: '01',
-    kicker: 'COPA MACROSUR MTB · ETAPA 01',
+    kicker: 'COPA MACROSUR MTB',
     titlePrefix: 'La Joya',
     titleHighlight: 'Extreme',
     date: '17 MAY 2026',
@@ -28,7 +28,7 @@ const ALL_EVENTS = [
     description: '',
     poster: '/images/posters/f1-la-joya-extreme-card.webp',
     pageHref: '/fechas/la-joya-extreme',
-    directHref: '/fechas/la-joya-extreme/resultados',
+    directHref: '/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=1',
     directCta: 'Resultados oficiales',
     type: 'mtb' as const,
     color: '#f59e0b',
@@ -40,7 +40,7 @@ const ALL_EVENTS = [
     id: 'vuelta-talamolle',
     number: 'ESP',
     badge: 'RUTA',
-    kicker: 'CLÁSICA DE RUTA · ESPECIAL',
+    kicker: 'CLÁSICA DE RUTA',
     titlePrefix: 'La Vuelta a',
     titleHighlight: 'Talamolle 2026',
     date: '26 JUL 2026',
@@ -66,7 +66,7 @@ const ALL_EVENTS = [
     id: 'z-xtreme-2026',
     number: '02',
     badge: '02',
-    kicker: 'COPA MACROSUR MTB · ETAPA 02',
+    kicker: 'COPA MACROSUR MTB',
     titlePrefix: 'Kúspide',
     titleHighlight: 'Z Xtreme III',
     date: '23 AGO 2026',
@@ -80,7 +80,7 @@ const ALL_EVENTS = [
     description: '',
     poster: '/images/posters/f2-z-xtreme-card.webp',
     pageHref: '/fechas/z-xtreme-2026',
-    directHref: '/fechas/z-xtreme-2026/resultados',
+    directHref: '/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=2',
     directCta: 'Resultados oficiales',
     type: 'mtb' as const,
     color: '#f97316',
@@ -92,7 +92,7 @@ const ALL_EVENTS = [
     id: 'vuelta-a-los-poblados',
     number: '03',
     badge: '03',
-    kicker: 'COPA MACROSUR MTB · ETAPA 03',
+    kicker: 'COPA MACROSUR MTB',
     titlePrefix: 'El Retorno a',
     titleHighlight: 'los Poblados 2',
     date: '25 OCT 2026',
@@ -118,7 +118,7 @@ const ALL_EVENTS = [
     id: 'clasica-mollendo',
     number: 'ESP',
     badge: 'RUTA',
-    kicker: 'CLÁSICA DE RUTA · 72ª EDICIÓN',
+    kicker: 'CLÁSICA DE RUTA',
     titlePrefix: 'Clásica Arequipa',
     titleHighlight: 'Mollendo 72ª',
     date: '07 - 08 NOV 2026',
@@ -144,7 +144,7 @@ const ALL_EVENTS = [
     id: 'quequena-xtreme',
     number: '04',
     badge: '04',
-    kicker: 'COPA MACROSUR MTB · GRAN FINAL',
+    kicker: 'COPA MACROSUR MTB',
     titlePrefix: 'Quequeña',
     titleHighlight: 'Xtreme III',
     date: '13 DIC 2026',
@@ -352,7 +352,7 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     .timeline-col {
       display: flex;
       flex-direction: column;
-      gap: 5.5rem;
+      gap: 7rem;
       position: relative;
     }
 
@@ -362,8 +362,8 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
 
     .timeline-col--right {
       align-items: flex-start;
-      /* Desfase de traslape: la columna derecha empieza desfasada a la mitad de la primera tarjeta */
-      padding-top: 220px;
+      /* Desfase de traslape: la columna derecha empieza desfasada a más de la mitad de la primera tarjeta */
+      padding-top: 275px;
     }
 
     .timeline-desktop-item {
@@ -495,7 +495,7 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     .timeline-mobile__list {
       display: flex;
       flex-direction: column;
-      gap: 2.75rem;
+      gap: 3rem;
       width: 100%;
       position: relative;
       z-index: 3;
