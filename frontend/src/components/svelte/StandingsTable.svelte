@@ -24,9 +24,10 @@
   import ScopeControl from './ScopeControl.svelte';
   import {
     getStandings,
+    unpackStandingsRows,
+    unpackTeamStandingsRows,
     type StandingsContext,
     type StandingsRow,
-    type StageOption,
     type TeamStandingRow,
   } from '../../lib/api';
 
@@ -39,10 +40,15 @@
   type Kind = 'individual' | 'teams';
 
   interface Props {
-    stages: StageOption[];
     context: StandingsContext;
-    initialRows: StandingsRow[];
-    initialTeams: TeamStandingRow[];
+    /**
+     * Las filas viajan COLUMNADAS: un JSON compacto (la primera fila son los
+     * nombres de los campos y cada fila, sus valores). El HTML de la página
+     * lleva así ~25 KB de props en vez de ~90 KB; `unpackStandingsRows` las
+     * devuelve como objetos y la tabla no se entera.
+     */
+    initialRows: string;
+    initialTeams: string;
     initialStageId: number | null;
     initialScope: string;
     initialCategoryId: number | null;
@@ -53,7 +59,6 @@
   }
 
   let {
-    stages,
     context,
     initialRows,
     initialTeams,
@@ -82,11 +87,18 @@
   let kind = $state<Kind>(initialKind);
   let search = $state('');
 
-  let rows = $state<StandingsRow[]>(initialRows as StandingsRow[]);
-  let teamRows = $state<TeamStandingRow[]>(initialTeams as TeamStandingRow[]);
+  let rows = $state<StandingsRow[]>(unpackStandingsRows(initialRows));
+  let teamRows = $state<TeamStandingRow[]>(unpackTeamStandingsRows(initialTeams));
   let meta = $state<StandingsContext>(context);
   let loading = $state(false);
   let error = $state<string | null>(null);
+
+  /**
+   * Las fechas disponibles salen del CONTEXTO (que es lo que la API devuelve
+   * con cada respuesta): la página ya no las pasa como una prop aparte, que
+   * era el mismo array duplicado dentro del HTML.
+   */
+  let stages = $derived(meta.stages);
 
   /**
    * Clave de la vista. La construye UNA sola función para que el valor

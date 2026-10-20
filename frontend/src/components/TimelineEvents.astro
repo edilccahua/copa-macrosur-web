@@ -567,22 +567,70 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
 
 <script>
   /**
+   * El morph del póster (portada → ficha) usa `view-transition-name`.
+   *
+   * La línea de tiempo se renderiza DOS veces (copia de escritorio y copia
+   * móvil, una se oculta con CSS). Con el `transition:name` de Astro, los dos
+   * pósteres de la MISMA fecha llevaban el MISMO nombre y, por regla de la
+   * especificación, la transición de ese nombre se cancelaba: el morph NO
+   * ocurría. Aquí el nombre se asigna en tiempo de ejecución SÓLO a la copia
+   * visible, de modo que el morph sigue funcionando en los dos anchos y no
+   * hay nombres duplicados en el documento.
+   */
+  function applyMorphNames(): void {
+    const seen = new Set<string>();
+    for (const img of document.querySelectorAll<HTMLImageElement>('img[data-morph-name]')) {
+      const name = img.dataset.morphName;
+      if (!name) continue;
+      const visible = img.getClientRects().length > 0;
+      if (visible && !seen.has(name)) {
+        img.style.viewTransitionName = name;
+        seen.add(name);
+      } else {
+        img.style.viewTransitionName = 'none';
+      }
+    }
+  }
+
+  /**
+   * El `AbortController` de la inicialización en curso. Al reiniciar la línea
+   * de tiempo se aborta el anterior: sus listeners (`scroll`, `resize`) se
+   * desconectan solos.
+   */
+  let timelineController: AbortController | null = null;
+
+  /**
    * Controlador de animación sincronizada al scroll:
    * Posiciona los chips de fecha dinámicamente según la altura de las tarjetas
    * y avanza el marcador luminoso iluminando cada hito en desktop y móvil.
    */
   function initEventsTimeline() {
+    // El nombre del morph depende de qué copia está visible: se recalcula al
+    // cambiar el ancho (la línea de tiempo pasa de escritorio a móvil).
+    applyMorphNames();
+
     const isDesktop = window.innerWidth >= 900;
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Cada inicialización cancela la anterior: los listeners de `scroll` y
+    // `resize` se acumulaban en cada navegación del router (el script se
+    // evalúa una vez, pero `astro:page-load` lo dispara en cada página).
+    timelineController?.abort();
+    const controller = new AbortController();
+    timelineController = controller;
+    const { signal } = controller;
+
+    // El morph se recalcula al redimensionar (cambia la copia visible).
+    window.addEventListener('resize', applyMorphNames, { passive: true, signal });
+
     if (isDesktop) {
-      initDesktopTimeline(reduceMotion);
+      initDesktopTimeline(reduceMotion, signal);
     } else {
-      initMobileTimeline(reduceMotion);
+      initMobileTimeline(reduceMotion, signal);
     }
   }
 
-  function initDesktopTimeline(reduceMotion: boolean) {
+  function initDesktopTimeline(reduceMotion: boolean, signal: AbortSignal) {
     const desktopContainer = document.getElementById('timelineDesktop');
     const spine = document.getElementById('timelineSpine');
     const trail = document.getElementById('desktopTrail');
@@ -655,22 +703,28 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
       }
     }
 
+    function onResize() {
+      alignSpineNodes();
+      onScroll();
+    }
+
     alignSpineNodes();
     update();
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', () => {
-      alignSpineNodes();
-      onScroll();
-    });
+    window.addEventListener('scroll', onScroll, { passive: true, signal });
+    window.addEventListener('resize', onResize, { signal });
 
     const lenis = (window as any).lenis;
     if (lenis && typeof lenis.on === 'function') {
       lenis.on('scroll', onScroll);
+      // Lenis no acepta `signal`: se desconecta a mano al abortar.
+      signal.addEventListener('abort', () => {
+        if (typeof lenis.off === 'function') lenis.off('scroll', onScroll);
+      });
     }
   }
 
-  function initMobileTimeline(reduceMotion: boolean) {
+  function initMobileTimeline(reduceMotion: boolean, signal: AbortSignal) {
     const mobileContainer = document.getElementById('timelineMobile');
     const trail = document.getElementById('mobileTrail');
     const marker = document.getElementById('mobileMarker');
@@ -717,8 +771,8 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     }
 
     update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true, signal });
+    window.addEventListener('resize', onScroll, { signal });
   }
 
   if (document.readyState === 'loading') {

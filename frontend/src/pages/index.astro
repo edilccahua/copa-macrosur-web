@@ -310,7 +310,7 @@ const nextDistanceText =
         <PrizeScale
           label="POR FECHA"
           title="CADA CATEGORÍA"
-          body="El podio de cada una de las 11 categorías, en cada una de las cuatro fechas."
+          body="El podio de las 11 categorías."
           tiers={PER_DATE_PRIZES}
           podium={PER_DATE_PRIZES}
           currency={PRIZE_CURRENCY}
@@ -323,7 +323,7 @@ const nextDistanceText =
         <PrizeScale
           label="ACUMULADO"
           title="EQUIPOS"
-          body="Al club con más puntos en la Copa de Equipos acumulada."
+          body="Al club con más puntos de la Copa."
           tiers={TEAM_PRIZES}
           podium={TEAM_PRIZES}
           currency={PRIZE_CURRENCY}
@@ -334,9 +334,9 @@ const nextDistanceText =
         />
       </div>
 
-      <a class="panel__cta" href="/premios">Ver todos los premios →</a>
-
       <div class="specials">
+        <a class="panel__cta panel__cta--top" href="/premios">Ver todos los premios →</a>
+
         <div class="specials__head">
           <span class="specials__label font-mono">[ PREMIOS ESPECIALES ]</span>
           <span class="specials__meta font-mono">USD 100 + 4 × USD 15</span>
@@ -718,6 +718,17 @@ const nextDistanceText =
   .panel__cta:hover {
     text-decoration: underline;
     text-underline-offset: 0.1875rem;
+  }
+
+  /* El enlace que abre la lista de premios va ARRIBA del todo de la banda
+     de especiales, justo debajo de los cuadros. La banda tiene un margen
+     negativo que la sube sobre el bloque anterior: sin este margen, el
+     enlace quedaba tapado por el rótulo de la banda. */
+  .panel__cta--top {
+    margin-top: 0;
+    margin-bottom: 2rem;
+    padding-top: 0;
+    border-top: 0;
   }
 
   /* ── Móvil & Tablet Ajustes de Espaciado ────────────────────────────── */

@@ -40,9 +40,22 @@ interface Props {
     tagBg: string;
   };
   side?: 'left' | 'right';
+  /**
+   * ¿El póster participa en el morph (portada → ficha)?
+   *
+   * El morph usa `view-transition-name`, y ese nombre tiene que ser ÚNICO en
+   * el documento: la línea de tiempo se renderiza DOS veces (copia de escritorio
+   * y copia móvil, una se oculta con CSS) y, con el `transition:name` de
+   * Astro, las dos copias llevaban el MISMO nombre. Por regla de la
+   * especificación, un nombre duplicado CANCELA la transición: el morph no
+   * ocurría. Por eso el nombre ya no lo pone Astro al renderizar, sino el
+   * script de `TimelineEvents` en tiempo de ejecución y SÓLO sobre la copia
+   * visible. Con `morph={false}` el póster no lleva nombre alguno.
+   */
+  morph?: boolean;
 }
 
-const { event, side = 'left' } = Astro.props;
+const { event, side = 'left', morph = true } = Astro.props;
 
 // Resolver enlace principal de toda la tarjeta y acción directa opcional
 const mainHref = event.pageHref || event.href || `/fechas/${event.id}`;
@@ -120,14 +133,18 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
   <div class="event-card__media">
     <!--
       Morph: al abrir la ficha, este póster se transforma en el del hero.
-      El nombre coincide con el de la ficha (`/fechas/[slug]`).
+      El nombre coincide con el de la ficha (`/fechas/[slug]`), pero NO lo
+      pone Astro al renderizar: la línea de tiempo se dibuja dos veces
+      (escritorio y móvil) y dos elementos con el mismo
+      `view-transition-name` cancelan la transición. El nombre se asigna en
+      tiempo de ejecución y sólo a la copia visible (ver `TimelineEvents`).
     -->
     <img
       src={event.poster}
       alt={`Póster oficial ${event.titlePrefix} ${event.titleHighlight}`}
       loading="lazy"
       decoding="async"
-      transition:name={`poster-${event.id}`}
+      data-morph-name={morph ? `poster-${event.id}` : undefined}
     />
     <div class="event-card__media-overlay" aria-hidden="true"></div>
 
@@ -603,22 +620,37 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
 </style>
 
 <script>
-  // Delegación de click y teclado: click en cualquier parte de la tarjeta navega a pageHref,
-  // a menos que se haga click en un botón de acción directa (resultados oficiales o inscripciones).
+  import { navigate } from 'astro:transitions/client';
+
+  /**
+   * Delegación de click y teclado: click en cualquier parte de la tarjeta
+   * navega a `data-page-href`, a menos que se haga click en un botón de
+   * acción directa (resultados oficiales o inscripciones).
+   *
+   * La navegación es la DEL ROUTER de Astro (`navigate`), no
+   * `window.location.href`: esta última descarga la página entera, anula la
+   * navegación de cliente y con ella el morph del póster y el fundido entre
+   * páginas.
+   */
   function initCardLinks() {
+    // Un solo registro: el script es un módulo (se evalúa una vez) y los
+    // listeners viven en `document`, que sobrevive a la navegación del
+    // router. Antes se registraban en cada `astro:page-load` y se acumulaban:
+    // un clic en la tarjeta lanzaba una navegación por cada registro vivo.
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Si el click fue en el link directo, dejamos que navegue por su cuenta
-      if (target.closest('.event-card__direct-link')) {
-        return;
-      }
+      // Los enlaces reales (el título, la acción directa) los navega el router
+      // de Astro por su cuenta: si también los tocamos aquí, la navegación
+      // ocurriría dos veces.
+      if (target.closest('a')) return;
 
       // Si fue en cualquier otra parte de la tarjeta
       const card = target.closest<HTMLElement>('.event-card[data-page-href]');
       if (card && card.dataset.pageHref) {
-        window.location.href = card.dataset.pageHref;
+        e.preventDefault();
+        void navigate(card.dataset.pageHref);
       }
     });
 
@@ -627,9 +659,9 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      if (target.matches('.event-card[data-page-href]') && !target.closest('.event-card__direct-link')) {
+      if (target.matches('.event-card[data-page-href]')) {
         const href = target.dataset.pageHref;
-        if (href) window.location.href = href;
+        if (href) void navigate(href);
       }
     });
   }
@@ -639,5 +671,4 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
   } else {
     initCardLinks();
   }
-  document.addEventListener('astro:page-load', initCardLinks, { once: true });
 </script>
