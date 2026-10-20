@@ -51,7 +51,9 @@ for (const [catName, riders] of Object.entries(stageData?.categories || {})) {
         <>
     <div class="header-box">
       <div class="breadcrumb font-mono">
-        <a href={`/fechas/${slug}`}>← VOLVER A LA FICHA DE LA FECHA</a>
+        <a href={`/fechas/${slug}`}>← VOLVER A LA FICHA</a>
+        <span class="breadcrumb__sep">/</span>
+        <span>{stageName}</span>
       </div>
       <h1 class="page-title">RESULTADOS OFICIALES: {stageName}</h1>
       <p class="page-desc">
@@ -59,6 +61,7 @@ for (const [catName, riders] of Object.entries(stageData?.categories || {})) {
       </p>
 
       <div class="actions-bar">
+        <a href={`/fechas/${slug}#podio`} class="btn btn--ghost font-mono">PODIO POR CATEGORÍA ↑</a>
         {
           stageId && (
             <a href={`${API_V1}/stages/${stageId}/export-excel`} class="btn btn--solid font-mono">
@@ -132,11 +135,22 @@ for (const [catName, riders] of Object.entries(stageData?.categories || {})) {
     margin-bottom: 3rem;
   }
 
+  .breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
   .breadcrumb a {
     color: var(--accent, #ff5500);
     text-decoration: none;
     font-size: 0.6875rem;
     font-weight: 700;
+  }
+
+  .breadcrumb__sep {
+    color: var(--faint);
   }
 
   .page-title {

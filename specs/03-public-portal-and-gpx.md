@@ -130,7 +130,11 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
    invertido en el color del grupo. El panel va con `z-index: 50` y sombra
    profunda para leerse por encima de los badges de la tabla, y su **foco usa el
    color del grupo activo** (`--scope-ink`), nunca el azul por defecto del
-   navegador.
+   navegador. El botón muestra **solo el nombre de la carrera**
+   (`LA JOYA EXTREME`, `KÚSPIDE Z XTREME III`): con el número de fecha y la
+   fecha era una línea interminable en la cabecera. La fecha sí aparece en la
+   **lista desplegable** (`hideMeta` lo saca solo del botón) y en la cinta
+   (`CORTE …`).
 5. **Barra de controles:** el buscador **ocupa el espacio disponible**
    (`flex: 1 1 14rem`, hasta `24rem`) entre los dos selectores; no es una caja
    mínima. En móvil los dos selectores van en una fila de dos columnas

@@ -19,6 +19,7 @@ export interface StageOption {
   date: string;
   distance_km: number;
   laps: number;
+  status?: string;
 }
 
 export interface StandingsRow {
@@ -106,5 +107,141 @@ export async function getStandings(
   if (params.kind) q.set('kind', params.kind);
   const res = await fetch(`${API_V1}/public/standings?${q.toString()}`);
   if (!res.ok) throw new Error(`standings HTTP ${res.status}`);
+  return res.json();
+}
+
+// --- Resumen de presentación de una fecha (`/fechas/[slug]`) ----------------
+//
+// El endpoint `GET /api/v1/stages/{slug}/summary` devuelve en UNA llamada todo
+// lo que la ficha de una carrera muestra. La página no recalcula nada y no
+// tiene datos literales (specs/03 §1.2).
+
+export interface StageStats {
+  entries_total: number;
+  finishers: number;
+  non_finishers: number;
+  points_total: number;
+  /** Distancia POR VUELTA (así se guarda en la BD). */
+  distance_km_per_lap: number;
+  /** Distancia total de la carrera (por_lap × laps). */
+  distance_km_total: number;
+  elevation_m_per_lap: number;
+  elevation_m_total: number;
+  laps: number;
+  winner_time_ms: number | null;
+  winner_avg_speed_kmh: number | null;
+  categories_count: number;
+}
+
+export interface PodiumEntry {
+  rank: number;
+  bib_number: number;
+  rider_name: string;
+  rider_slug: string;
+  team_name: string;
+  team_slug: string | null;
+  formatted_time: string;
+  points_earned: number;
+}
+
+export interface CategoryPodium {
+  category_id: number;
+  category_name: string;
+  short_code: string;
+  entries: PodiumEntry[];
+}
+
+export interface TeamPodium {
+  team_id: number;
+  team_name: string;
+  team_slug: string;
+  points: number;
+  riders_counted: number;
+  best_rank: number;
+}
+
+export interface StravaEffort {
+  athlete_name: string;
+  elapsed_time_sec: number;
+  formatted_time: string;
+  is_kom_qom: boolean;
+}
+
+export interface StravaSegmentSummary {
+  strava_segment_id: string;
+  name: string;
+  distance_m: number;
+  average_grade: number;
+  distance_km: number;
+  efforts: StravaEffort[];
+  kom: StravaEffort | null;
+}
+
+export interface Checkpoint {
+  name: string;
+  order_index: number;
+  distance_from_start_km: number;
+  is_finish_line: boolean;
+}
+
+export interface AwardSummary {
+  title: string;
+  sponsor_name: string | null;
+  sponsor_logo_url: string | null;
+  prize_description: string | null;
+  metric_value: string | null;
+  winner_name: string | null;
+}
+
+/** Geometría de la ruta: FeatureCollection con una LineString [lon, lat, ele, km]. */
+export interface RouteGeoJson {
+  type: 'FeatureCollection';
+  features: {
+    type: 'Feature';
+    geometry: {
+      type: 'LineString';
+      coordinates: [number, number, number, number][];
+    };
+  }[];
+}
+
+export interface StageSummary {
+  stage: StageOption & {
+    title: string | null;
+    short_name: string | null;
+    start_location: string | null;
+    start_time: string | null;
+    poster_url: string | null;
+    gpx_file_url: string | null;
+    route_geojson: RouteGeoJson | null;
+    strava_route_url: string | null;
+    laps: number;
+    status: 'UPCOMING' | 'REGISTRATION_OPEN' | 'LIVE' | 'FINISHED';
+  };
+  stats: StageStats;
+  podium: CategoryPodium[];
+  teams: TeamPodium[];
+  strava: StravaSegmentSummary[];
+  checkpoints: Checkpoint[];
+  awards: AwardSummary[];
+  extremes: { scratch: PodiumEntry | null; farolito: PodiumEntry | null };
+  navigation: {
+    prev_slug: string | null;
+    prev_name: string | null;
+    next_slug: string | null;
+    next_name: string | null;
+  };
+}
+
+/**
+ * Resumen de presentación de una fecha.
+ * Lanza `stage-not-found` si la fecha no existe (la página responde 404) y
+ * cualquier otro error si el backend no responde (la página responde 503:
+ * nunca se inventan datos, specs/03 §0.2).
+ */
+export async function getStageSummary(slug: string): Promise<StageSummary> {
+  const res = await fetch(`${API_V1}/stages/${slug}/summary`);
+  if (res.status === 404) throw new Error('stage-not-found');
+  if (!res.ok) throw new Error(`summary HTTP ${res.status}`);
   return res.json();
 }

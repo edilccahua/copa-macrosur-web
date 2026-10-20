@@ -1,288 +1,411 @@
 ---
+/**
+ * Ficha de una fecha del campeonato.
+ *
+ * Ruta dinámica en SSR: el slug se resuelve contra
+ * `GET /api/v1/stages/{slug}/summary` en cada request. Si la fecha no existe
+ * la respuesta es 404; si el backend no responde, es 503. Nunca hay datos
+ * ficticios: esta página no contiene ni un solo literal de datos
+ * (specs/03 §0.2 y §1.2).
+ */
 import Showcase from '../../layouts/Showcase.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import RouteMapGpx from '../../components/svelte/RouteMapGpx.svelte';
+import StageStatsRow from '../../components/StageStatsRow.astro';
+import StagePodiumGrid from '../../components/StagePodiumGrid.astro';
+import StageTeamPodium from '../../components/StageTeamPodium.astro';
 import SectionLabel from '../../components/bento/SectionLabel.astro';
-import { API_V1 } from '../../lib/api';
+import EventCountdown from '../../components/svelte/EventCountdown.svelte';
+import { getStageSummary, type StageSummary } from '../../lib/api';
 
-// SSR: ruta dinámica resuelta contra la API en cada request (antes se
-// prerenderizaba con `getStaticPaths` y un `fetch` de build-time que se
-// tragaba los errores). Ver specs/03 §2.
 const { slug } = Astro.params;
 
-// Datos de la etapa (espejo de la base de datos sembrada desde races/)
-const stagesDb: Record<string, any> = {
-  'la-joya-extreme': {
-    num: 1,
-    name: 'La Joya Extreme',
-    shortName: 'La Joya',
-    title: 'La Joya Extreme',
-    date: '17 de Mayo de 2026',
-    status: 'Finalizada',
-    startLocation: 'Vía de Evitamiento, La Joya',
-    startTime: '08:00 AM',
-    poster: '/images/posters/f1-la-joya-extreme-card.webp',
-    dist: 40.9,
-    elev: 384,
-    laps: 1,
-    gpx: 'la-joya-extreme.gpx',
-    stravaRoute: 'https://www.strava.com/routes/3486799154256647166',
-    scratch: { name: 'RONALD LUZA CALLO', category: 'MASTER A', time: '01:07:55', bib: 38 },
-    farolito: { name: 'IRENE ALFARO', category: 'DAMAS MASTER', time: '02:38:08', bib: 283 },
-    strava: []
-  },
-  'z-xtreme-2026': {
-    num: 2,
-    name: 'Kúspide Z Xtreme III',
-    shortName: 'Z Xtreme',
-    title: 'Kúspide Z Xtreme — 3ra Edición',
-    date: '23 de Agosto de 2026',
-    status: 'Finalizada',
-    startLocation: 'Circuito La Z',
-    startTime: '08:00 AM',
-    poster: '/images/posters/f2-z-xtreme-card.webp',
-    dist: 11.8,
-    elev: 280,
-    laps: 3,
-    gpx: 'z-xtreme.gpx',
-    stravaRoute: 'https://www.strava.com/routes/3200784336826934006',
-    scratch: { name: 'SERGIO PINEDA HUANCA', category: 'TURISMO OPEN VARONES', time: '01:00:00', bib: 159 },
-    farolito: { name: 'REYNALDO PARQUE', category: 'MASTER C', time: '02:19:41', bib: 96 },
-    strava: []
-  },
-  'vuelta-a-los-poblados': {
-    num: 3,
-    name: 'El Retorno a los Poblados 2',
-    shortName: 'Poblados',
-    title: 'El Retorno a los Poblados 2',
-    date: '25 de Octubre de 2026',
-    status: 'Inscripciones Abiertas',
-    startLocation: 'Plaza de Chiguata',
-    startTime: '08:00 AM',
-    poster: '/images/posters/f3-retorno-poblados-card.webp',
-    dist: 47.2,
-    elev: 761,
-    laps: 1,
-    gpx: 'vuelta-a-los-poblados.gpx',
-    stravaRoute: 'https://www.strava.com/routes/3545824230908680048',
-    scratch: null,
-    farolito: null,
-    strava: []
-  },
-  'quequena-xtreme': {
-    num: 4,
-    name: 'Quequeña Xtreme III',
-    shortName: 'Quequeña',
-    title: 'Quequeña Xtreme III',
-    date: '13 de Diciembre de 2026',
-    status: 'Próximamente',
-    startLocation: 'Plaza Principal de Quequeña',
-    startTime: '08:00 AM',
-    poster: '/images/posters/f4-quequena-xtreme-card.webp',
-    dist: 45.0,
-    elev: 950,
-    laps: 1,
-    gpx: null,
-    stravaRoute: null,
-    scratch: null,
-    farolito: null,
-    strava: []
-  }
-};
-
-const stage = { ...(stagesDb[slug ?? ''] || stagesDb['vuelta-a-los-poblados']) };
-stage.notFound = false;
-
-// Enriquecer con datos reales de la API (extremos, segmentos Strava, métricas)
+let summary: StageSummary | null = null;
+let notFound = false;
 try {
-  const res = await fetch(`${API_V1}/stages/${slug}`);
-  if (res.status === 404) {
+  summary = await getStageSummary(String(slug));
+} catch (e) {
+  if (e instanceof Error && e.message === 'stage-not-found') {
+    notFound = true;
     Astro.response.status = 404;
-    stage.notFound = true;
-  } else if (res.ok) {
-    const data = await res.json();
-    const s = data.stage;
-    if (s) {
-      stage.name = s.title || s.name;
-      stage.title = s.title || s.name;
-      stage.shortName = s.short_name || stage.shortName;
-      stage.startLocation = s.start_location || stage.startLocation;
-      stage.startTime = s.start_time || stage.startTime;
-      stage.poster = s.poster_url || stage.poster;
-      stage.date = new Date(s.date + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
-      stage.dist = s.distance_km;
-      stage.elev = s.elevation_gain_m;
-      stage.laps = s.laps;
-      stage.status = s.status === 'FINISHED' ? 'Finalizada' : (s.status === 'REGISTRATION_OPEN' ? 'Inscripciones Abiertas' : 'Próximamente');
-    }
-    const ex = data.extremes || {};
-    if (ex.scratch) {
-      stage.scratch = {
-        name: ex.scratch.rider_name,
-        category: ex.scratch.category_name,
-        time: ex.scratch.formatted_time,
-        bib: ex.scratch.bib_number,
-      };
-    }
-    if (ex.farolito) {
-      stage.farolito = {
-        name: ex.farolito.rider_name,
-        category: ex.farolito.category_name,
-        time: ex.farolito.formatted_time,
-        bib: ex.farolito.bib_number,
-      };
-    }
-    if (Array.isArray(data.strava_segments) && data.strava_segments.length) {
-      stage.strava = data.strava_segments.map((seg: any) => ({
-        name: seg.name,
-        dist: `${(seg.distance_m / 1000).toFixed(2)} km`,
-        grade: `${seg.average_grade}%`,
-        kom: seg.efforts && seg.efforts.length
-          ? `${seg.efforts[0].athlete_name} (${seg.efforts[0].formatted_time})`
-          : 'Sin registros aún',
-      }));
-    }
+  } else {
+    // El backend no responde: se dice, no se rellena con datos inventados.
+    Astro.response.status = 503;
   }
-} catch (e) {}
+}
 
-// Nombre visible sin el prefijo "Fecha N:" (se muestra aparte en el eyebrow)
-const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '');
+const stage = summary?.stage;
+const stats = summary?.stats;
+
+// El nombre visible sin el prefijo "Fecha N:" (el eyebrow ya lo dice).
+const displayName = String(stage?.title || stage?.name || '').replace(
+  /^Fecha\s+\d+\s*:\s*/i,
+  ''
+);
+
+// La distancia y el desnivel se leen de las dos medidas de la BD: por vuelta
+// y total. Mezclarlas fue el bug que mostraba +840 m en un sitio y +280 m en
+// otro (Task 1.1 del plan).
+const distLabel =
+  stats && stats.laps > 1
+    ? `${stats.distance_km_per_lap} KM × ${stats.laps} VUELTAS = ${stats.distance_km_total} KM`
+    : stats
+      ? `${stats.distance_km_per_lap} KM`
+      : '';
+const elevLabel =
+  stats && stats.laps > 1
+    ? `+${stats.elevation_m_per_lap} M/VUELTA · +${stats.elevation_m_total} M TOTAL`
+    : stats
+      ? `+${stats.elevation_m_per_lap} M`
+      : '';
+
+const statusLabel =
+  stage?.status === 'FINISHED'
+    ? 'Finalizada'
+    : stage?.status === 'REGISTRATION_OPEN'
+      ? 'Inscripciones Abiertas'
+      : stage?.status === 'LIVE'
+        ? 'En Vivo'
+        : 'Próximamente';
+
+const synopsis =
+  stats && stats.laps > 1
+    ? `Circuito de ${stats.distance_km_per_lap} km por vuelta y +${stats.elevation_m_per_lap} m de desnivel por vuelta: ${stats.laps} vueltas para un total de ${stats.distance_km_total} km y +${stats.elevation_m_total} m.`
+    : stats && stats.entries_total > 0
+      ? `Recorrido de ${stats.distance_km_per_lap} km con +${stats.elevation_m_per_lap} m de desnivel positivo acumulado.`
+      : 'Recorrido de MTB XC por confirmar.';
+
+const posterCard = stage?.poster_url ?? '';
+const posterFull = posterCard.replace('-card.webp', '-full.webp');
+const gpxUrl = stage?.gpx_file_url ?? undefined;
+
+/**
+ * Numeración de las secciones: consecutiva y sin huecos, aunque una fecha no
+ * tenga podio, equipos, extremos o Strava. Los bloques que no aplican se
+ * omiten enteros; los que aplican se numeran seguidos.
+ */
+const sections: { key: string; label: string; present: boolean }[] = [
+  { key: 'stats', label: 'CIFRAS DE LA JORNADA', present: true },
+  {
+    key: 'podium',
+    label: 'PODIO OFICIAL POR CATEGORÍA',
+    present: (summary?.podium.length ?? 0) > 0,
+  },
+  {
+    key: 'teams',
+    label: 'PODIO DE CLUBES DE LA FECHA',
+    present: (summary?.teams.length ?? 0) > 0,
+  },
+  {
+    key: 'extremes',
+    label: 'ESTADÍSTICAS EXTREMAS DE LA JORNADA',
+    present: Boolean(summary?.extremes.scratch || summary?.extremes.farolito),
+  },
+  {
+    key: 'route',
+    label: 'PERFIL TÉCNICO Y RUTA DE CARRERA',
+    present: Boolean(stage?.route_geojson || gpxUrl),
+  },
+  {
+    key: 'strava',
+    label: 'SEGMENTOS OFICIALES STRAVA (KOM / QOM)',
+    present: (summary?.strava.length ?? 0) > 0,
+  },
+  {
+    key: 'awards',
+    label: 'PREMIOS DE LA JORNADA',
+    present: (summary?.awards.length ?? 0) > 0,
+  },
+];
+
+/** Número de sección (01, 02, …) de una clave, o null si la sección no va. */
+function sectionNumber(key: string): string | null {
+  const present = sections.filter((s) => s.present);
+  const index = present.findIndex((s) => s.key === key);
+  return index >= 0 ? String(index + 1).padStart(2, '0') : null;
+}
 ---
-<Showcase title={`${displayName} — Kúspide MTB`} ghostWord={`FECHA ${stage.num}`}>
+
+<Showcase title={`${displayName} — Kúspide MTB`} ghostWord={stage ? `FECHA ${stage.stage_number}` : undefined}>
   <SiteHeader />
 
   <main class="container stage-page">
-    {stage.notFound ? (
-      <section class="stage-hero" data-draw>
-        <div class="hero-details">
-          <div class="stage-tag font-mono" data-draw-eyebrow>[ FECHA NO ENCONTRADA ]</div>
-          <h1 class="stage-title">Sin resultados para «{slug}»</h1>
-          <p class="stage-synopsis">
-            No existe ninguna fecha con el identificador «{slug}». Revisa el calendario del campeonato.
-          </p>
-          <div class="hero-buttons">
-            <a href="/" class="btn btn--solid">Ir al inicio →</a>
-            <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
-          </div>
-        </div>
-      </section>
-    ) : (
-    <>
-    <!-- Cabecera de Fecha con Póster y Datos -->
-    <section class="stage-hero" data-draw>
-      <div class="hero-grid">
-        <div class="hero-poster-box" data-reveal>
-          <img src={stage.poster} alt={stage.name} class="hero-poster" />
-          <a href={stage.poster.replace('-card.webp', '-full.webp')} target="_blank" rel="noopener noreferrer" class="poster-full-link font-mono">
-            [ VER AFICHE COMPLETO ↗ ]
-          </a>
-        </div>
-        <div class="hero-details">
-          <div class="stage-tag font-mono" data-draw-eyebrow>[ FECHA 0{stage.num} // {stage.shortName ? `${stage.shortName.toUpperCase()} · ` : ''}CAMPEONATO OFICIAL ]</div>
-          <h1 class="stage-title">{stage.title || displayName}</h1>
-          <div class="stage-meta font-mono">
-            <span>FECHA: {stage.date}</span>
-            <span>PARTIDA: {stage.startLocation || 'Arequipa'} ({stage.startTime || '08:00 AM'})</span>
-            <span>DISTANCIA: {stage.laps > 1 ? `${stage.dist} KM × ${stage.laps} VUELTAS` : `${stage.dist} KM`}</span>
-            <span>DESNIVEL: +{stage.elev * stage.laps} M</span>
-            <span class="status-tag">[{stage.status}]</span>
-          </div>
-
-          <p class="stage-synopsis">
-            {stage.laps > 1
-              ? `Circuito de ${stage.dist} km por vuelta y +${stage.elev} m de desnivel por vuelta. ${stage.laps} vueltas para las categorías fuertes.`
-              : `Recorrido de ${stage.dist} km con +${stage.elev} m de desnivel positivo acumulado.`}
-          </p>
-
-          <div class="hero-buttons">
-            {stage.status === 'Finalizada' ? (
-              <a href={`/fechas/${slug}/resultados`} class="btn btn--solid">Resultados Oficiales →</a>
-            ) : (
-              <a href="/inscripciones" class="btn btn--solid">Inscripción Oficial →</a>
-            )}
-            <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Bento de Estadísticas Extremas (si la fecha finalizó) -->
-    {stage.scratch && (
-      <section class="extremes-section">
-        <SectionLabel number="01" label="ESTADÍSTICAS EXTREMAS DE LA JORNADA" />
-        <div class="extremes-grid">
-          <div class="extreme-card scratch-card" data-reveal>
-            <div class="card-tag font-mono">[ SCRATCH // TIEMPO MÁS RÁPIDO EN META ]</div>
-            <div class="extreme-name">{stage.scratch.name}</div>
-            <div class="extreme-sub font-mono">DORSAL #{stage.scratch.bib} // {stage.scratch.category}</div>
-            <div class="extreme-time font-mono">{stage.scratch.time}</div>
-          </div>
-
-          <div class="extreme-card farolito-card" data-reveal>
-            <div class="card-tag font-mono">[ LANTERNE ROUGE // MÁXIMA PERSISTENCIA ]</div>
-            <div class="extreme-name">{stage.farolito.name}</div>
-            <div class="extreme-sub font-mono">DORSAL #{stage.farolito.bib} // {stage.farolito.category}</div>
-            <div class="extreme-time font-mono">{stage.farolito.time}</div>
-          </div>
-        </div>
-      </section>
-    )}
-
-    <!-- Bento de Ruta Interactiva y Altimetría -->
-    <section class="route-section">
-      <SectionLabel number="02" label="PERFIL TÉCNICO Y RUTA DE CARRERA" />
-      <RouteMapGpx
-        client:visible
-        stageName={stage.name}
-        distanceKm={stage.dist}
-        elevationGainM={stage.elev}
-        gpxUrl={stage.gpx ? `/gpx/${stage.gpx}` : undefined}
-      />
-    </section>
-
-    <!-- Bento Segmentos Strava (Filosofía Strava) -->
-    {stage.strava.length > 0 && (
-      <section class="strava-section">
-        <SectionLabel number="03" label="SEGMENTOS OFICIALES STRAVA (KOM / QOM)" />
-        <div class="strava-grid">
-          {stage.strava.map((seg: any) => (
-            <div class="strava-card font-mono" data-reveal>
-              <div class="strava-header">
-                <span class="strava-logo">STRAVA SEGMENT // VERIFICADO</span>
-                <span class="strava-grade">{seg.grade} PEND. MEDIA</span>
-              </div>
-              <div class="strava-name">{seg.name}</div>
-              <div class="strava-dist">DISTANCIA OFICIAL: {seg.dist}</div>
-              <div class="strava-kom"><span class="kom-label">RÉCORD KOM:</span> {seg.kom}</div>
+    {
+      notFound ? (
+        <section class="stage-hero" data-draw>
+          <div class="hero-details">
+            <div class="stage-tag font-mono" data-draw-eyebrow>[ FECHA NO ENCONTRADA ]</div>
+            <h1 class="stage-title">Sin resultados para «{slug}»</h1>
+            <p class="stage-synopsis">
+              No existe ninguna fecha con el identificador «{slug}». Revisa el calendario del campeonato.
+            </p>
+            <div class="hero-buttons">
+              <a href="/" class="btn btn--solid">Ir al inicio →</a>
+              <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
             </div>
-          ))}
-        </div>
-      </section>
-    )}
+          </div>
+        </section>
+      ) : !summary || !stage ? (
+        <section class="stage-hero" data-draw>
+          <div class="hero-details">
+            <div class="stage-tag font-mono" data-draw-eyebrow>[ SERVICIO NO DISPONIBLE ]</div>
+            <h1 class="stage-title">No pudimos cargar esta fecha</h1>
+            <p class="stage-synopsis">
+              El servicio de resultados no respondió en este momento. Vuelve a intentarlo en unos segundos.
+            </p>
+            <div class="hero-buttons">
+              <a href="/" class="btn btn--solid">Ir al inicio →</a>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <>
+          {/* ── Hero: datos reales de la BD ─────────────────────────── */}
+          <section class="stage-hero" data-draw>
+            <div class="hero-grid">
+              {posterCard && (
+                <div class="hero-poster-box" data-reveal>
+                  <img src={posterCard} alt={displayName} class="hero-poster" />
+                  <a
+                    href={posterFull}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="poster-full-link font-mono"
+                  >
+                    [ VER AFICHE COMPLETO ↗ ]
+                  </a>
+                </div>
+              )}
 
-    <!-- Bento Premios Especiales -->
-    <section class="awards-section">
-      <SectionLabel number="04" label="PREMIOS DE LA JORNADA" />
-      <div class="awards-grid">
-        <div class="award-box" data-reveal>
-          <img src="/images/premio_coca.jpg" alt="Premio Coca" class="award-img" />
-          <div class="award-content">
-            <h3 class="award-heading">Premio Especial Coca</h3>
-            <p class="award-text">Reconocimiento oficial a la persistencia deportiva y resiliencia en carrera.</p>
-          </div>
-        </div>
-        <div class="award-box" data-reveal>
-          <img src="/images/rey_montana.jpg" alt="Rey Montaña" class="award-img" />
-          <div class="award-content">
-            <h3 class="award-heading">Rey de la Montaña (KOM)</h3>
-            <p class="award-text">S/ 500 al mejor tiempo en el sector de ascenso de montaña.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-    </>
-    )}
+              <div class="hero-details">
+                <div class="stage-tag font-mono" data-draw-eyebrow>
+                  [ FECHA {String(stage.stage_number).padStart(2, '0')}
+                  {stage.short_name ? ` // ${stage.short_name.toUpperCase()}` : ''} · CAMPEONATO OFICIAL ]
+                </div>
+
+                <h1 class="stage-title">{displayName}</h1>
+
+                <div class="stage-meta font-mono">
+                  <span>
+                    FECHA:{' '}
+                    {new Date(stage.date + 'T00:00:00').toLocaleDateString('es-PE', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </span>
+                  {stage.start_location && (
+                    <span>
+                      PARTIDA: {stage.start_location}
+                      {stage.start_time ? ` (${stage.start_time})` : ''}
+                    </span>
+                  )}
+                  {distLabel && <span>DISTANCIA: {distLabel}</span>}
+                  {elevLabel && <span>DESNIVEL: {elevLabel}</span>}
+                  <span class="status-tag">[{statusLabel}]</span>
+                </div>
+
+                <p class="stage-synopsis">{synopsis}</p>
+
+                <div class="hero-buttons">
+                  {stage.status === 'FINISHED' ? (
+                    <a href={`/fechas/${slug}/resultados`} class="btn btn--solid">
+                      Resultados Oficiales →
+                    </a>
+                  ) : (
+                    <a href="/inscripciones" class="btn btn--solid">Inscripción Oficial →</a>
+                  )}
+                  <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
+                  {stage.strava_route_url && (
+                    <a
+                      href={stage.strava_route_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="btn btn--ghost"
+                    >
+                      Ruta en Strava ↗
+                    </a>
+                  )}
+                </div>
+
+                {/* Navegación entre fechas del calendario */}
+                <nav class="stage-nav font-mono" aria-label="Otras fechas">
+                  {summary.navigation.prev_slug ? (
+                    <a href={`/fechas/${summary.navigation.prev_slug}`} class="stage-nav__link">
+                      ← {summary.navigation.prev_name ?? 'FECHA ANTERIOR'}
+                    </a>
+                  ) : (
+                    <span class="stage-nav__empty" aria-hidden="true">←</span>
+                  )}
+                  {summary.navigation.next_slug ? (
+                    <a href={`/fechas/${summary.navigation.next_slug}`} class="stage-nav__link">
+                      {summary.navigation.next_name ?? 'FECHA SIGUIENTE'} →
+                    </a>
+                  ) : (
+                    <span class="stage-nav__empty" aria-hidden="true">→</span>
+                  )}
+                </nav>
+
+                {stage.status === 'LIVE' && (
+                  <a href="/en-vivo" class="live-badge font-mono">[ EN VIVO — CRONOMETRAJE ]</a>
+                )}
+
+                {stage.status === 'REGISTRATION_OPEN' && (
+                  <div class="countdown">
+                    <EventCountdown
+                      client:load
+                      targetDate={`${stage.date}T${(stage.start_time ?? '08:00 AM').replace(' AM', ':00').replace(' PM', ':00')}-05:00`}
+                      label="LARGADA OFICIAL"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* ── Cifras de la jornada ─────────────────────────────────── */}
+          <section class="stats-section">
+            <SectionLabel number={sectionNumber('stats')!} label="CIFRAS DE LA JORNADA" />
+            <StageStatsRow stats={stats!} />
+          </section>
+
+          {/* ── Podio por categoría ──────────────────────────────────── */}
+          {summary.podium.length > 0 && (
+            <section class="podium-section">
+              <SectionLabel number={sectionNumber('podium')!} label="PODIO OFICIAL POR CATEGORÍA" />
+              <StagePodiumGrid id="podio" podium={summary.podium} />
+            </section>
+          )}
+
+          {/* ── Podio de equipos de la fecha ────────────────────────── */}
+          {summary.teams.length > 0 && (
+            <section class="teams-section">
+              <SectionLabel number={sectionNumber('teams')!} label="PODIO DE CLUBES DE LA FECHA" />
+              <StageTeamPodium teams={summary.teams} />
+            </section>
+          )}
+
+          {/* ── Extremos de la jornada ───────────────────────────────── */}
+          {(summary.extremes.scratch || summary.extremes.farolito) && (
+            <section class="extremes-section">
+              <SectionLabel number={sectionNumber('extremes')!} label="ESTADÍSTICAS EXTREMAS DE LA JORNADA" />
+              <div class="extremes-grid">
+                {summary.extremes.scratch && (
+                  <div class="extreme-card scratch-card" data-reveal>
+                    <div class="card-tag font-mono">[ SCRATCH // TIEMPO MÁS RÁPIDO EN META ]</div>
+                    <div class="extreme-name">{summary.extremes.scratch.rider_name}</div>
+                    <div class="extreme-sub font-mono">
+                      DORSAL #{summary.extremes.scratch.bib_number} //{' '}
+                      {summary.extremes.scratch.team_name}
+                    </div>
+                    <div class="extreme-time font-mono">{summary.extremes.scratch.formatted_time}</div>
+                  </div>
+                )}
+
+                {summary.extremes.farolito && (
+                  <div class="extreme-card farolito-card" data-reveal>
+                    <div class="card-tag font-mono">[ FAROLITO // MÁXIMA PERSISTENCIA ]</div>
+                    <div class="extreme-name">{summary.extremes.farolito.rider_name}</div>
+                    <div class="extreme-sub font-mono">
+                      DORSAL #{summary.extremes.farolito.bib_number} //{' '}
+                      {summary.extremes.farolito.team_name}
+                    </div>
+                    <div class="extreme-time font-mono">{summary.extremes.farolito.formatted_time}</div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* ── Ruta y altimetría reales ─────────────────────────────── */}
+          {(stage.route_geojson || gpxUrl) && (
+            <section class="route-section">
+              <SectionLabel number={sectionNumber('route')!} label="PERFIL TÉCNICO Y RUTA DE CARRERA" />
+              <RouteMapGpx
+                client:visible
+                stageName={displayName}
+                routeGeoJson={stage.route_geojson}
+                checkpoints={summary.checkpoints}
+                distanceKm={stats!.distance_km_per_lap}
+                elevationGainM={stats!.elevation_m_per_lap}
+                gpxUrl={gpxUrl}
+              />
+            </section>
+          )}
+
+          {/* ── Segmentos Strava ─────────────────────────────────────── */}
+          {summary.strava.length > 0 && (
+            <section class="strava-section">
+              <SectionLabel number={sectionNumber('strava')!} label="SEGMENTOS OFICIALES STRAVA (KOM / QOM)" />
+              <div class="strava-grid">
+                {summary.strava.map((seg) => (
+                  <div class="strava-card" data-reveal>
+                    <div class="strava-header font-mono">
+                      <span class="strava-logo">SEGMENTO OFICIAL // STRAVA</span>
+                      <span class="strava-grade">{seg.average_grade}% PEND. MEDIA</span>
+                    </div>
+                    <div class="strava-name">{seg.name}</div>
+                    <div class="strava-dist font-mono">DISTANCIA OFICIAL: {seg.distance_km} KM</div>
+                    {seg.kom && (
+                      <div class="strava-kom font-mono">
+                        <span class="kom-label">RÉCORD KOM:</span> {seg.kom.athlete_name} ({seg.kom.formatted_time})
+                      </div>
+                    )}
+
+                    {seg.efforts.length > 0 && (
+                      <ol class="strava-board font-mono">
+                        {seg.efforts.slice(0, 5).map((e, i) => (
+                          <li class="board-row">
+                            <span class="board-rank">{i + 1}º</span>
+                            <span class="board-name">{e.athlete_name}</span>
+                            <span class="board-time">{e.formatted_time}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+
+                    {seg.strava_segment_id && (
+                      <a
+                        class="strava-link font-mono"
+                        href={`https://www.strava.com/segments/${seg.strava_segment_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        VER EN STRAVA ↗
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Premios de la jornada ────────────────────────────────── */}
+          {summary.awards.length > 0 && (
+            <section class="awards-section">
+              <SectionLabel number={sectionNumber('awards')!} label="PREMIOS DE LA JORNADA" />
+              <div class="awards-grid">
+                {summary.awards.map((a) => (
+                  <div class="award-box" data-reveal>
+                    {a.sponsor_logo_url && (
+                      <img src={a.sponsor_logo_url} alt={a.sponsor_name ?? a.title} class="award-img" />
+                    )}
+                    <div class="award-content">
+                      <h3 class="award-heading">{a.title}</h3>
+                      {a.sponsor_name && <p class="award-sponsor font-mono">PATROCINADOR: {a.sponsor_name}</p>}
+                      {a.prize_description && <p class="award-text">{a.prize_description}</p>}
+                      {a.metric_value && <p class="award-text">{a.metric_value}</p>}
+                      {a.winner_name && <p class="award-winner font-mono">GANADOR: {a.winner_name}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )
+    }
   </main>
 
   <SiteFooter />
@@ -345,7 +468,7 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
 
   .stage-tag {
     font-size: 0.6875rem;
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium, 500);
     color: var(--faint);
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -375,7 +498,7 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
 
   .status-tag {
     color: var(--muted);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium, 500);
   }
 
   .stage-synopsis {
@@ -429,7 +552,52 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
     background: var(--bg-sunken);
   }
 
-  /* Estadísticas Extremas */
+  /* Navegación entre fechas */
+  .stage-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: var(--hairline) solid var(--line);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .stage-nav__link {
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: var(--hairline) solid var(--line-strong);
+    padding-bottom: 0.15rem;
+  }
+
+  .stage-nav__link:hover {
+    color: var(--accent);
+  }
+
+  .stage-nav__empty {
+    color: var(--faint);
+  }
+
+  .live-badge {
+    display: inline-block;
+    margin-top: 1.5rem;
+    padding: 0.5rem 0.875rem;
+    background: var(--danger, #b3261e);
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-decoration: none;
+  }
+
+  .countdown {
+    margin-top: 1.75rem;
+    max-width: 22rem;
+  }
+
+  /* Extremos */
   .extremes-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -446,7 +614,7 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
 
   .card-tag {
     font-size: 0.6875rem;
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium, 500);
     letter-spacing: 0.14em;
     color: var(--faint);
     margin-bottom: 0.75rem;
@@ -471,7 +639,7 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
 
   .extreme-time {
     font-size: 2rem;
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium, 500);
     font-variant-numeric: tabular-nums;
     color: var(--ink);
   }
@@ -494,6 +662,7 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
   .strava-header {
     display: flex;
     justify-content: space-between;
+    gap: 1rem;
     font-size: 0.6875rem;
     color: #fc4c02; /* Strava Orange */
     font-weight: 800;
@@ -516,6 +685,59 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
     font-size: 0.8125rem;
     font-weight: 700;
     color: var(--ink);
+  }
+
+  .kom-label {
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .strava-board {
+    list-style: none;
+    margin: 0.875rem 0 0;
+    padding: 0;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .board-row {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+    gap: 0.625rem;
+    align-items: baseline;
+    padding: 0.35rem 0;
+    border-bottom: var(--hairline) solid var(--line);
+    font-size: 0.6875rem;
+  }
+
+  .board-rank {
+    color: var(--faint);
+  }
+
+  .board-name {
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .board-time {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .strava-link {
+    display: inline-block;
+    margin-top: 0.875rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: var(--hairline) solid var(--line-strong);
+    padding-bottom: 0.1rem;
+  }
+
+  .strava-link:hover {
+    color: #fc4c02;
   }
 
   /* Premios */
@@ -543,11 +765,23 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
     flex-shrink: 0;
   }
 
+  .award-content {
+    min-width: 0;
+  }
+
   .award-heading {
     font-family: var(--font-display, var(--font-sans));
     font-size: 1.125rem;
     font-weight: 800;
-    margin: 0 0 0.5rem 0;
+    margin: 0 0 0.35rem 0;
+  }
+
+  .award-sponsor {
+    margin: 0 0 0.5rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
   }
 
   .award-text {
@@ -555,6 +789,14 @@ const displayName = String(stage.name || '').replace(/^Fecha\s+\d+\s*:\s*/i, '')
     color: var(--muted);
     line-height: 1.5;
     margin: 0;
+  }
+
+  .award-winner {
+    margin: 0.625rem 0 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent);
   }
 
   @media (min-width: 48em) {

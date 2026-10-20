@@ -1,0 +1,142 @@
+---
+/**
+ * StageTeamPodium.astro — el podio de equipos de UNA jornada.
+ *
+ * No es la Copa de Equipos acumulada: son los puntos que los clubes sumando
+ * en ESTA fecha, que es lo que define el podio de la carrera.
+ */
+import type { TeamPodium } from '../lib/api';
+
+interface Props {
+  teams: TeamPodium[];
+}
+
+const { teams } = Astro.props;
+---
+
+<div class="teams">
+  {
+    teams.map((t, idx) => (
+      <article class="team" data-place={idx + 1}>
+        <div class="team__place font-mono">{idx + 1}º</div>
+        <a class="team__name" href={`/equipos/${t.team_slug}`}>
+          {t.team_name}
+        </a>
+        <div class="team__points font-mono">
+          {t.points} <span class="team__unit">pts</span>
+        </div>
+        <dl class="team__meta font-mono">
+          <div class="team__meta-cell">
+            <dt>CORREDORES</dt>
+            <dd>{t.riders_counted}</dd>
+          </div>
+          <div class="team__meta-cell">
+            <dt>MEJOR PUESTO</dt>
+            <dd>{t.best_rank > 900 ? '—' : `${t.best_rank}º`}</dd>
+          </div>
+        </dl>
+      </article>
+    ))
+  }
+</div>
+
+<style>
+  .teams {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 3.5rem;
+  }
+
+  .team {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+    /* El metal del podio marca el lugar sinsible. */
+    box-shadow: inset 3px 0 0 0 var(--line-strong);
+  }
+
+  .team[data-place='1'] {
+    box-shadow: inset 3px 0 0 0 var(--podium-1, #a97a12);
+  }
+
+  .team[data-place='2'] {
+    box-shadow: inset 3px 0 0 0 var(--podium-2, #6f7784);
+  }
+
+  .team[data-place='3'] {
+    box-shadow: inset 3px 0 0 0 var(--podium-3, #8a5a34);
+  }
+
+  .team__place {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--faint);
+  }
+
+  .team[data-place='1'] .team__place {
+    color: var(--podium-1, #a97a12);
+  }
+
+  .team__name {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: 1.0625rem;
+    font-weight: 620;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--ink-strong);
+    text-decoration: none;
+  }
+
+  .team__name:hover {
+    color: var(--accent);
+  }
+
+  .team__points {
+    font-size: 1.75rem;
+    font-weight: 620;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    line-height: 1;
+  }
+
+  .team__unit {
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .team__meta {
+    display: flex;
+    gap: 1.5rem;
+    margin: 0.5rem 0 0;
+    padding-top: 0.75rem;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .team__meta-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .team__meta dt {
+    font-size: 0.5625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .team__meta dd {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+</style>

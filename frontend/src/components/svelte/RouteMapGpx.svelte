@@ -1,156 +1,256 @@
 <script lang="ts">
+  /**
+   * RouteMapGpx.svelte — el mapa y el perfil de una ruta.
+   *
+   * Dibuja la geometría REAL de la carrera (`Stage.route_geojson`, que la BD
+   * guarda ya simplificada a ≤500 puntos) proyectada sobre un lienzo SVG, con
+   * los checkpoints de la fecha (Partida, intermedios, Meta) y un perfil de
+   * altimetría sincronizado con el cursor.
+   *
+   * Nada de lo que se ve está inventado: si la fecha no tiene geometría, el
+   * componente lo dice en vez de fabricar una silueta.
+   */
+  import type { Checkpoint, RouteGeoJson } from '../../lib/api';
+
   interface Props {
     stageName: string;
+    routeGeoJson: RouteGeoJson | null;
+    checkpoints: Checkpoint[];
     distanceKm: number;
     elevationGainM: number;
     gpxUrl?: string;
   }
 
-  let { stageName, distanceKm, elevationGainM, gpxUrl }: Props = $props();
+  let { stageName, routeGeoJson, checkpoints, distanceKm, elevationGainM, gpxUrl }: Props = $props();
 
-  interface TrackPoint {
-    distKm: number;
+  /** Un punto de la traza, ya normalizado a un lienzo de 100 × 100. */
+  interface ProjectedPoint {
+    /** Coordenada en el lienzo (0..100). */
+    x: number;
+    y: number;
+    /** Kilómetro del recorrido. */
+    km: number;
+    /** Altitud en metros. */
     ele: number;
-    lat: number;
-    lon: number;
   }
 
-  let points = $state<TrackPoint[]>([]);
-  let activeDistance = $state<number>(0);
+  let activeKm = $state(0);
 
-  // Haversine simple para parseo cliente
-  function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
+  /**
+   * Proyecta la geometría a un lienzo conservando la proporción real del
+   * circuito (un circuito de MTB no se deforma) y dejando un margen del 6%.
+   *
+   * El lienzo se dimensiona con la proporción de la traza: un circuito
+   * alargado no tiene que dejar el 60% del alto vacío.
+   */
+  let projection = $derived.by(() => {
+    const coords = routeGeoJson?.features?.[0]?.geometry?.coordinates ?? [];
+    if (coords.length < 2) return { points: [] as ProjectedPoint[], width: 100, height: 100 };
 
-  $effect(() => {
-    if (!gpxUrl) return;
-    fetch(gpxUrl)
-      .then((res) => res.text())
-      .then((xmlStr) => {
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlStr, 'application/xml');
-        const trkpts = xml.querySelectorAll('trkpt');
-        if (trkpts.length === 0) return;
+    const lons = coords.map((c) => c[0]);
+    const lats = coords.map((c) => c[1]);
+    const minLon = Math.min(...lons);
+    const maxLon = Math.max(...lons);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
 
-        const parsed: TrackPoint[] = [];
-        let totalD = 0;
-        let lastPt: { lat: number; lon: number } | null = null;
+    const spanLon = maxLon - minLon || 1e-9;
+    const spanLat = maxLat - minLat || 1e-9;
+    // Un grado de longitud a esta latitud es más corto que uno de latitud:
+    // se compensa para no deformar el circuito.
+    const latScale = Math.cos((minLat * Math.PI) / 180) || 1;
+    const spanX = spanLon * latScale;
+    const spanY = spanLat;
 
-        trkpts.forEach((pt) => {
-          const lat = parseFloat(pt.getAttribute('lat') || '0');
-          const lon = parseFloat(pt.getAttribute('lon') || '0');
-          const ele = parseFloat(pt.querySelector('ele')?.textContent || '0');
+    const margin = 6;
+    // Se escala para que la dimensión dominante ocupe el lienzo, y el alto
+    // del lienzo se deriva de la proporción real de la traza.
+    const scale = (100 - margin * 2) / Math.max(spanX, spanY);
+    const width = spanX * scale + margin * 2;
+    const height = spanY * scale + margin * 2;
 
-          if (lastPt) {
-            totalD += haversine(lastPt.lat, lastPt.lon, lat, lon);
-          }
-          parsed.push({ distKm: totalD, ele: Math.round(ele), lat, lon });
-          lastPt = { lat, lon };
-        });
+    const points = coords.map((c) => {
+      const lon = c[0];
+      const lat = c[1];
+      const ele = c[2] ?? 0;
+      const km = c[3] ?? 0;
+      return {
+        x: margin + (lon - minLon) * latScale * scale,
+        y: height - margin - (lat - minLat) * scale,
+        km,
+        ele,
+      };
+    });
 
-        // Muestrear a máx 100 puntos para SVG suave
-        const step = Math.max(1, Math.floor(parsed.length / 100));
-        points = parsed.filter((_, i) => i % step === 0);
-      })
-      .catch(() => {});
+    return { points, width, height };
   });
 
-  // Punto activo interpolado
-  let activePoint = $derived.by(() => {
-    if (points.length === 0) {
-      return {
-        distKm: activeDistance,
-        ele: Math.round(2300 + Math.sin(activeDistance / 10) * 450 + (activeDistance / Math.max(1, distanceKm)) * elevationGainM * 0.4),
-        pct: (activeDistance / Math.max(1, distanceKm)) * 100
-      };
-    }
-    const maxD = points[points.length - 1].distKm;
-    const targetD = (activeDistance / Math.max(1, distanceKm)) * maxD;
-    const closest = points.reduce((prev, curr) =>
-      Math.abs(curr.distKm - targetD) < Math.abs(prev.distKm - targetD) ? curr : prev
-    );
+  let projected = $derived(projection.points);
+
+  /** La traza como un `d` de SVG. */
+  let tracePath = $derived(
+    projected.length > 0
+      ? `M ${projected.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' L ')}`
+      : ''
+  );
+
+  /** El perfil de altimetría, normalizado a su propio alto. */
+  let elevationPath = $derived.by(() => {
+    if (projected.length < 2) return { area: '', line: '', min: 0, max: 0 };
+    const eles = projected.map((p) => p.ele);
+    const min = Math.min(...eles);
+    const max = Math.max(...eles);
+    const range = max - min || 1;
+    const maxKm = projected[projected.length - 1].km || 1;
+
+    const points = projected.map((p) => {
+      const x = (p.km / maxKm) * 100;
+      const y = 92 - ((p.ele - min) / range) * 82;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    });
+
     return {
-      distKm: activeDistance,
-      ele: closest.ele,
-      pct: (activeDistance / Math.max(1, distanceKm)) * 100
+      area: `M 0,100 L ${points.join(' L ')} L 100,100 Z`,
+      line: `M ${points.join(' L ')}`,
+      min,
+      max,
     };
   });
 
-  // SVG path de elevación
-  let svgPath = $derived.by(() => {
-    if (points.length === 0) return '';
-    const minEle = Math.min(...points.map((p) => p.ele));
-    const maxEle = Math.max(...points.map((p) => p.ele));
-    const eleRange = maxEle - minEle || 1;
-    const maxD = points[points.length - 1].distKm || 1;
-
-    const coords = points.map((p) => {
-      const x = (p.distKm / maxD) * 100;
-      const y = 90 - ((p.ele - minEle) / eleRange) * 75;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
-
-    return `M 0,95 L ${coords.join(' L ')} L 100,95 Z`;
+  /** El punto de la traza más cercano al kilómetro activo. */
+  let activePoint = $derived.by(() => {
+    if (projected.length === 0) return null;
+    const totalKm = projected[projected.length - 1].km || distanceKm || 1;
+    const target = (activeKm / (distanceKm || totalKm)) * totalKm;
+    let best = projected[0];
+    let bestDist = Math.abs(best.km - target);
+    for (const p of projected) {
+      const d = Math.abs(p.km - target);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    return best;
   });
+
+  /** El punto de un checkpoint, localizado en la traza por su kilómetro. */
+  function checkpointPoint(cp: Checkpoint): ProjectedPoint | null {
+    if (projected.length === 0) return null;
+    const totalKm = projected[projected.length - 1].km || 1;
+    const targetKm = (cp.distance_from_start_km / (distanceKm || totalKm)) * totalKm;
+    let best = projected[0];
+    let bestDist = Math.abs(best.km - targetKm);
+    for (const p of projected) {
+      const d = Math.abs(p.km - targetKm);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  let hasGeometry = $derived(projected.length > 1);
 </script>
 
 <div class="route-map-box">
   <div class="route-header">
-    <div class="route-title font-mono">[ PERFIL TÉCNICO Y ALTIMETRÍA GPX ]</div>
+    <div class="route-title font-mono">[ PERFIL TÉCNICO Y RUTA DE CARRERA ]</div>
     <div class="route-metrics font-mono">
       <span>DISTANCIA: <strong>{distanceKm} KM</strong></span>
       <span>DESNIVEL (+): <strong>+{elevationGainM} M</strong></span>
     </div>
   </div>
 
-  <!-- Contenedor del Mapa Estilizado Oscuro -->
-  <div class="map-visual">
-    <div class="map-overlay">
-      <div class="map-tag font-mono">[ TELEMETRÍA DE CARRERA // VISUALIZADOR TOPO ]</div>
+  {#if hasGeometry}
+    <!-- Mapa: la traza real de la carrera -->
+    <div
+      class="map-visual"
+      style={`--map-ratio: ${projection.width.toFixed(2)} / ${projection.height.toFixed(2)}`}
+    >
+      <svg
+        class="map-svg"
+        viewBox={`0 0 ${projection.width.toFixed(2)} ${projection.height.toFixed(2)}`}
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label={`Trazado de la ruta de ${stageName}`}
+      >
+        <path d={tracePath} class="trace" />
+        {#each checkpoints as cp (cp.name)}
+          {@const p = checkpointPoint(cp)}
+          {#if p}
+            <g class="chk">
+              <circle cx={p.x} cy={p.y} r="1.6" class="chk__dot" />
+              <text
+                x={p.x}
+                y={p.y - (projection.height * 0.035 + 1)}
+                class="chk__label"
+                text-anchor="middle">{cp.name}</text>
+            </g>
+          {/if}
+        {/each}
+        {#if activePoint}
+          <circle cx={activePoint.x} cy={activePoint.y} r="1.4" class="active-dot" />
+        {/if}
+      </svg>
+      <div class="map-tag font-mono">[ TRAZADO GPS OFICIAL // {stageName} ]</div>
+    </div>
 
-      {#if svgPath}
-        <svg class="elev-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d={svgPath} class="elev-polygon" />
-        </svg>
-      {/if}
+    <!-- Altimetría: el mismo recorrido en vertical -->
+    <div class="elevation-profile-box">
+      <div class="elev-label font-mono">[ DESLIZAR PARA INSPECCIONAR SECTOR, ALTITUD Y PENDIENTE ]</div>
 
-      <div class="map-marker" style={`left: ${Math.min(96, Math.max(4, activePoint.pct))}%;`}>
-        <div class="marker-line"></div>
-        <div class="marker-dot"></div>
-        <div class="marker-tooltip font-mono">
-          KM {activeDistance.toFixed(1)} // {activePoint.ele} MSNM
-        </div>
+      <svg
+        class="elev-svg"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`Perfil de altimetría de ${stageName}`}
+      >
+        <path d={elevationPath.area} class="elev-area" />
+        <path d={elevationPath.line} class="elev-line" />
+        {#if activePoint}
+          {@const maxKm = projected[projected.length - 1].km || 1}
+          {@const x = (activePoint.km / maxKm) * 100}
+          {@const range = elevationPath.max - elevationPath.min || 1}
+          {@const y = 92 - ((activePoint.ele - elevationPath.min) / range) * 82}
+          <line x1={x} y1="4" x2={x} y2="100" class="elev-cursor" />
+          <circle cx={x} cy={y} r="1.6" class="elev-dot" />
+        {/if}
+      </svg>
+
+      <div class="slider-wrapper">
+        <input
+          type="range"
+          min="0"
+          max={distanceKm}
+          step="0.1"
+          bind:value={activeKm}
+          class="elev-slider"
+          aria-label="Kilómetro del recorrido"
+        />
+      </div>
+
+      <div class="elev-axis font-mono">
+        <span>0.0 KM [PARTIDA]</span>
+        <span>{(distanceKm / 2).toFixed(1)} KM [MEDIO]</span>
+        <span>{distanceKm.toFixed(1)} KM [META]</span>
+      </div>
+
+      <div class="elev-readout font-mono">
+        KM {activeKm.toFixed(1)} // {activePoint ? Math.round(activePoint.ele) : 0} MSNM
+        {#if activePoint && projected.length > 0}
+          // {activePoint.ele >= projected[0].ele ? '+' : ''}{Math.round(activePoint.ele - projected[0].ele)} M RESPECTO A LA PARTIDA
+        {/if}
       </div>
     </div>
-  </div>
-
-  <!-- Gráfico de Altimetría Interactivo -->
-  <div class="elevation-profile-box">
-    <div class="elev-label font-mono">[ DESLIZAR CURSOR PARA INSPECCIONAR SECTOR Y GRADIENTE ]</div>
-    <div class="slider-wrapper">
-      <input
-        type="range"
-        min="0"
-        max={distanceKm}
-        step="0.5"
-        bind:value={activeDistance}
-        class="elev-slider"
-      />
-    </div>
-    <div class="elev-axis font-mono">
-      <span>0.0 KM [PARTIDA]</span>
-      <span>{(distanceKm / 2).toFixed(1)} KM [SECTOR CUMBRE]</span>
-      <span>{distanceKm.toFixed(1)} KM [META]</span>
-    </div>
-  </div>
+  {:else}
+    <p class="route-empty font-mono">
+      [ ESTA FECHA TODAVÍA NO TIENE TRAZADO GPS PUBLICADO — EL PERFIL SE PUBLICARÁ AL
+      CONFIRMAR EL RECORRIDO ]
+    </p>
+  {/if}
 
   {#if gpxUrl}
     <div class="gpx-download-bar">
@@ -197,18 +297,58 @@
     color: var(--ink, #101014);
   }
 
+  /* Mapa */
   .map-visual {
     position: relative;
-    height: 20rem;
+    /* La altura la fija la proporción real de la traza: un circuito alargado
+       no tiene que dejar medio lienzo vacío. */
+    aspect-ratio: var(--map-ratio, 4 / 3);
+    min-height: 14rem;
+    max-height: 32rem;
     background: #0d0f12;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
     background-size: 1.5rem 1.5rem;
     overflow: hidden;
   }
 
-  .map-overlay {
+  .map-svg {
     position: absolute;
     inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .trace {
+    fill: none;
+    stroke: #ff5500;
+    stroke-width: 1.1;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .chk__dot {
+    fill: #ffffff;
+    stroke: #ff5500;
+    stroke-width: 0.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .chk__label {
+    fill: rgba(255, 255, 255, 0.75);
+    font-family: var(--font-mono, monospace);
+    font-size: 1.1px;
+    letter-spacing: 0.04em;
+    paint-order: stroke;
+    stroke: rgba(13, 15, 18, 0.85);
+    stroke-width: 0.28px;
+  }
+
+  .active-dot {
+    fill: #ffffff;
+    stroke: #ff5500;
+    stroke-width: 0.7;
+    vector-effect: non-scaling-stroke;
   }
 
   .map-tag {
@@ -221,59 +361,7 @@
     z-index: 2;
   }
 
-  .elev-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-  }
-
-  .elev-polygon {
-    fill: rgba(255, 85, 0, 0.18);
-    stroke: #ff5500;
-    stroke-width: 1.5;
-  }
-
-  .map-marker {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 3;
-    pointer-events: none;
-    transition: left 0.05s ease-out;
-  }
-
-  .marker-line {
-    flex: 1;
-    width: 1px;
-    background: rgba(255, 255, 255, 0.3);
-  }
-
-  .marker-dot {
-    width: 0.625rem;
-    height: 0.625rem;
-    background: #ff5500;
-    border: 2px solid #ffffff;
-    box-shadow: 0 0 0.625rem rgba(255, 85, 0, 0.8);
-  }
-
-  .marker-tooltip {
-    margin-top: 0.5rem;
-    margin-bottom: 1.5rem;
-    padding: 0.25rem 0.625rem;
-    background: #000000;
-    color: #ffffff;
-    font-size: 0.6875rem;
-    white-space: nowrap;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    letter-spacing: 0.05em;
-  }
-
+  /* Altimetría */
   .elevation-profile-box {
     padding: 1.25rem 1.5rem;
     border-top: var(--hairline, 1px) solid var(--line, rgba(16, 16, 20, 0.16));
@@ -286,8 +374,40 @@
     margin-bottom: 0.75rem;
   }
 
+  .elev-svg {
+    display: block;
+    width: 100%;
+    height: 7rem;
+    background: var(--bg, #fbfbfd);
+    border: var(--hairline, 1px) solid var(--line, rgba(16, 16, 20, 0.16));
+  }
+
+  .elev-area {
+    fill: rgba(255, 85, 0, 0.16);
+  }
+
+  .elev-line {
+    fill: none;
+    stroke: #ff5500;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .elev-cursor {
+    stroke: rgba(16, 16, 20, 0.35);
+    stroke-width: 0.4;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .elev-dot {
+    fill: #ff5500;
+    stroke: #ffffff;
+    stroke-width: 0.5;
+    vector-effect: non-scaling-stroke;
+  }
+
   .slider-wrapper {
-    margin-block: 0.5rem;
+    margin-block: 0.75rem 0.5rem;
   }
 
   .elev-slider {
@@ -301,7 +421,23 @@
     justify-content: space-between;
     font-size: 0.6875rem;
     color: var(--muted, #70707c);
+  }
+
+  .elev-readout {
     margin-top: 0.5rem;
+    font-size: 0.6875rem;
+    color: var(--ink, #101014);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .route-empty {
+    margin: 0;
+    padding: 2.5rem 1.5rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted, #70707c);
+    background: var(--bg, #fbfbfd);
   }
 
   .gpx-download-bar {

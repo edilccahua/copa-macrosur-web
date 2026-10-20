@@ -31,6 +31,9 @@ const { title, description, sections, ghostWord } = Astro.props;
 <style>
   .showcase {
     position: relative;
+    /* El rótulo fantasma se sale del borde a propósito (queda recortado),
+       pero no debe abrir una barra de scroll horizontal en la página. */
+    overflow-x: clip;
   }
 </style>
 

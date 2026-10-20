@@ -1,5 +1,5 @@
 <!--
-  ScopeControl.astro / ScopeControl.svelte — el selector "casi escondido".
+  ScopeControl.svelte — el selector "casi escondido".
 
   Dispara una lista desplazable con el valor actual. Es el mismo control para
   elegir la FECHA (acumulado "a la fecha") y para acotar el ÁMBITO de
