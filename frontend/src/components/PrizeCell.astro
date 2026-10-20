@@ -22,11 +22,18 @@
 import Icon from './Icon.astro';
 import type { IconName } from './Icon.astro';
 import MedalIcon from './MedalIcon.astro';
-import type { PrizeStep } from '../data/prizes';
+import type { PrizePosition } from '../data/prizes';
+
+/** Un peldaño del podio: el puesto, su cifra y quién lo lleva (si el premio
+ * es acumulado y el campeonato sigue abierto). */
+export interface PrizePodiumStep {
+  position: PrizePosition;
+  amountUsd: number;
+  /** El ganador provisional de ese puesto. */
+  holder?: string | null;
+}
 
 interface Props {
-  /** Índice de la celda ("01"). */
-  index?: string;
   /** Etiqueta de cabecera, para las celdas que son una nota. */
   label?: string;
   /** Icono del ámbito. */
@@ -42,11 +49,10 @@ interface Props {
   notes?: string[];
   /**
    * El podio del premio: los tres peldaños con su medalla. Es la forma de
-   * leer un premio en la casa (la misma que usa `PodiumPanel` para las
-   * clasificaciones): una tira plana de cifras ("300 / 200 / 100") no dice
-   * qué puesto cobra cada una.
+   * leer un premio con tres puestos en la casa (la misma que usa
+   * `PodiumPanel` para las clasificaciones).
    */
-  podium?: PrizeStep[];
+  podium?: PrizePodiumStep[];
   /** La cifra del premio, cuando es una sola (Premio CLARO, títulos). */
   amount?: string;
   /** Etiqueta del estado: qué pasa con el premio. */
@@ -55,12 +61,9 @@ interface Props {
   value?: string | null;
   /** Detalle del estado. */
   detail?: string | null;
-  /** Acento de la celda. */
-  accent?: 'pro' | 'normal' | 'gold';
 }
 
 const {
-  index,
   label,
   icon,
   logo,
@@ -73,7 +76,6 @@ const {
   state,
   value,
   detail,
-  accent = 'gold',
 } = Astro.props;
 
 /**
@@ -83,15 +85,9 @@ const {
 const escalones = podium ? [podium[2], podium[0], podium[1]] : [];
 
 const medallero = { 1: 34, 2: 28, 3: 28 } as const;
-
-/**
- * Las clases `scope-*` traen `--scope-ink` (el color legible del ámbito, con
- * su variante por tema). El oro no usa scope: cae al oro de la copa.
- */
-const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope-normal' : '';
 ---
 
-<article class:list={['cell', `cell--${accent}`, scopeClass]}>
+<article class="cell">
   <header class="cell__head">
     {
       logo ? (
@@ -106,7 +102,6 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
         <span class="cell__label font-mono">{label}</span>
       ) : null
     }
-    {index && <span class="cell__index font-mono tabular">{index}</span>}
   </header>
 
   <div class="cell__main">
@@ -127,12 +122,26 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     (podium || amount || state || value || detail) && (
       <div class="cell__data">
         {podium && (
-          <div class="cell__podium">
+          <div
+            class:list={[
+              'cell__podium',
+              podium.some((step) => step.holder) && 'cell__podium--holders',
+            ]}
+          >
             {escalones.map((step) => (
               <div class={`cell__step cell__step--${step.position}`}>
-                <span class="cell__step-value font-mono">USD {step.amountUsd}</span>
+                <span class="cell__step-value">
+                  <span class="cell__step-currency font-mono">USD</span>
+                  {step.amountUsd}
+                </span>
                 <span class="cell__step-block">
                   <MedalIcon rank={step.position} size={medallero[step.position]} />
+                  {step.holder && (
+                    <span class="cell__step-holder">
+                      <span class="cell__step-state font-mono">Provisional</span>
+                      <span class="cell__step-name font-mono">{step.holder}</span>
+                    </span>
+                  )}
                 </span>
               </div>
             ))}
@@ -148,8 +157,10 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
 
 <style>
   .cell {
-    /* El oro de la copa es el acento por defecto. PRO y NORMAL traen su
-       color de ámbito. */
+    /* Una sola tinta para TODA la página de premios: el oro de la copa.
+       Los colores de ámbito (azul de PRO, verde de NORMAL) viven en las
+       clasificaciones, donde identifican una pestaña; en los premios sólo
+       distinguirían dos tarjetas que ya se distinguen por su titular. */
     --cell-accent: var(--copa-gold);
     display: flex;
     flex-direction: column;
@@ -159,11 +170,6 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     background: var(--bg);
     /* La celda se mide a sí misma para decidir su propia composición. */
     container-type: inline-size;
-  }
-
-  .cell--pro,
-  .cell--normal {
-    --cell-accent: var(--scope-ink);
   }
 
   .cell__head {
@@ -204,11 +210,6 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     font-size: 0.6875rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--faint);
-  }
-
-  .cell__index {
-    font-size: 0.6875rem;
     color: var(--faint);
   }
 
@@ -281,19 +282,59 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
   }
 
   .cell__step-value {
-    font-size: var(--text-sm);
-    font-weight: var(--font-weight-bold);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 620;
+    font-stretch: 118%;
+    line-height: 1;
+    letter-spacing: -0.02em;
     color: var(--cell-accent);
+  }
+
+  .cell__step-currency {
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.1em;
+    color: var(--faint);
   }
 
   .cell__step-block {
     display: grid;
     place-items: center;
+    align-content: center;
+    gap: 0.375rem;
     width: 100%;
+    padding-block: 0.5rem;
     background: var(--bg-sunken);
     border: var(--hairline) solid var(--line);
+  }
+
+  /* El ganador provisional va DENTRO de su peldaño: el podio dice quién
+     cobra cada cifra, no sólo cuánto cobra. */
+  .cell__step-holder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    width: 100%;
+    padding-inline: 0.375rem;
+  }
+
+  .cell__step-state {
+    font-size: 0.5625rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .cell__step-name {
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    color: var(--ink);
   }
 
   .cell__step--1 .cell__step-block {
@@ -306,6 +347,20 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
 
   .cell__step--3 .cell__step-block {
     height: 3.375rem;
+  }
+
+  /* Con ganador dentro, los peldaños crecen para que quepan la medalla, la
+     etiqueta y el nombre. */
+  .cell__podium--holders .cell__step--1 .cell__step-block {
+    height: 8.5rem;
+  }
+
+  .cell__podium--holders .cell__step--2 .cell__step-block {
+    height: 7rem;
+  }
+
+  .cell__podium--holders .cell__step--3 .cell__step-block {
+    height: 5.75rem;
   }
 
   .cell__data {

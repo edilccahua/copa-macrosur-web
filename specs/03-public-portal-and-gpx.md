@@ -987,22 +987,29 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
     lee la misma clasificación.
   - El recuento de fechas sale de `GET /api/v1/public/remontada`
     (`stages_counted` / `total_stages`).
-- **La página son CUATRO secciones y UNA sola gramática** (20-Oct-2026).
+- **La página son CINCO secciones y UNA sola gramática** (20-Oct-2026).
   Secciones: `01 · Acumulado del campeonato` (PRO | NORMAL),
   `02 · Premio por fecha` (CADA CATEGORÍA | la nota de reparto),
-  `03 · Premio CLARO` (el premio | la nota de entrega) y
-  `04 · Títulos de montaña` (KOM | QOM | EL KAMIKAZE | LA KAMIKAZE).
+  `03 · Premio de equipos` (COPA DE EQUIPOS | la nota de reparto),
+  `04 · Premio CLARO` (el premio | la nota de entrega) y
+  `05 · Títulos de montaña` (KOM | QOM | EL KAMIKAZE | LA KAMIKAZE).
   Todas se construyen con `PrizeCell`, la celda de la tabla de principios de
   la referencia (`copiaartcraft/src/pages/apps.astro`, y `/apps` en vivo):
-  `emblema · índice` → `titular` → `regla` → `el premio y su estado`.
+  `emblema` → `titular` → `regla` → `el premio y su estado`.
   - La grilla dibuja los filetes con `gap: 1px` sobre su propio fondo y las
     celdas lo tapan con el fondo de la página: por eso es **una rejilla**, no
-    un mosaico de cajas. Dos columnas en las secciones 01-03, cuatro en la 04.
+    un mosaico de cajas. Dos columnas en las secciones 01-04, cuatro en la 05.
+  - **Una sola tinta en toda la página: el oro de la copa.** Los colores de
+    ámbito (azul de PRO, verde de NORMAL) se quedan en las clasificaciones,
+    donde identifican una pestaña; en los premios sólo distinguirían dos
+    tarjetas que ya se distinguen por su titular. Las cifras van en la
+    **escala de titular de la casa** (Archivo 620 + 118 % de estiramiento),
+    no en la del dato.
   - **El premio se DIBUJA, no se resume.** Hay dos formas, según cuántos
     peldaños tenga el premio:
-    - **Con tres peldaños (PRO, NORMAL, CADA CATEGORÍA): un PODIO.** Tres
-      escalones —tercero, primero y segundo, con el primero en el centro y
-      el más alto— con su medalla dentro y **la cifra encima de su
+    - **Con tres peldaños (PRO, NORMAL, CADA CATEGORÍA, EQUIPOS): un PODIO.**
+      Tres escalones —tercero, primero y segundo, con el primero en el centro
+      y el más alto— con su medalla dentro y **la cifra encima de su
       escalón**. La medalla ya lleva el puesto calado al vacío, así que el
       "1º" **no** se repite en texto.
     - **Con un solo premio (Premio CLARO, títulos de montaña): un STICKER.**
@@ -1010,20 +1017,22 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
       necesita un podio: necesita una etiqueta.
     - La tira plana ("USD 300 / 200 / 100") queda sólo en el rótulo de la
       sección, como resumen.
-  - El emblema es un cuadro de 2.25 rem con el icono del ámbito (o el
-    logotipo del patrocinador, a su proporción). La cifra va en monoespaciada
-    y en el color del ámbito (el oro de la copa para el resto).
+  - **En los premios acumulados, cada peldaño lleva su ganador PROVISIONAL**
+    (el primero, el segundo y el tercero de la clasificación): el podio dice
+    quién cobra cada cifra, no sólo cuánto cobra. En los premios por fecha
+    no: se resuelven en cada carrera.
+  - **Sin números de celda.** La tarjeta no lleva índice arriba a la
+    derecha.
   - **Sin panels, sin notas sueltas y sin párrafos que repitan lo que dice la
     celda.** La cabecera es el masthead de la referencia (titular grande +
     bajada) y debajo van las tablas.
   - **El rótulo de la sección no repite los montos**: dice el ÁMBITO del
-    bloque (`PRO Y NORMAL`, `11 CATEGORÍAS · 4 FECHAS`, `LA REMONTADA`,
-    `4 TÍTULOS POR FECHA`), no una tira de cifras. Las cifras ya están en el
-    podio de cada celda.
+    bloque (`PRO Y NORMAL`, `11 CATEGORÍAS · 4 FECHAS`, `COPA DE EQUIPOS`,
+    `LA REMONTADA`, `4 TÍTULOS POR FECHA`), no una tira de cifras.
   - **`/premios` no publica resultados de los premios por fecha.** El ganador
     del KOM de la Fecha 1 no es un premio del campeonato: sale en la ficha de
-    esa fecha. Los acumulados (PRO, NORMAL) y el Premio CLARO sí muestran su
-    ganador provisional, porque son de todo el campeonato.
+    esa fecha. Los acumulados (PRO, NORMAL, equipos) y el Premio CLARO sí
+    muestran su ganador provisional, porque son de todo el campeonato.
 - **La portada sigue con su propia tarjeta compacta** (`PrizeScale`), que
   comparte escala con `PodiumPanel`: es toda monoespaciada, con el rótulo a
   `.6875 rem` en versalitas, el cuerpo a `--text-sm` en la sans del sitio y
