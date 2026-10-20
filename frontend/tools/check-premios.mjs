@@ -134,9 +134,22 @@ ok(
   `portada: los tres iconos son distintos (${iconos.map((i) => (i ? 'svg' : '—')).join(' · ')})`
 );
 
-// ── 6 · /premios: UNA sola gramática ───────────────────────────────────────
+// ── 6 · /premios: CUATRO secciones, una sola gramática ────────────────────
 await page.goto(`${BASE}/premios`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1200);
+
+const secciones = await page.$$eval('.premios-section', (els) =>
+  els.map((el) => ({
+    id: el.id,
+    titulo: el.querySelector('.section-label__text')?.textContent?.trim() ?? null,
+    celdas: el.querySelectorAll('.cell').length,
+  }))
+);
+ok(secciones.length === 4, `/premios: hay 4 secciones (${secciones.length})`);
+ok(
+  secciones.map((s) => s.celdas).join('·') === '2·2·2·4',
+  `/premios: cada sección tiene sus celdas (${secciones.map((s) => s.celdas).join('·')})`
+);
 
 const celdas = await page.$$eval('.cell', (els) =>
   els.map((el) => {
@@ -149,8 +162,14 @@ const celdas = await page.$$eval('.cell', (els) =>
       titulo: el.querySelector('.cell__title')?.textContent?.trim() ?? null,
       indice: el.querySelector('.cell__index')?.textContent?.trim() ?? null,
       emblema: el.querySelector('.cell__emblem') ? 'ok' : null,
+      etiqueta: el.querySelector('.cell__label')?.textContent?.trim() ?? null,
       cuerpo: el.querySelector('.cell__body')?.textContent?.trim() ?? null,
       monto: el.querySelector('.cell__amount')?.textContent?.trim() ?? null,
+      podio: [...el.querySelectorAll('.cell__podium-row')].map((r) => ({
+        medalla: r.querySelector('.medal') ? 'ok' : null,
+        puesto: r.querySelector('.cell__podium-pos')?.textContent?.trim() ?? null,
+        cifra: r.querySelector('.cell__podium-amount')?.textContent?.trim() ?? null,
+      })),
       estado: el.querySelector('.cell__state')?.textContent?.trim() ?? null,
       ganador: el.querySelector('.cell__value')?.textContent?.trim() ?? null,
       detalle: el.querySelector('.cell__detail')?.textContent?.trim() ?? null,
@@ -159,29 +178,59 @@ const celdas = await page.$$eval('.cell', (els) =>
   })
 );
 
-ok(celdas.length === 8, `/premios: hay 8 celdas de premios (${celdas.length})`);
+ok(celdas.length === 10, `/premios: hay 10 celdas (8 premios + 2 notas) (${celdas.length})`);
 ok(
-  celdas.every((c) => c.emblema && c.titulo && c.cuerpo && c.monto),
-  '/premios: todas las celdas tienen la misma anatomía (emblema, titular, regla y cifra)'
+  celdas.filter((c) => c.titulo).every((c) => c.emblema),
+  '/premios: cada premio tiene emblema e índice'
 );
 ok(
-  celdas.every((c, i) => c.indice === String(i + 1).padStart(2, '0')),
-  `/premios: las celdas van numeradas (${celdas.map((c) => c.indice).join(' ')})`
+  celdas.filter((c) => c.titulo).every((c, i) => c.indice === String(i + 1).padStart(2, '0')),
+  `/premios: los premios van numerados (${celdas.map((c) => c.indice).join(' ')})`
 );
 // La referencia admite cuerpos de hasta ~80 caracteres en la celda
 // ("Every line is on GitHub under permissive licenses. Read it, fork it,
-// build on it."). Más que eso ya es un párrafo, no una regla.
+// build on it."). El criterio del Premio CLARO es el texto oficial que
+// publica la API y llega a 120: es la regla del premio, no una explicación.
 ok(
-  celdas.every((c) => (c.cuerpo?.length ?? 0) <= 80),
-  `/premios: las reglas de las celdas son de una línea (${celdas.map((c) => c.cuerpo?.length ?? 0).join(' · ')} caracteres)`
+  celdas.every((c) => (c.cuerpo?.length ?? 0) <= 120),
+  `/premios: las reglas no son párrafos (${celdas.map((c) => c.cuerpo?.length ?? 0).join(' · ')} caracteres)`
+);
+
+// ── 6b · El premio se DIBUJA: un podio con medallas, no una tira de cifras ──
+const conEscala = celdas.filter((c) => c.podio.length > 0);
+ok(
+  conEscala.length === 3,
+  `/premios: tres premios con podio (${conEscala.length})`
 );
 ok(
-  celdas.every((c) => c.estado),
-  `/premios: todas las celdas dicen su estado (${celdas.map((c) => c.estado).join(' · ')})`
+  conEscala.every((c) => c.podio.length === 3),
+  '/premios: cada podio tiene los tres peldaños'
+);
+ok(
+  conEscala.every((c) => c.podio.every((r) => r.medalla === 'ok')),
+  '/premios: cada peldaño lleva su medalla'
+);
+ok(
+  conEscala.every((c) => c.podio.map((r) => r.puesto).join('') === '1º2º3º'),
+  '/premios: los peldaños van 1º 2º 3º'
+);
+ok(
+  conEscala.every((c) => c.podio.map((r) => r.cifra).join(' ') === 'USD 300 USD 200 USD 100' ||
+    c.podio.map((r) => r.cifra).join(' ') === 'USD 100 USD 50 USD 30'),
+  `/premios: el podio dice qué puesto cobra cada cifra (${conEscala[0]?.podio.map((r) => r.cifra).join(' · ')})`
+);
+// La tira plana "USD 300 / 200 / 100" NO debe aparecer en la tabla.
+ok(
+  !celdas.some((c) => /\d\s*\/\s*\d\s*\/\s*\d/.test(c.monto ?? '')),
+  '/premios: no hay tiras de cifras planas ("300 / 200 / 100")'
 );
 ok(
   !JSON.stringify(celdas).includes('POR ANUNCIAR'),
   '/premios: no queda "POR ANUNCIAR" en la tabla'
+);
+ok(
+  celdas.some((c) => c.estado?.toLowerCase().includes('provisional') && c.ganador),
+  '/premios: los acumulados muestran su ganador provisional'
 );
 
 // ── 7 · La cabecera: masthead de la referencia, sin panel ───────────────────
@@ -190,7 +239,6 @@ const masthead = await page.evaluate(() => {
   const t = document.querySelector('.display-title');
   return {
     display: m ? getComputedStyle(m).display : null,
-    cols: m ? getComputedStyle(m).gridTemplateColumns : null,
     titleSize: t ? parseFloat(getComputedStyle(t).fontSize) : 0,
     panels: document.querySelectorAll('.scale-panel').length,
     notas: document.querySelectorAll('.prize-note').length,
@@ -213,24 +261,29 @@ ok(
   `cabecera: no hay notas sueltas que repitan la tabla (${masthead.notas})`
 );
 
-// ── 8 · La tabla: un filete, no un mosaico de cajas ───────────────────────
-const tabla = await page.evaluate(() => {
-  const g = document.querySelector('.prize-table');
-  if (!g) return null;
-  const cs = getComputedStyle(g);
-  const celda = document.querySelector('.cell');
-  return {
-    gap: cs.gap,
-    cols: cs.gridTemplateColumns.split(' ').length,
-    celdaBg: celda ? getComputedStyle(celda).backgroundColor : null,
-    celdaBorde: celda ? getComputedStyle(celda).borderTopWidth : null,
-  };
-});
-ok(tabla?.gap === '1px', `tabla: el filete se dibuja con un hueco de 1px (${tabla?.gap})`);
-ok(tabla?.cols === 4, `tabla: cuatro columnas (${tabla?.cols})`);
+// ── 8 · Las tablas: un filete, no un mosaico de cajas ──────────────────────
+const tablas = await page.evaluate(() =>
+  [...document.querySelectorAll('.prize-table')].map((g) => {
+    const cs = getComputedStyle(g);
+    const celda = g.querySelector('.cell');
+    return {
+      gap: cs.gap,
+      cols: cs.gridTemplateColumns.split(' ').length,
+      celdaBorde: celda ? getComputedStyle(celda).borderTopWidth : null,
+    };
+  })
+);
 ok(
-  tabla?.celdaBorde === '0px',
-  `tabla: las celdas no tienen borde propio (${tabla?.celdaBorde})`
+  tablas.length === 4,
+  `/premios: cada sección es una tabla (${tablas.length})`
+);
+ok(
+  tablas.every((t) => t.gap === '1px'),
+  `tablas: el filete se dibuja con un hueco de 1px (${tablas.map((t) => t.gap).join(' · ')})`
+);
+ok(
+  tablas.every((t) => t.celdaBorde === '0px'),
+  'tablas: las celdas no tienen borde propio'
 );
 
 // ── 9 · La ficha de una fecha sigue usando la tarjeta de la portada ───────

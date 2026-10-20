@@ -11,11 +11,12 @@
  *     podio de NORMAL (por agrupación, no por categoría).
  *   · Por fecha: 100 / 50 / 30 USD en CADA UNA de las 11 categorías.
  *
- * La página tiene UNA gramática: los ocho premios son celdas de la misma
- * tabla (`PrizeCell`), con el filete de 1px de la referencia. El masthead es
- * el de la referencia (`copiaartcraft/src/pages/apps.astro`): titular grande
- * y bajada. Ni tablas aparte, ni notas, ni párrafos que repitan lo que ya
- * dice la celda.
+ * La página tiene CUATRO secciones (acumulado, premio por fecha, Premio
+ * CLARO y títulos de montaña) y UNA sola gramática: todas se construyen con
+ * `PrizeCell`, la celda de la tabla de principios de la referencia
+ * (`copiaartcraft/src/pages/apps.astro`). Mismo filete, mismo titular, mismo
+ * color. La cabecera es el masthead de la referencia: titular grande y
+ * bajada, sin tablas al lado.
  */
 import Showcase from '../layouts/Showcase.astro';
 import SiteHeader from '../components/SiteHeader.astro';
@@ -117,7 +118,12 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
 
 <Showcase
   title="Premios — Copa MacroSur MTB"
-  sections={[{ label: 'La escala', id: 'escala' }]}
+  sections={[
+    { label: 'Acumulado', id: 'acumulado' },
+    { label: 'Por fecha', id: 'por-fecha' },
+    { label: 'Claro', id: 'claro' },
+    { label: 'Montaña', id: 'montana' },
+  ]}
 >
   <SiteHeader />
 
@@ -129,10 +135,15 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
       lead="Ocho premios con regla propia. Cada uno dice quién lo cobra, cuánto y en qué fecha se decide."
     />
 
-    <section class="premios-section" id="escala">
-      <SectionLabel number="01" label="La escala" kicker={`EDICIÓN 2026`} />
+    <!-- ── 01 · Acumulado del campeonato ─────────────────────────────── -->
+    <section class="premios-section" id="acumulado">
+      <SectionLabel
+        number="01"
+        label="Acumulado del campeonato"
+        kicker={`${PRIZE_CURRENCY} ${escala(ACCUMULATED_PRIZES[0].tiers)}`}
+      />
 
-      <div class="prize-table">
+      <div class="prize-table prize-table--pair">
         {
           ACCUMULATED_PRIZES.map((prize, i) => {
             const p = prize.scope === 'PRO' ? pro : normal;
@@ -140,8 +151,8 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
               <PrizeCell
                 index={String(i + 1).padStart(2, '0')}
                 title={prize.label}
-                body={`Al líder de puntos del acumulado ${prize.scope}.`}
-                amount={`${PRIZE_CURRENCY} ${escala(prize.tiers)}`}
+                body={`Al que más puntos suma en el acumulado ${prize.scope}.`}
+                podium={prize.tiers}
                 icon={prize.icon}
                 accent={prize.scope === 'PRO' ? 'pro' : 'normal'}
                 state={p ? 'Ganador provisional' : 'Por anunciar'}
@@ -151,27 +162,59 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
             );
           })
         }
+      </div>
+    </section>
 
+    <!-- ── 02 · Premio por fecha ─────────────────────────────────────── -->
+    <section class="premios-section" id="por-fecha">
+      <SectionLabel
+        number="02"
+        label="Premio por fecha"
+        kicker={`${PRIZE_CURRENCY} ${escala(PER_DATE_PRIZES)} · CADA CATEGORÍA`}
+      />
+
+      <div class="prize-table prize-table--pair">
         <PrizeCell
           index="03"
           title="CADA CATEGORÍA"
           body={`El podio de cada una de las ${PRIZE_CATEGORIES.length} categorías.`}
-          amount={`${PRIZE_CURRENCY} ${escala(PER_DATE_PRIZES)}`}
+          podium={PER_DATE_PRIZES}
           icon={PER_DATE_PRIZE_ICON}
           accent="gold"
           state="Cada fecha"
-          detail={`${PRIZE_CATEGORIES.length} PODIOS POR FECHA`}
+          notes={PRIZE_CATEGORIES}
         />
 
         <PrizeCell
+          label="[ CÓMO SE REPARTE ]"
+          body="Once podios por fecha, uno en cada categoría. El acumulado se paga al líder de la agrupación PRO y al de la NORMAL."
+        />
+      </div>
+    </section>
+
+    <!-- ── 03 · Premio CLARO ─────────────────────────────────────────── -->
+    <section class="premios-section" id="claro">
+      <SectionLabel
+        number="03"
+        label="Premio CLARO"
+        kicker={`${PRIZE_CURRENCY} ${remontada?.amount_usd ?? 100} · ACUMULADO`}
+      />
+
+      <div class="prize-table prize-table--pair">
+        <PrizeCell
           index="04"
-          title="PREMIO CLARO"
-          body="Al corredor que más puestos sube en el campeonato."
-          amount={`${PRIZE_CURRENCY} ${remontada?.amount_usd ?? 100}`}
           logo={remontada?.sponsor_logo_url ?? '/images/sponsors/claro.svg'}
           logoAlt="Claro"
+          title={remontada?.title ?? 'PREMIO CLARO'}
+          body={
+            remontada?.criterion ??
+            'Al corredor que más puestos sube en su categoría entre la primera y la última fecha disputada, habiendo terminado todas las fechas del campeonato.'
+          }
+          amount={`${PRIZE_CURRENCY} ${remontada?.amount_usd ?? 100}`}
           accent="gold"
-          state={claro ? (remontada?.provisional ? 'Ganador provisional' : 'Ganador') : 'Por anunciar'}
+          state={
+            claro ? (remontada?.provisional ? 'Ganador provisional' : 'Ganador') : 'Por anunciar'
+          }
           value={claro?.rider_name}
           detail={
             claro
@@ -180,6 +223,22 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
           }
         />
 
+        <PrizeCell
+          label="[ CÓMO SE ENTREGA ]"
+          body="Se entrega al cerrar las cuatro fechas, no en una carrera: gana quien más puestos sube entre la primera y la última."
+        />
+      </div>
+    </section>
+
+    <!-- ── 04 · Títulos de montaña ───────────────────────────────────── -->
+    <section class="premios-section" id="montana">
+      <SectionLabel
+        number="04"
+        label="Títulos de montaña"
+        kicker={`${PRIZE_CURRENCY} 15 CADA UNO`}
+      />
+
+      <div class="prize-table prize-table--four">
         {
           MOUNTAIN_TITLES.map((definition, i) => {
             const winner = mountain[definition.key] ?? null;
@@ -231,7 +290,7 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
      la referencia (`copiaartcraft/src/pages/apps.astro`). */
   .prize-table {
     display: grid;
-    grid-template-columns: repeat(1, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 1px;
     margin-top: 1.5rem;
     background: var(--line);
@@ -239,13 +298,17 @@ function progreso(p: { points: number; stagesCounted: number; totalStages: numbe
   }
 
   @media (min-width: 48em) {
-    .prize-table {
+    .prize-table--pair {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .prize-table--four {
       grid-template-columns: repeat(2, 1fr);
     }
   }
 
   @media (min-width: 68.75em) {
-    .prize-table {
+    .prize-table--four {
       grid-template-columns: repeat(4, 1fr);
     }
   }

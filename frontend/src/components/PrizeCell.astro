@@ -1,53 +1,75 @@
 ---
 /**
- * PrizeCell.astro — la celda de la tabla de premios.
+ * PrizeCell.astro — la celda de los premios.
  *
- * Es LA gramática de la página: los ocho premios se muestran con esta misma
- * celda, sin excepciones. Es la tabla de "principios" de la referencia
+ * Es LA gramática de la página: los premios y las notas se muestran con esta
+ * misma celda. Es la tabla de principios de la referencia
  * (`copiaartcraft/src/pages/apps.astro`, y `/apps` en vivo): una grilla con
  * filetes de 1px, sin tarjeta propia, y una anatomía fija por celda:
  *
- *   emblema · índice  →  titular  →  regla corta  →  el premio y su estado
+ *   emblema · índice  →  titular  →  regla  →  la cifra y su estado
  *
  * La grilla dibuja los filetes con `gap: 1px` sobre su propio fondo, y las
  * celdas lo tapan con el fondo de la página: por eso la tabla no es un
  * mosaico de cajas sino UNA rejilla.
+ *
+ * En una celda ANCHA (la de un premio que ocupa media página) el contenido se
+ * parte en dos columnas —la identidad a la izquierda, el dato a la derecha—
+ * para que el texto ocupe el ancho en vez de quedarse pegado a un lado. Se
+ * decide por **container query**: la celda se mide a sí misma, no la
+ * página.
  */
 import Icon from './Icon.astro';
 import type { IconName } from './Icon.astro';
+import MedalIcon from './MedalIcon.astro';
+import type { PrizeStep } from '../data/prizes';
 
 interface Props {
-  /** Índice de la celda ("01"…). */
-  index: string;
-  /** Titular del premio. */
-  title: string;
-  /** Regla del premio, en una línea. */
-  body?: string;
-  /** La cifra del premio, ya formateada ("USD 300 / 200 / 100"). */
-  amount: string;
+  /** Índice de la celda ("01"). */
+  index?: string;
+  /** Etiqueta de cabecera, para las celdas que son una nota. */
+  label?: string;
   /** Icono del ámbito. */
   icon?: IconName;
   /** Logotipo del patrocinador, en lugar de icono. */
   logo?: string;
   logoAlt?: string;
+  /** Titular del premio. */
+  title?: string;
+  /** Regla del premio. */
+  body?: string;
+  /** Etiquetas de detalle (las 11 categorías). */
+  notes?: string[];
+  /**
+   * El podio del premio: los tres peldaños con su medalla. Es la forma de
+   * leer un premio en la casa (la misma que usa `PodiumPanel` para las
+   * clasificaciones): una tira plana de cifras ("300 / 200 / 100") no dice
+   * qué puesto cobra cada una.
+   */
+  podium?: PrizeStep[];
+  /** La cifra del premio, cuando es una sola (Premio CLARO, títulos). */
+  amount?: string;
   /** Etiqueta del estado: qué pasa con el premio. */
-  state?: string | null;
+  state?: string;
   /** El dato del estado: el nombre de quien lo lleva. */
-  value?: string | null;
+  value?: string;
   /** Detalle del estado. */
-  detail?: string | null;
+  detail?: string;
   /** Acento de la celda. */
   accent?: 'pro' | 'normal' | 'gold';
 }
 
 const {
   index,
-  title,
-  body,
-  amount,
+  label,
   icon,
   logo,
   logoAlt,
+  title,
+  body,
+  notes = [],
+  podium,
+  amount,
   state,
   value,
   detail,
@@ -55,48 +77,74 @@ const {
 } = Astro.props;
 
 /**
- * Las clases `scope-*` traen `--scope-ink` (el color legible del ámbito,
- * con su variante por tema). El oro no usa scope: cae al oro de la copa.
+ * Las clases `scope-*` traen `--scope-ink` (el color legible del ámbito, con
+ * su variante por tema). El oro no usa scope: cae al oro de la copa.
  */
 const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope-normal' : '';
 ---
 
 <article class:list={['cell', `cell--${accent}`, scopeClass]}>
   <header class="cell__head">
-    <span class="cell__emblem">
-      {
-        logo ? (
+    {
+      logo ? (
+        <span class="cell__emblem cell__emblem--logo">
           <img src={logo} alt={logoAlt ?? ''} loading="lazy" />
-        ) : icon ? (
+        </span>
+      ) : icon ? (
+        <span class="cell__emblem">
           <Icon name={icon} size={20} />
-        ) : null
-      }
-    </span>
-    <span class="cell__index font-mono tabular">{index}</span>
+        </span>
+      ) : label ? (
+        <span class="cell__label font-mono">{label}</span>
+      ) : null
+    }
+    {index && <span class="cell__index font-mono tabular">{index}</span>}
   </header>
 
-  <h3 class="cell__title">{title}</h3>
-  {body && <p class="cell__body">{body}</p>}
-
-  <div class="cell__data">
-    <p class="cell__amount font-mono">{amount}</p>
-    {state && <p class="cell__state font-mono">{state}</p>}
-    {value && <p class="cell__value font-mono">{value}</p>}
-    {detail && <p class="cell__detail font-mono">{detail}</p>}
+  <div class="cell__main">
+    {title && <h3 class="cell__title">{title}</h3>}
+    {body && <p class="cell__body">{body}</p>}
+    {notes.length > 0 && <p class="cell__notes font-mono">{notes.join(' · ')}</p>}
   </div>
+
+  {
+    (podium || amount || state || value || detail) && (
+      <div class="cell__data">
+        {podium && (
+          <ol class="cell__podium">
+            {podium.map((step) => (
+              <li class="cell__podium-row">
+                <MedalIcon rank={step.position} size={18} class="cell__medal" />
+                <span class="cell__podium-pos font-mono">{step.position}º</span>
+                <span class="cell__podium-amount font-mono">
+                  USD {step.amountUsd}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+        {amount && <p class="cell__amount font-mono">{amount}</p>}
+        {state && <p class="cell__state font-mono">{state}</p>}
+        {value && <p class="cell__value font-mono">{value}</p>}
+        {detail && <p class="cell__detail font-mono">{detail}</p>}
+      </div>
+    )
+  }
 </article>
 
 <style>
   .cell {
-    /* El oro de la copa es el acento por defecto (los premios por fecha y
-       los títulos de montaña). PRO y NORMAL traen su color de ámbito. */
+    /* El oro de la copa es el acento por defecto. PRO y NORMAL traen su
+       color de ámbito. */
     --cell-accent: var(--copa-gold);
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
     padding: 1.5rem;
     /* Tapa el fondo de la grilla: lo que se ve entre celdas es el filete. */
     background: var(--bg);
+    /* La celda se mide a sí misma para decidir su propia composición. */
+    container-type: inline-size;
   }
 
   .cell--pro,
@@ -110,7 +158,6 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     justify-content: space-between;
     gap: 1rem;
     min-height: 2.25rem;
-    margin-bottom: 0.5rem;
   }
 
   .cell__emblem {
@@ -125,7 +172,7 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
   }
 
   /* El logotipo va a su proporción: la caja se ensancha, la altura no. */
-  .cell__emblem:has(img) {
+  .cell__emblem--logo {
     width: auto;
     min-width: 2.25rem;
     padding: 0.375rem 0.625rem;
@@ -137,6 +184,13 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     width: auto;
     height: auto;
     max-height: 1.5rem;
+  }
+
+  .cell__label {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
   }
 
   .cell__index {
@@ -157,9 +211,58 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
 
   .cell__body {
     margin: 0;
+    max-width: 58ch;
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
     color: var(--muted);
+  }
+
+  /* La lista de categorías va en una línea, no en once cajas: el dato se
+     lee de un vistazo y la celda no crece. */
+  .cell__notes {
+    margin: 0.5rem 0 0;
+    font-size: 0.625rem;
+    line-height: 1.6;
+    letter-spacing: 0.06em;
+    color: var(--faint);
+  }
+
+  /* ── El podio: los tres peldaños con su medalla ─────────────────────────
+     Es la misma lectura que usa `PodiumPanel` en las clasificaciones: la
+     medalla, el puesto y la cifra. La cifra va a la derecha de la fila, así
+     que la fila ocupa el ancho de la celda y no deja un hueco. */
+  .cell__podium {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cell__podium-row {
+    display: grid;
+    grid-template-columns: 1.125rem 1.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.625rem;
+    padding-block: 0.5rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .cell__medal {
+    justify-self: start;
+  }
+
+  .cell__podium-pos {
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+  }
+
+  .cell__podium-amount {
+    justify-self: end;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    color: var(--cell-accent);
   }
 
   .cell__data {
@@ -197,5 +300,40 @@ const scopeClass = accent === 'pro' ? 'scope-pro' : accent === 'normal' ? 'scope
     font-size: 0.625rem;
     letter-spacing: 0.06em;
     color: var(--muted);
+  }
+
+  /* ── La celda ancha: identidad a la izquierda, dato a la derecha ───────
+     Sólo la celda que ocupa la página entera (el Premio CLARO) se parte en
+     dos columnas. Las que van en una tabla de dos o cuatro caben con el
+     texto en una sola columna, como las celdas de la referencia.
+
+     La medida la decide la celda (container query), no la página: la misma
+     celda se parte si la pista es ancha y se queda apilada si es estrecha. */
+  @container (min-width: 42rem) {
+    .cell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'head head'
+        'main data';
+      column-gap: 2.5rem;
+      align-items: start;
+    }
+
+    .cell__head {
+      grid-area: head;
+    }
+
+    .cell__main {
+      grid-area: main;
+    }
+
+    .cell__data {
+      grid-area: data;
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+      align-self: end;
+    }
   }
 </style>
