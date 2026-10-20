@@ -36,7 +36,7 @@ cors_options = {
     "allow_methods": ["*"],
     "allow_headers": ["*"],
 }
-if settings.ENVIRONMENT != "production" and settings.CORS_ORIGIN_REGEX:
+if settings.CORS_ORIGIN_REGEX:
     cors_options["allow_origin_regex"] = settings.CORS_ORIGIN_REGEX
 
 app.add_middleware(CORSMiddleware, **cors_options)
