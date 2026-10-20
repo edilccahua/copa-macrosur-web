@@ -109,10 +109,16 @@ settings = Settings()
 def origen_permitido(origin: str | None) -> bool:
     """¿Este origen puede leer la API?
 
-    La política se evalúa EN VIVO (no al arrancar el servidor): así el cambio
-    de `ENVIRONMENT` no exige reiniciar, y la respuesta 429 del limitador
-    puede llevar su propia cabecera de CORS — sin ella, el navegador
-    escondería el 429 detrás de un error de CORS.
+    La política se evalúa en cada petición (no al arrancar el servidor). OJO:
+    `settings` se instancia al IMPORTAR este módulo, así que en PRODUCCIÓN
+    cambiar `ENVIRONMENT` o `CORS_ORIGINS` en el entorno EXIGE reiniciar el
+    servicio (en Render, un redeploy). Lo único que se resuelve en caliente es
+    lo que las pruebas mutan en memoria.
+
+    La lista de orígenes es de orígenes EXACTOS: un `*` en `CORS_ORIGINS` NO
+    abre nada (se ignora). Es el error de operador más probable —"añado `*`
+    para que no me dé error de CORS"— y con credenciales sería una puerta
+    abierta de par en par.
     """
     if not origin:
         return False

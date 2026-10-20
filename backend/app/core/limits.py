@@ -49,9 +49,15 @@ class RateRule:
 
 # La tabla de reglas. El ORDEN importa: gana la PRIMERA regla que coincide,
 # así que las específicas van antes que las generales.
+#
+# Las dos primeras reglas comparten el bucket `admin`: la actividad del
+# organizador (consola + subidas) sale de UNA sola cuota. Por eso las dos
+# declaran el MISMO límite: el limitador es uno por bucket, así que si
+# declararan números distintos, el efectivo sería el más apretado y la
+# tabla estaría mintiendo sobre lo que hace el código.
 RATE_LIMIT_RULES: List[RateRule] = [
     # La consola del organizador: la usa una persona desde su navegador.
-    RateRule(prefix="/api/v1/admin", bucket="admin", limit=120),
+    RateRule(prefix="/api/v1/admin", bucket="admin", limit=60),
     # Ingesta de Excel, subida de GPX y acciones de carrera: sólo las
     # escrituras (las lecturas de `/api/v1/stages` las hace el SSR desde una
     # sola IP compartida).
@@ -187,24 +193,37 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return None
 
     # ── Respuestas ──────────────────────────────────────────────────────────
-    def _respuesta_413(self) -> JSONResponse:
-        limite = settings.MAX_JSON_BYTES
-        if limite >= 1024 * 1024:
-            detalle = f"La petición es demasiado grande (máximo {limite // (1024 * 1024)} MB)."
-        else:
-            detalle = f"La petición es demasiado grande (máximo {limite // 1024} KB)."
-        return JSONResponse(status_code=413, content={"detail": detalle})
+    def _cabeceras_cors(self, request: Request) -> Dict[str, str]:
+        """Las cabeceras de CORS de las respuestas que genera este middleware.
 
-    def _respuesta_429(self, request: Request, retry_after: int) -> JSONResponse:
-        cabeceras = {"Retry-After": str(retry_after)}
-        # El 429 lo genera este middleware, que está FUERA del de CORS: sin
-        # su propia cabecera, el navegador escondería el 429 detrás de un
-        # error de CORS y el usuario vería un simple "fallo de red".
+        El limitador se registra DESPUÉS del middleware de CORS, así que se
+        ejecuta ANTES: las respuestas que genera aquí (413, 429) no pasan por
+        el de CORS. Sin estas cabeceras, el navegador escondería el 413 o el
+        429 detrás de un error de CORS y el usuario vería un simple "fallo de
+        red" en vez de "la petición es demasiado grande" o "espera un poco".
+        """
+        cabeceras: Dict[str, str] = {}
         origin = request.headers.get("origin")
         if origin and origen_permitido(origin):
             cabeceras["Access-Control-Allow-Origin"] = origin
             cabeceras["Access-Control-Allow-Credentials"] = "true"
             cabeceras["Vary"] = "Origin"
+        return cabeceras
+
+    def _respuesta_413(self, request: Request, limite: int) -> JSONResponse:
+        if limite >= 1024 * 1024:
+            detalle = f"La petición es demasiado grande (máximo {limite // (1024 * 1024)} MB)."
+        else:
+            detalle = f"La petición es demasiado grande (máximo {limite // 1024} KB)."
+        return JSONResponse(
+            status_code=413,
+            content={"detail": detalle},
+            headers=self._cabeceras_cors(request),
+        )
+
+    def _respuesta_429(self, request: Request, retry_after: int) -> JSONResponse:
+        cabeceras = {"Retry-After": str(retry_after)}
+        cabeceras.update(self._cabeceras_cors(request))
         return JSONResponse(
             status_code=429,
             content={
@@ -221,8 +240,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # 1. Tope del cuerpo. Se mira el `Content-Length` y NO se lee el
         #    cuerpo: un atacante puede mandar 2 GB y el servidor los
         #    descarta sin leerlos.
-        if self._excede_tope_del_cuerpo(request):
-            return self._respuesta_413()
+        limite = (
+            settings.MAX_UPLOAD_BYTES
+            if es_ruta_de_subida(request.url.path)
+            else settings.MAX_JSON_BYTES
+        )
+        if await self._excede_largo(request, limite):
+            return self._respuesta_413(request, limite)
 
         # 2. Cuota por IP y bucket. Los preflight (OPTIONS) no gastan cuota:
         #    son la negociación de CORS y no consumen nada del servidor.
@@ -236,14 +260,50 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-    def _excede_tope_del_cuerpo(self, request: Request) -> bool:
-        if es_ruta_de_subida(request.url.path):
-            return False
+    async def _excede_largo(self, request: Request, limite: int) -> bool:
+        """Compara el tamaño del cuerpo con el tope.
+
+        En las rutas de SUBIDA el tope es `MAX_UPLOAD_BYTES` (el archivo tiene
+        su propio límite, más generoso que el de los JSON), pero el corte
+        tiene que ocurrir AQUÍ: FastAPI parsea el multipart ANTES de resolver
+        las dependencias, así que el archivo se escribe en un temporal de
+        disco antes del 403 y un atacante sin credencial podría llenar el
+        disco del servidor con una sola subida.
+
+        Con `Content-Length` (lo normal) la comparación es inmediata y el
+        cuerpo NO se lee. Sin `Content-Length` (transfer-encoding chunked) no
+        hay nada que comparar, así que se MIDE el cuerpo real.
+
+        En las subidas, el `Content-Length` del multipart incluye el sobre
+        (boundaries y cabeceras de las partes): unas decenas de bytes más
+        que el archivo. Por eso el tope efectivo de un archivo es
+        `MAX_UPLOAD_BYTES` menos ese sobre (irrelevante frente a 25 MB, pero
+        conviene saberlo).
+        """
         bruto = request.headers.get("content-length")
-        if not bruto:
-            return False
-        try:
-            largo = int(bruto)
-        except ValueError:
-            return False
-        return largo > settings.MAX_JSON_BYTES
+        if bruto is not None:
+            try:
+                largo = int(bruto)
+            except ValueError:
+                largo = None
+            if largo is not None:
+                return largo > limite
+        return await self._cuerpo_real_excede(request, limite)
+
+    async def _cuerpo_real_excede(self, request: Request, limite: int) -> bool:
+        """Mide el cuerpo cuando no hay `Content-Length` (chunked).
+
+        Se lee por trozos y se para en cuanto se pasa del tope: nunca se
+        acumulan más de `limite` bytes en memoria. Si el cuerpo cabe, se
+        cachea en `request._body` —la misma caché que usa el
+        `Request.body()` de Starlette— para que la ruta lo reciba intacto.
+        """
+        total = 0
+        trozos: List[bytes] = []
+        async for trozo in request.stream():
+            total += len(trozo)
+            if total > limite:
+                return True
+            trozos.append(trozo)
+        request._body = b"".join(trozos)
+        return False

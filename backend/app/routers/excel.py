@@ -24,9 +24,12 @@ async def import_excel_endpoint(
     Si hay errores de formato o validación, revierte todo y responde HTTP 422.
     """
     # Tope del archivo: se lee UN byte más que el límite para saber que se
-    # pasó sin tragarse el archivo entero en memoria. El `Content-Length` ya
-    # lo mira el middleware, pero aquí el corte es el DEFINITIVO (el
-    # multipart engaña: el tamaño de la cabecera no es el del archivo).
+    # pasó sin tragarse el archivo entero en memoria.
+    #
+    # El middleware YA corta las subidas por encima de `MAX_UPLOAD_BYTES`
+    # (por `Content-Length`), pero este corte es el DEFINITIVO: el
+    # `Content-Length` del multipart incluye el sobre (boundaries y
+    # cabeceras de las partes) y no coincide con el tamaño del archivo.
     limite = settings.MAX_UPLOAD_BYTES
     content = await file.read(limite + 1)
     if len(content) > limite:

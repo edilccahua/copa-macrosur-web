@@ -220,6 +220,59 @@ async def test_cors_en_desarrollo_acepta_cualquier_puerto_de_localhost(client, m
     assert res.headers.get("access-control-allow-origin") == "http://localhost:4327"
 
 
+async def test_cors_con_origen_comodin_no_abre_la_api():
+    """Un `*` en la lista de orígenes NO abre la API (I-2).
+
+    El error de operador más probable es exactamente este: "añado `*` para
+    que no me dé error de CORS". Con `allow_origins=["*"]` y
+    `allow_credentials=True`, Starlette_refleja el `Origin` del atacante con
+    `Access-Control-Allow-Credentials: true` SIN pasar por la política.
+
+    El middleware se construye aquí a propósito (con `*`) para que el test
+    no dependa de lo que hubiera en el entorno al arrancar.
+    """
+    import httpx
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.responses import JSONResponse
+    from starlette.routing import Route
+
+    from backend.app.main import SettingsAwareCORSMiddleware
+
+    async def eco(request):
+        return JSONResponse({"ok": True})
+
+    app = Starlette(
+        routes=[Route("/", eco)],
+        middleware=[
+            Middleware(
+                SettingsAwareCORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["GET", "POST", "OPTIONS"],
+                allow_headers=["Content-Type", "X-Admin-Key", "X-Judge-Pin"],
+            )
+        ],
+    )
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+        res = await ac.get("/", headers={"Origin": "https://attacker.pages.dev"})
+
+    assert "access-control-allow-origin" not in {k.lower() for k in res.headers}
+
+
+async def test_cors_con_origen_comodin_tampoco_en_la_app_real(client, monkeypatch):
+    """La app real tampoco abre la API si el entorno trae un `*`."""
+    from backend.app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "CORS_ORIGINS", ["*"])
+    res = await client.get(
+        "/api/v1/public/live-status",
+        headers={"Origin": "https://attacker.pages.dev"},
+    )
+    assert "access-control-allow-origin" not in {k.lower() for k in res.headers}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Límites de entrada
 # ─────────────────────────────────────────────────────────────────────────────
@@ -303,6 +356,10 @@ async def test_upload_excel_supera_el_tope(client, monkeypatch):
 
     El tope se baja a 1 KB en vez de mandar 26 MB por el cable: lo que se
     comprueba es que EXISTE el tope, no que el servidor aguante 26 MB.
+
+    El 413 lo da el MIDDLEWARE (por `Content-Length`), que corta antes de
+    que el cuerpo se lea; el router repite el corte sobre el archivo ya
+    leído, que es el definitivo.
     """
     monkeypatch.setattr(settings, "ADMIN_API_KEY", CLAVE_DE_PRUEBA)
     monkeypatch.setattr(settings, "MAX_UPLOAD_BYTES", 1024)
@@ -318,7 +375,112 @@ async def test_upload_excel_supera_el_tope(client, monkeypatch):
         },
     )
     assert res.status_code == 413
-    assert "límite" in res.json()["detail"]
+    assert "demasiado grande" in res.json()["detail"]
+
+
+async def test_upload_grande_se_rechaza_antes_de_leer_el_cuerpo(client, monkeypatch):
+    """El tope se aplica ANTES de recibir el cuerpo, y sin credencial (I-1).
+
+    FastAPI parsea el multipart (`await request.form()`) ANTES de resolver las
+    dependencias: el archivo entero se escribe en un temporal de disco antes
+    del 403. Un atacante sin clave podía llenar el disco del servidor con una
+    sola subida.
+
+    Por eso este test NO manda la clave: si la respuesta es 413 y no 403,
+    el corte lo hizo el middleware (antes de leer el cuerpo), no el router.
+    """
+    monkeypatch.setattr(settings, "MAX_UPLOAD_BYTES", 1024)
+    res = await client.post(
+        "/api/v1/stages/1/import-excel",
+        files={
+            "file": (
+                "grande.xlsx",
+                b"x" * 8192,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert res.status_code == 413
+    assert "demasiado grande" in res.json()["detail"]
+
+
+async def test_upload_grande_de_gpx_tambien_se_rechaza(client, monkeypatch):
+    """La subida de GPX tiene el mismo corte que la de Excel."""
+    monkeypatch.setattr(settings, "MAX_UPLOAD_BYTES", 1024)
+    res = await client.post(
+        "/api/v1/stages/1/upload-gpx",
+        files={"file": ("ruta.gpx", b"x" * 8192, "application/gpx+xml")},
+    )
+    assert res.status_code == 413
+
+
+async def test_413_lleva_cabeceras_cors(client, monkeypatch, cuota_publica_limpia):
+    """El 413 también lleva su cabecera de CORS (como el 429).
+
+    Sin ella, el navegador enseña el 413 como un "fallo de red" en vez de
+    "la petición es demasiado grande".
+    """
+    monkeypatch.setattr(settings, "MAX_JSON_BYTES", 64)
+    res = await client.post(
+        "/api/v1/public/feedback",
+        json=_feedback_de_prueba(),
+        headers={"Origin": "http://localhost:4321"},
+    )
+    assert res.status_code == 413
+    assert res.headers.get("access-control-allow-origin") == "http://localhost:4321"
+
+
+async def test_json_chunked_excede_el_tope_responde_413(client, monkeypatch, cuota_publica_limpia):
+    """Sin `Content-Length` (chunked) el tope se mide sobre el cuerpo real.
+
+    Con `Transfer-Encoding: chunked` no hay `Content-Length` que comparar:
+    si el middleware no mide el cuerpo, el tope no existe para ese cliente
+    (y FastAPI se lo lee entero en memoria).
+    """
+    import json
+
+    monkeypatch.setattr(settings, "MAX_JSON_BYTES", 64)
+    cuerpo = json.dumps(_feedback_de_prueba()).encode() + b" " * 512
+
+    async def trozos():
+        yield cuerpo
+
+    res = await client.post(
+        "/api/v1/public/feedback",
+        content=trozos(),
+        headers={"Content-Type": "application/json"},
+    )
+    assert res.status_code == 413
+
+
+async def test_json_chunked_dentro_del_tope_llega_a_la_ruta(client, cuota_publica_limpia):
+    """El control: un cuerpo chunked que SÍ cabe llega intacto a la ruta."""
+    import json
+
+    async def trozos():
+        yield json.dumps(_feedback_de_prueba()).encode()
+
+    res = await client.post(
+        "/api/v1/public/feedback",
+        content=trozos(),
+        headers={"Content-Type": "application/json"},
+    )
+    assert res.status_code == 200
+
+
+def test_la_tabla_de_reglas_no_miente():
+    """Las reglas de un mismo bucket declaran el MISMO límite (M-3).
+
+    El limitador es uno por bucket: si dos reglas del mismo bucket
+    declararan límites distintos, el effective sería el más apretado y la
+    tabla estaría mintiendo sobre lo que hace el código.
+    """
+    from backend.app.core.limits import RATE_LIMIT_RULES, rate_limiter_registry
+
+    for bucket in {r.bucket for r in RATE_LIMIT_RULES}:
+        declarados = {r.limit for r in RATE_LIMIT_RULES if r.bucket == bucket}
+        assert len(declarados) == 1, f"el bucket {bucket} declara límites distintos: {declarados}"
+        assert rate_limiter_registry[bucket].limit == declarados.pop()
 
 
 async def test_upload_excel_dentro_del_tope_no_se_rechaza(client, monkeypatch):
