@@ -91,3 +91,108 @@ async def test_live_summary_and_auth(client: AsyncClient, async_session: AsyncSe
     assert res_live.status_code == 200
     assert "leaderboard" in res_live.json()
     assert res_live.json()["stage_name"] == "Fecha Test"
+
+
+@pytest.mark.asyncio
+async def test_judge_auth_endpoint(client: AsyncClient, async_session: AsyncSession):
+    """
+    La puerta del panel del juez valida el PIN contra la etapa SIN registrar
+    ninguna marcación. Antes el PIN venía hardcodeado en el código de la
+    página (`initialJudgePin`), así que cualquiera podía leerlo.
+    """
+    stage = Stage(
+        stage_number=98,
+        name="Fecha Auth",
+        slug="f-auth",
+        date=datetime.date(2026, 3, 15),
+        judge_pin="PIN-AUTH",
+    )
+    async_session.add(stage)
+    await async_session.commit()
+
+    # Sin cabecera -> 401
+    res_no = await client.get(f"/api/v1/stages/{stage.id}/judge-auth")
+    assert res_no.status_code == 401
+
+    # PIN incorrecto -> 403
+    res_bad = await client.get(
+        f"/api/v1/stages/{stage.id}/judge-auth", headers={"X-Judge-Pin": "PIN-MALO"}
+    )
+    assert res_bad.status_code == 403
+
+    # PIN correcto -> 200 y NUNCA devuelve el PIN
+    res_ok = await client.get(
+        f"/api/v1/stages/{stage.id}/judge-auth", headers={"X-Judge-Pin": "PIN-AUTH"}
+    )
+    assert res_ok.status_code == 200
+    body = res_ok.json()
+    assert body["status"] == "ok"
+    assert body["stage_id"] == stage.id
+    assert "PIN-AUTH" not in res_ok.text
+
+    # Etapa inexistente -> 404
+    res_404 = await client.get(
+        "/api/v1/stages/999999/judge-auth", headers={"X-Judge-Pin": "PIN-AUTH"}
+    )
+    assert res_404.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_individual_start_entry(client: AsyncClient, async_session: AsyncSession):
+    """Largada individual (specs/02 §1.2): el endpoint no existía."""
+    stage = Stage(
+        stage_number=97,
+        name="Fecha Individual",
+        slug="f-individual",
+        date=datetime.date(2026, 3, 15),
+        judge_pin="PIN-IND",
+    )
+    async_session.add(stage)
+    await async_session.flush()
+
+    cat = Category(name="ELITE", short_code="ELI")
+    rider = Rider(dni="88888888", full_name="Corredor Individual", slug="corredor-ind")
+    async_session.add_all([cat, rider])
+    await async_session.flush()
+
+    entry = StageEntry(
+        stage_id=stage.id,
+        rider_id=rider.id,
+        category_id=cat.id,
+        bib_number=77,
+        race_status=RaceStatusEnum.REGISTERED,
+    )
+    async_session.add(entry)
+    await async_session.commit()
+
+    # Sin PIN -> 401
+    res_no = await client.post(f"/api/v1/stages/{stage.id}/entries/{entry.id}/start", json={})
+    assert res_no.status_code == 401
+
+    # PIN incorrecto -> 403
+    res_bad = await client.post(
+        f"/api/v1/stages/{stage.id}/entries/{entry.id}/start",
+        json={},
+        headers={"X-Judge-Pin": "PIN-MALO"},
+    )
+    assert res_bad.status_code == 403
+
+    # PIN correcto -> larga y fija la hora
+    res_ok = await client.post(
+        f"/api/v1/stages/{stage.id}/entries/{entry.id}/start",
+        json={"started_at_ms": 123456789},
+        headers={"X-Judge-Pin": "PIN-IND"},
+    )
+    assert res_ok.status_code == 200
+    assert res_ok.json()["started_at_ms"] == 123456789
+    assert res_ok.json()["bib_number"] == 77
+
+    await async_session.refresh(entry)
+    assert entry.start_time_ms == 123456789
+    assert entry.race_status == RaceStatusEnum.STARTED
+
+    # Inscripción de otra etapa -> 404
+    res_404 = await client.post(
+        "/api/v1/stages/999999/entries/1/start", json={}, headers={"X-Judge-Pin": "PIN-IND"}
+    )
+    assert res_404.status_code == 404

@@ -157,6 +157,36 @@ function initDelegatedHandlers(): void {
   });
 }
 
+/**
+ * La entrada de la barra se desactiva en cuanto termina.
+ *
+ * Al navegar, el router reinserta la cabecera persistente en el body nuevo
+ * y ESO REINICIA las animaciones CSS del elemento: la barra se borraba y
+ * volvía a entrar en cada clic (justo lo que no queremos). Con la clase
+ * `is-ready`, la animación ocurre una vez por sesión y nunca más.
+ */
+function armHeaderIntroOnce(): void {
+  const header = document.getElementById('site-header');
+  if (!header) return;
+  if (header.classList.contains('is-ready')) return;
+
+  const finish = () => header.classList.add('is-ready');
+
+  document.addEventListener(
+    'animationend',
+    (event) => {
+      const target = event.target as Element | null;
+      if (target && target.closest('.hdr__bar')) finish();
+    },
+    { once: false }
+  );
+
+  // Red de seguridad: si la animación no llega a terminar ( Reduced motion la
+  // deja en 0,01 ms y dispara `animationend`; si el navegador no la soporta,
+  // no dispara nada), la cabecera se fija visible equally.
+  window.setTimeout(finish, 2000);
+}
+
 // ── Ciclo de vida del movimiento ─────────────────────────────────────────────
 
 type MotionModule = {
@@ -225,7 +255,7 @@ function initRouter(): void {
   // Antes del intercambio se corrige el item activo: la cabecera persiste y
   // su HTML no se vuelve a pintar.
   document.addEventListener('astro:before-swap', (event) => {
-    const to = (event as CustomEvent & { to?: URL }).to;
+    const to = (event as Event & { to?: URL }).to;
     const pathname = to?.pathname ?? window.location.pathname;
     applyActiveNav(pathname);
   });
@@ -260,6 +290,7 @@ initDelegatedHandlers();
 initRouter();
 applyActiveNav(window.location.pathname);
 restoreTheme();
+armHeaderIntroOnce();
 
 // La primera carga de una página de escaparate pide su movimiento.
 if (pageWantsMotion()) {

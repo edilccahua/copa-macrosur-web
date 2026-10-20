@@ -17,6 +17,10 @@ Permite dar la partida a un grupo de categorías simultáneamente (ej. Manga 1: 
 
 ### 1.2 Largada Individual (Contrarreloj / Excepciones): `POST /api/v1/stages/{stage_id}/entries/{stage_entry_id}/start`
 - Asigna `start_time_ms` y `race_status = STARTED` a un corredor individual en la hora exacta de su salida.
+- Valida el `X-Judge-Pin` contra `Stage.judge_pin` (401 sin cabecera, 403 si
+  no corresponde a la etapa) y devuelve 404 si la inscripción no es de esa
+  etapa.
+- Emite el evento SSE `wave-started` con la manga "Largada individual".
 
 ---
 
@@ -92,6 +96,30 @@ Permite dar la partida a un grupo de categorías simultáneamente (ej. Manga 1: 
 ---
 
 ## 4. Panel del Juez (PWA Mobile en `/admin/juez`)
+
+### 4.0 Puerta de acceso y superficie pública
+
+> **Añadido el 20 de Octubre de 2026.**
+
+- El sitio público **NO enlaza** a `/admin/juez`: ni en la barra de
+  navegación, ni en el panel móvil, ni en el pie. La URL la comparte el
+  organizador con el juez. Antes había un icono de cronómetro en la barra
+  (para cualquier visitante) y un enlace `[COMISARIO]` en el menú móvil.
+- El PIN **no viaja en el código de la página**. Antes venía hardcodeado
+  (`initialJudgePin="***REMOVED-JUDGE-PIN-F1***"`), de modo que cualquiera podía leerlo en
+  el código fuente y mandar marcaciones.
+- La puerta pide el PIN y lo valida contra
+  `GET /api/v1/stages/{stage_id}/judge-auth`, que compara con
+  `Stage.judge_pin` y **no devuelve el PIN**. Responde 401 sin cabecera,
+  403 con PIN incorrecto, 404 si la fecha no existe.
+- La **fecha se resuelve sola**: `LIVE` → siguiente con inscripciones
+  abiertas → última disputada.
+- El PIN **se guarda en el dispositivo** (`localStorage`) para no escribirlo
+  en cada carrera; el botón `[ SALIR ]` lo borra.
+- La cola offline (IndexedDB) **no usa índice sobre el campo `synced`**: un
+  booleano no es una clave válida de IndexedDB, así que el índice quedaba
+  vacío y `IDBKeyRange.only(false)` lanzaba `DataError` — la cola **nunca**
+  se subía. Se filtra en memoria.
 
 ### 4.1 Experiencia de Usuario (Marcación Rápida sin Grilla Masiva de Botones)
 Dada la cantidad de participantes (cientos de ciclistas), la interfaz móvil ofrece dos modos de captura:

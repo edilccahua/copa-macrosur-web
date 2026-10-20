@@ -167,6 +167,17 @@ const path = Astro.url.pathname;
   .hdr__bar > :nth-child(6) { --i: 4; }
   .hdr__bar > :nth-child(7) { --i: 5; }
 
+  /* Una vez que la entrada ha terminado, la animación se DESACTIVA.
+     Motivo: al navegar, el router reinserta la cabecera persistente en el
+     body nuevo y eso reinicia las animaciones CSS del elemento: la barra
+     desaparecía y volvía a entrar en cada clic. Con esta clase, la
+     animación ocurre UNA vez por sesión (al cargar) y nunca más. */
+  .hdr.is-ready .hdr__bar > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
   .brand-text {
     font-family: var(--font-display);
     font-size: 0.8125rem;
