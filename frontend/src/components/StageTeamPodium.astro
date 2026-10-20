@@ -49,6 +49,13 @@ const { teams } = Astro.props;
     margin-bottom: 3.5rem;
   }
 
+  @media (max-width: 47.99em) {
+    /* En móvil los tres clubes se apilan: en tres columnas de 15rem no caben. */
+    .teams {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .team {
     display: flex;
     flex-direction: column;
