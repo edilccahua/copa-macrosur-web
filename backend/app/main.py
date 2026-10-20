@@ -10,9 +10,22 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.core.config import settings
+from backend.app.core.config import settings, origen_permitido
 from backend.app.core.db import init_db
 from backend.app.routers import timing, stages, riders, teams, excel, public, admin
+
+
+class SettingsAwareCORSMiddleware(CORSMiddleware):
+    """CORS que consulta la configuración EN CADA petición.
+
+    `CORSMiddleware` resuelve los orígenes AL ARRANCAR el servidor: con él,
+    cambiar `ENVIRONMENT` (o escribir las pruebas) exigiría reiniciar, y la
+    política de producción seguiría siendo la de desarrollo. Aquí la política
+    vive en `settings` y se lee en cada petición.
+    """
+
+    def is_allowed_origin(self, origin: str) -> bool:
+        return origen_permitido(origin)
 
 
 @asynccontextmanager
@@ -30,6 +43,10 @@ app = FastAPI(
 
 # CORS
 #
+# El sitio se sirve desde Cloudflare Pages y la API desde Render: el
+# navegador del visitante manda la cabecera `Origin`. Si el backend acepta
+# cualquier origen, cualquiera puede leer la API desde su propia página.
+#
 # En desarrollo se acepta cualquier puerto de localhost: si el servidor del
 # front cambia de puerto (Astro toma el siguiente libre si el 4321 está
 # ocupado), el sitio no debe romperse en silencio — el SSR seguiría
@@ -38,16 +55,20 @@ app = FastAPI(
 #
 # En producción (`ENVIRONMENT=production`) el regex se desactiva y sólo
 # valen los orígenes de `CORS_ORIGINS`.
+#
+# `allow_methods` y `allow_headers` dejan de ser `"*"`: el cliente sólo usa
+# esos tres verbos y esas tres cabeceras (la de contenido, la de
+# administrador y la de juez).
 cors_options = {
-    "allow_origins": settings.CORS_ORIGINS or ["*"],
+    "allow_origins": settings.CORS_ORIGINS or [],
     "allow_credentials": True,
-    "allow_methods": ["*"],
-    "allow_headers": ["*"],
+    "allow_methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["Content-Type", "X-Admin-Key", "X-Judge-Pin"],
 }
-if settings.CORS_ORIGIN_REGEX:
-    cors_options["allow_origin_regex"] = settings.CORS_ORIGIN_REGEX
-
-app.add_middleware(CORSMiddleware, **cors_options)
+# El regex de localhost NO se pasa al constructor: se aplica en vivo, dentro
+# de `origen_permitido`, para que `ENVIRONMENT=production` lo apague sin
+# necesidad de reiniciar el servidor.
+app.add_middleware(SettingsAwareCORSMiddleware, **cors_options)
 
 # Routers bajo /api/v1
 app.include_router(timing.router, prefix=settings.API_V1_PREFIX)

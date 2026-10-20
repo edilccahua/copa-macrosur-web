@@ -1,4 +1,6 @@
 import pathlib
+import re
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
@@ -33,20 +35,17 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # CORS: se puede sobreescribir en `.env` con un array JSON.
-    # La lista incluye varios puertos de desarrollo porque Astro toma el
-    # siguiente libre si el 4321 está ocupado: con una lista fija, el sitio
-    # "funciona" en el servidor (el SSR no lleva Origin) pero TODAS las islas
-    # de cliente fallan en silencio (SSE, clasificaciones, formularios).
-    # En producción hay que poner aquí el dominio real.
+    #
+    # La lista es la de PRODUCCIÓN: el sitio se sirve desde Cloudflare Pages
+    # (`copa-macrosur-web.pages.dev`) y el dominio propio (`kuspideweb.com`).
+    # Los puertos de localhost NO están en la lista: en desarrollo los cubre
+    # el regex de abajo, que sólo se aplica si `ENVIRONMENT != production`.
+    #
+    # Antes la lista traía también los puertos de desarrollo y el regex
+    # estaba activo SIEMPRE: en producción eso dejaba la API abierta a
+    # cualquier página servida desde el portátil de cualquiera.
     CORS_ORIGINS: List[str] = [
-        "http://localhost:4321",
-        "http://127.0.0.1:4321",
-        "http://localhost:4322",
-        "http://127.0.0.1:4322",
-        "http://localhost:4323",
-        "http://127.0.0.1:4323",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+        "https://copa-macrosur-web.pages.dev",
         "https://kuspideweb.com",
         "https://www.kuspideweb.com",
     ]
@@ -56,6 +55,11 @@ class Settings(BaseSettings):
     # En producción queda desactivado: el regex de abajo sólo cubre
     # `localhost`, nunca un dominio de terceros.
     CORS_ORIGIN_REGEX: str = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?)$"
+
+    # Interruptor explícito del regex de localhost. El validador de abajo lo
+    # apaga solo cuando `ENVIRONMENT=production`: es una red de seguridad
+    # para que nadie deje el regex activo en el servidor.
+    CORS_ALLOW_LOCALHOST: bool = True
 
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
@@ -73,5 +77,37 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @model_validator(mode="after")
+    def _apagar_localhost_en_produccion(self) -> "Settings":
+        """En producción, el regex de localhost queda DESACTIVADO.
+
+        El regex sólo tiene sentido en el portátil del desarrollador. Con él
+        activo en producción, cualquier página servida desde el `localhost`
+        de cualquiera puede leer la API.
+        """
+        if self.ENVIRONMENT == "production":
+            self.CORS_ALLOW_LOCALHOST = False
+        return self
+
 
 settings = Settings()
+
+
+def origen_permitido(origin: str | None) -> bool:
+    """¿Este origen puede leer la API?
+
+    La política se evalúa EN VIVO (no al arrancar el servidor): así el cambio
+    de `ENVIRONMENT` no exige reiniciar, y la respuesta 429 del limitador
+    puede llevar su propia cabecera de CORS — sin ella, el navegador
+    escondería el 429 detrás de un error de CORS.
+    """
+    if not origin:
+        return False
+    # El regex de localhost es SÓLO de desarrollo: en producción no se aplica
+    # aunque `CORS_ORIGINS` lo trajera por error.
+    if settings.ENVIRONMENT != "production" and settings.CORS_ALLOW_LOCALHOST:
+        patron = settings.CORS_ORIGIN_REGEX
+        if patron and re.fullmatch(patron, origin):
+            return True
+    return origin in (settings.CORS_ORIGINS or [])
+
