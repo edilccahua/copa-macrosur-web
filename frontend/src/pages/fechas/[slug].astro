@@ -263,13 +263,15 @@ function sectionNumber(key: string): string | null {
 
                 <div class="hero-buttons">
                   {stage.status === 'FINISHED' ? (
-                    <a href={`/fechas/${slug}/resultados`} class="btn btn--solid">
-                      Resultados Oficiales →
+                    <a
+                      href={`/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=${stage.stage_number}`}
+                      class="btn btn--solid"
+                    >
+                      Ver Resultados →
                     </a>
                   ) : (
                     <a href="/inscripciones" class="btn btn--solid">Inscripción Oficial →</a>
                   )}
-                  <a href="/ranking-general" class="btn btn--ghost">Ranking Acumulado</a>
                   {stage.strava_route_url && (
                     <a
                       href={stage.strava_route_url}

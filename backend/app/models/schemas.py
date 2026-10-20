@@ -374,6 +374,10 @@ class StravaEffortItem(BaseModel):
     athlete_name_raw: str
     elapsed_time_sec: int
     is_kom_qom: bool = False
+    # Fecha del intento (ISO, "YYYY-MM-DD"). Strava lista intentos de muchas
+    # fechas en un mismo segmento: sin esto no se puede filtrar los de la
+    # carrera.
+    measured_on: Optional[str] = None
 
 
 class StravaSyncPayload(BaseModel):

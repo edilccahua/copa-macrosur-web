@@ -22,7 +22,6 @@
   import { fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import ScopeControl from './ScopeControl.svelte';
-  import { API_V1 } from '../../lib/api';
   import {
     getStandings,
     type StandingsContext,
@@ -339,24 +338,6 @@
         <span class="stagehead__name font-mono">
           {activeStage?.name.replace(/^Fecha\s+\d+\s*:\s*/i, '').toUpperCase() ?? ''}
         </span>
-        <!--
-          Lo propio de la carrera (su podio y su planilla) va DENTRO de su
-          descripcion y en el mismo nivel que el selector de fecha. Solo en
-          modo "fecha": en "acumulado" no hay una carrera, hay un corte.
-        -->
-        {#if tableMode === 'fecha'}
-          <span class="stagehead__links">
-            <a class="stagelink font-mono" href={`/fechas/${activeStage?.slug}#podio`}>
-              PODIO POR CATEGORÍA ↑
-            </a>
-            <a
-              class="stagelink font-mono"
-              href={`${API_V1}/stages/${activeStage?.id}/export-excel`}
-            >
-              EXPORTAR PLANILLA [.XLSX] ↓
-            </a>
-          </span>
-        {/if}
       </div>
       <button
         type="button"
@@ -828,32 +809,6 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--muted);
-  }
-
-  /* Enlaces de la carrera: podio y planilla oficial. Color FIJO (no siguen al
-     color del grupo): son un dato, no un acento. */
-  .stagehead__links {
-    display: inline-flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 0.25rem 1.25rem;
-  }
-
-  .stagelink {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-decoration: none;
-    border-bottom: var(--hairline) solid transparent;
-    transition: color var(--default-transition-duration) var(--default-transition-timing-function),
-      border-color var(--default-transition-duration) var(--default-transition-timing-function);
-  }
-
-  .stagelink:hover {
-    color: var(--ink);
-    border-bottom-color: currentColor;
   }
 
   /* --- Controles --- */

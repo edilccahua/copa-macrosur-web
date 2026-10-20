@@ -34,6 +34,12 @@ from backend.app.models.entities import (
     StravaSegment,
     Team,
 )
+from backend.app.services.strava_selection import (
+    filter_efforts,
+    is_full_route,
+    is_measured_on_stage,
+    select_segments,
+)
 from backend.app.models.schemas import (
     AwardSummaryRead,
     CategoryPodiumRead,
@@ -53,6 +59,10 @@ from backend.app.services.standings_service import scope_of_category
 
 # Escala de puntos de specs/01 §3.1: 1°=10 … 10°=1, 11°+=1, DNF/DNS/DSQ=0.
 _POINTS_TOP10 = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+# La E-MTB no compite por el titulo de la fecha: el E-BIKE OPEN tiene su
+# propio leaderboard, pero un e-bike no puede ser el scratch de MTB.
+E_MTB_SHORT_CODE = "EBK"
 
 # Cuántos efforts de Strava se exponen por segmento (specs/03 §1.2 punto 5).
 _STRAVA_TOP_N = 10
@@ -132,18 +142,31 @@ async def compute_stage_stats(session: AsyncSession, stage_id: int) -> StageStat
     finishers = int(totals[1] or 0) if totals else 0
     points_total = int(totals[2] or 0) if totals else 0
 
-    # Un único aggregate devuelve el escalar directo en SQLModel, no una tupla.
-    winner = (
+    # El ganador es el de mayor VELOCIDAD sobre la distancia realmente
+    # recorrida: en un circuito por vueltas no todos completan lo mismo, y el
+    # tiempo más bajo puede ser el de quien dio menos vueltas.
+    winner_rows = (
         await session.exec(
             select(StageEntry.finish_elapsed_ms, StageEntry.laps)
+            .join(Category, StageEntry.category_id == Category.id)
             .where(
                 StageEntry.stage_id == stage_id,
                 StageEntry.finish_elapsed_ms.is_not(None),
+                StageEntry.race_status == RaceStatusEnum.FINISHED,
+                # La E-MTB no entra en la pugna por el titulo de la fecha.
+                Category.short_code != E_MTB_SHORT_CODE,
             )
-            .order_by(StageEntry.finish_elapsed_ms)
-            .limit(1)
         )
-    ).first()
+    ).all()
+
+    def _speed(row) -> float:
+        elapsed = int(row[0] or 0)
+        if elapsed <= 0 or stage.distance_km <= 0:
+            return 0.0
+        laps = max(1, int(row[1] or 1))
+        return (stage.distance_km * laps) / (elapsed / 3_600_000)
+
+    winner = max(winner_rows, key=_speed) if winner_rows else None
     winner_time_ms = int(winner[0]) if winner and winner[0] is not None else None
     # En un circuito por vueltas no todos completan la misma cantidad: la
     # velocidad del ganador se calcula sobre las vueltas que ÉL hizo, no sobre
@@ -332,16 +355,22 @@ async def compute_stage_team_podium(
 
 
 async def compute_stage_strava(
-    session: AsyncSession, stage_id: int
+    session: AsyncSession, stage: Stage
 ) -> List[StravaSegmentSummaryRead]:
     """Segmentos Strava de la fecha con sus 10 mejores tiempos y el KOM.
+
+    Se aplican las tres reglas de `strava_selection`:
+      1. solo cuentan los intentos **medidos en la fecha de la carrera**;
+      2. solo cuentan los intentos de corredores **inscritos en esa fecha**;
+      3. se descarta el segmento que cubre la carrera entera (es la ruta) y
+         se muestran los cinco mas relevantes.
 
     El flag `is_kom_qom` de la BD es la autoridad del KOM (specs/02 §4).
     """
     segments = (
         await session.exec(
             select(StravaSegment)
-            .where(StravaSegment.stage_id == stage_id)
+            .where(StravaSegment.stage_id == stage.id)
             .order_by(StravaSegment.id)
         )
     ).all()
@@ -359,20 +388,49 @@ async def compute_stage_strava(
         )
     ).all()
 
+    # Los corredores inscritos en esta fecha: un intento de un corredor que
+    # no compitio no es de esta carrera.
+    stage_rider_ids = (
+        await session.exec(
+            select(StageEntry.rider_id).where(StageEntry.stage_id == stage.id)
+        )
+    ).all()
+    rider_ids = [r for r in stage_rider_ids if r is not None]
+
     by_segment: Dict[int, List[StravaEffort]] = {}
     for effort in efforts:
         by_segment.setdefault(effort.segment_id, []).append(effort)
 
+    stage_date = stage.date.isoformat() if stage.date else None
+    stage_distance_km = float(stage.distance_km or 0) * max(1, stage.laps or 1)
+
     summaries: List[StravaSegmentSummaryRead] = []
     for segment in segments:
+        segment_efforts = by_segment.get(segment.id, [])
+        relevant = filter_efforts(
+            [
+                {
+                    "measured_on": effort.measured_on,
+                    "rider_id": effort.rider_id,
+                    "athlete_name_raw": effort.athlete_name_raw,
+                    "elapsed_time_sec": effort.elapsed_time_sec,
+                    "is_kom_qom": effort.is_kom_qom,
+                }
+                for effort in segment_efforts
+            ],
+            stage_date=stage_date,
+            stage_rider_ids=rider_ids,
+        )
+        # Los efforts filtrados conservan el orden por tiempo (la consulta
+        # viene ordenada por elapsed_time_sec).
         effort_reads = [
             StravaEffortRead(
-                athlete_name=effort.athlete_name_raw or "—",
-                elapsed_time_sec=int(effort.elapsed_time_sec or 0),
-                formatted_time=format_ms_to_time(int(effort.elapsed_time_sec or 0) * 1000),
-                is_kom_qom=bool(effort.is_kom_qom),
+                athlete_name=effort["athlete_name_raw"] or "—",
+                elapsed_time_sec=int(effort["elapsed_time_sec"] or 0),
+                formatted_time=format_ms_to_time(int(effort["elapsed_time_sec"] or 0) * 1000),
+                is_kom_qom=bool(effort["is_kom_qom"]),
             )
-            for effort in by_segment.get(segment.id, [])
+            for effort in relevant
         ]
 
         # El KOM es el effort que la BD marca como tal. Si ninguno lo está,
@@ -396,11 +454,16 @@ async def compute_stage_strava(
             )
         )
 
-    return summaries
+    selected = select_segments(
+        [summary.model_dump() for summary in summaries],
+        stage_distance_km=stage_distance_km,
+    )
+    by_id = {summary.strava_segment_id: summary for summary in summaries}
+    return [by_id[item["strava_segment_id"]] for item in selected if item["strava_segment_id"] in by_id]
 
 
 async def compute_stage_mountain_titles(
-    session: AsyncSession, stage_id: int
+    session: AsyncSession, stage: Stage
 ) -> Dict[str, Any]:
     """El King of the Mountain y la Queen of the Mountain de la fecha.
 
@@ -409,19 +472,34 @@ async def compute_stage_mountain_titles(
     **bajada** más empinada: la pendiente media negativa más pronunciada y, a
     igualdad, el más largo.
 
-    El corredor que acompaña a cada título es el más rápido de ese segmento.
+    Se aplican las mismas reglas que en los segmentos: el corredor que
+    acompaña a cada título es el más rápido **de la fecha de la carrera** y
+    de un corredor que compitió en ella. El segmento que cubre la carrera
+    entera no puede ser un título: es la ruta.
     """
     segments = (
         await session.exec(
             select(StravaSegment)
-            .where(StravaSegment.stage_id == stage_id)
+            .where(StravaSegment.stage_id == stage.id)
             .order_by(StravaSegment.id)
         )
     ).all()
     if not segments:
         return {"kom": None, "qom": None}
 
-    segment_ids = [segment.id for segment in segments]
+    stage_distance_km = float(stage.distance_km or 0) * max(1, stage.laps or 1)
+    # El segmento que cubre la carrera entera es la ruta, no un título.
+    candidates = [
+        segment
+        for segment in segments
+        if not is_full_route(
+            round(float(segment.distance_m or 0) / 1000, 2), stage_distance_km
+        )
+    ]
+    if not candidates:
+        return {"kom": None, "qom": None}
+
+    segment_ids = [segment.id for segment in candidates]
     efforts = (
         await session.exec(
             select(StravaEffort)
@@ -430,15 +508,15 @@ async def compute_stage_mountain_titles(
         )
     ).all()
 
-    best_effort: Dict[int, StravaEffort] = {}
-    for effort in efforts:
-        if effort.segment_id not in best_effort:
-            best_effort[effort.segment_id] = effort
+    stage_rider_ids = (
+        await session.exec(
+            select(StageEntry.rider_id).where(StageEntry.stage_id == stage.id)
+        )
+    ).all()
+    rider_ids = [r for r in stage_rider_ids if r is not None]
+    stage_date = stage.date.isoformat() if stage.date else None
 
-    def _title(segment: StravaSegment) -> Optional[MountainTitleRead]:
-        effort = best_effort.get(segment.id)
-        if effort is None:
-            return None
+    def _read_title(segment: StravaSegment, effort: StravaEffort) -> MountainTitleRead:
         seconds = int(effort.elapsed_time_sec or 0)
         return MountainTitleRead(
             strava_segment_id=str(segment.strava_segment_id or ""),
@@ -453,8 +531,8 @@ async def compute_stage_mountain_titles(
             elapsed_time_sec=seconds,
         )
 
-    climbs = [s for s in segments if float(s.average_grade or 0) > 0]
-    descents = [s for s in segments if float(s.average_grade or 0) < 0]
+    climbs = [s for s in candidates if float(s.average_grade or 0) > 0]
+    descents = [s for s in candidates if float(s.average_grade or 0) < 0]
 
     kom_segment = None
     if climbs:
@@ -469,9 +547,35 @@ async def compute_stage_mountain_titles(
             key=lambda s: (float(s.average_grade or 0), -float(s.distance_m or 0)),
         )
 
+    def _title(segment) -> Optional[MountainTitleRead]:
+        """El título de un segmento, con su corredor más rápido.
+
+        Se prefiere el intento **de la fecha de la carrera**. Si el tramo no
+        tiene ninguno (una bajada que nadie cronometró ese día), se recurre al
+        mejor intento registrado: el título existe y el努力 es real, aunque
+        no sea de nuestra jornada.
+        """
+        if segment is None:
+            return None
+        efforts_of_segment = [
+            effort for effort in efforts if effort.segment_id == segment.id
+        ]
+        if not efforts_of_segment:
+            return None
+
+        same_day = [
+            effort
+            for effort in efforts_of_segment
+            if is_measured_on_stage(effort.measured_on, stage_date)
+            and (effort.rider_id is None or not rider_ids or effort.rider_id in rider_ids)
+        ]
+        pool = same_day or efforts_of_segment
+        best = min(pool, key=lambda e: e.elapsed_time_sec or 0)
+        return _read_title(segment, best)
+
     return {
-        "kom": _title(kom_segment) if kom_segment else None,
-        "qom": _title(qom_segment) if qom_segment else None,
+        "kom": _title(kom_segment),
+        "qom": _title(qom_segment),
     }
 
 
@@ -576,38 +680,53 @@ async def compute_stage_awards(
 
 
 async def compute_stage_extremes(
-    session: AsyncSession, stage_id: int
+    session: AsyncSession, stage: Stage
 ) -> dict:
-    """Scratch (tiempo mínimo) y farolito (tiempo máximo) de la jornada.
+    """Scratch (el más rápido) y farolito (el más lento) de la jornada.
+
+    Dos reglas que no son obvias:
+
+    · **La categoría E-MTB no compite por el título.** Un e-bike no es un
+      scratch de MTB: el E-BIKE OPEN sigue con su propio leaderboard, pero
+      no puede ser el ganador de la fecha.
+    · **El criterio es la VELOCIDAD, no el tiempo.** En un circuito por
+      vueltas no todos completan lo mismo: el tiempo más bajo puede ser el
+      de quien dio menos vueltas. Se compara la velocidad sobre la
+      distancia REALMENTE recorrida (`StageEntry.laps`).
 
     Devuelve claves siempre presentes: `scratch` o `farolito` pueden ser
-    `None` si la fecha no tiene ese extremo (una fecha con un solo finisher,
-    por ejemplo). La ficha debe renderizar lo que haya, sin asumir que ambos
-    existen.
+    `None` si la fecha no tiene ese extremo. La ficha debe renderizar lo que
+    haya, sin asumir que ambos existen.
     """
-    scratch_entry = (
+    entries = (
         await session.exec(
             select(StageEntry)
+            .join(Category, StageEntry.category_id == Category.id)
             .where(
-                StageEntry.stage_id == stage_id,
+                StageEntry.stage_id == stage.id,
                 StageEntry.race_status == RaceStatusEnum.FINISHED,
                 StageEntry.finish_elapsed_ms.is_not(None),
+                # La E-MTB no entra en la pugna por el titulo de la fecha.
+                Category.short_code != E_MTB_SHORT_CODE,
             )
-            .order_by(StageEntry.finish_elapsed_ms)
         )
-    ).first()
+    ).all()
 
-    farolito_entry = (
-        await session.exec(
-            select(StageEntry)
-            .where(
-                StageEntry.stage_id == stage_id,
-                StageEntry.race_status == RaceStatusEnum.FINISHED,
-                StageEntry.finish_elapsed_ms.is_not(None),
-            )
-            .order_by(StageEntry.finish_elapsed_ms.desc())
-        )
-    ).first()
+    if not entries:
+        return {"scratch": None, "farolito": None}
+
+    per_lap_km = float(stage.distance_km or 0)
+
+    def _speed(entry) -> float:
+        """Velocidad media (km/h) sobre la distancia realmente recorrida."""
+        elapsed = entry.finish_elapsed_ms or 0
+        if elapsed <= 0:
+            return 0.0
+        distance_km = per_lap_km * max(1, entry.laps or 1)
+        return (distance_km / (elapsed / 3_600_000)) if distance_km > 0 else 0.0
+
+    scratch_entry = max(entries, key=_speed)
+    farolito_entry = min(entries, key=_speed)
 
     async def _to_read(entry) -> Optional[PodiumEntryRead]:
         if entry is None:
