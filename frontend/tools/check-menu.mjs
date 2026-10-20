@@ -208,7 +208,6 @@ const abierto = await movil.evaluate(() => {
     posicion: cs?.position,
     items: drawer ? [...drawer.querySelectorAll('.hdr__drawer-link')].map((a) => a.textContent.trim()) : [],
     activo: activo?.textContent.trim() ?? null,
-    actual: document.querySelector('[data-nav-current] strong')?.textContent.trim() ?? null,
     focoDentro: !!document.querySelector('#nav-panel')?.contains(document.activeElement),
     topContenido: Math.round(document.querySelector('main')?.getBoundingClientRect().top ?? 0)
   };
@@ -225,8 +224,27 @@ ok(
   `el cajón tiene los destinos (${JSON.stringify(abierto.items)})`
 );
 ok(abierto.activo === 'CLASIFICACIONES', `el cajón marca la página actual (${abierto.activo})`);
-ok(abierto.actual === 'CLASIFICACIONES', `el cajón dice en qué página estamos (${abierto.actual})`);
 ok(abierto.focoDentro, 'al abrir, el foco entra en el cajón');
+
+// El indicador de sección va en la BARRA, no en el cajón, y sólo lleva el
+// nombre de la sección (sin "PÁGINA ACTUAL" ni descripción).
+const indicador = await movil.evaluate(() => {
+  const celda = document.querySelector('[data-nav-here]');
+  const rotulo = document.querySelector('[data-nav-current-label]');
+  return {
+    enLaBarra: !!celda?.closest('.hdr__bar'),
+    visible: celda ? getComputedStyle(celda).display !== 'none' : false,
+    texto: rotulo?.textContent.trim() ?? null,
+    descripcionEnElCajon: !!document.querySelector('#nav-panel .hdr__drawer-current')
+  };
+});
+ok(indicador.enLaBarra, 'el indicador de sección está en la barra');
+ok(indicador.visible, 'en móvil el indicador de sección se ve');
+ok(
+  indicador.texto === 'CLASIFICACIONES',
+  `el indicador sólo dice la sección, sin descripción (${indicador.texto})`
+);
+ok(!indicador.descripcionEnElCajon, 'el cajón ya no lleva la línea "PÁGINA ACTUAL"');
 
 await movil.keyboard.press('Escape');
 await movil.waitForTimeout(400);

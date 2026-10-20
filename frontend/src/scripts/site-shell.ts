@@ -60,10 +60,11 @@ export function applyActiveNav(pathname: string): void {
   // La MARCA (logo) no se marca nunca: "KÚSPIDE" e "INICIO" llevan a la
   // misma página y el que queda activo es "INICIO".
 
-  // El cajón de móvil dice en qué página estamos.
-  const current = document.querySelector<HTMLElement>('[data-nav-current] strong');
-  if (current) {
-    current.textContent = currentLabel ?? 'PORTADA';
+  // El indicador de sección de la barra (móvil): sólo el nombre, sin
+  // descripciones ("INICIO", "FECHAS", "CLASIFICACIONES"…).
+  const aqui = document.querySelector<HTMLElement>('[data-nav-current-label]');
+  if (aqui) {
+    aqui.textContent = currentLabel ?? 'INICIO';
   }
 }
 
