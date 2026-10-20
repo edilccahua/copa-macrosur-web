@@ -8,6 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
 from backend.app.core.db import init_db, async_session_factory
+from backend.app.core.secrets import judge_pin_for
 from backend.app.models.entities import (
     Category, Stage, StageStatusEnum, StartWave, Checkpoint,
     Team, Rider, StageEntry, RaceStatusEnum, PaymentStatusEnum,
@@ -59,7 +60,6 @@ RACE_CONFIG: List[Dict[str, Any]] = [
         "start_location": "Vía de Evitamiento, La Joya",
         "start_time": "08:00 AM",
         "poster_url": "/images/posters/f1-la-joya-extreme-card.webp",
-        "judge_pin": "***REMOVED-JUDGE-PIN-F1***",
         "laps": 1,
         "distance_km": 40.85,
         "elevation_gain_m": 384,
@@ -80,7 +80,6 @@ RACE_CONFIG: List[Dict[str, Any]] = [
         "start_location": "Circuito La Z",
         "start_time": "08:00 AM",
         "poster_url": "/images/posters/f2-z-xtreme-card.webp",
-        "judge_pin": "***REMOVED-JUDGE-PIN-F2***",
         "laps": 3,
         "distance_km": 11.83,
         "elevation_gain_m": 280,
@@ -102,7 +101,6 @@ RACE_CONFIG: List[Dict[str, Any]] = [
         "start_location": "Plaza de Chiguata",
         "start_time": "08:00 AM",
         "poster_url": "/images/posters/f3-retorno-poblados-card.webp",
-        "judge_pin": "***REMOVED-JUDGE-PIN-F3***",
         "laps": 1,
         "distance_km": 47.23,
         "elevation_gain_m": 761,
@@ -126,7 +124,6 @@ RACE_CONFIG: List[Dict[str, Any]] = [
         "start_location": None,
         "start_time": "08:00 AM",
         "poster_url": "/images/posters/f4-quequena-xtreme-card.webp",
-        "judge_pin": "***REMOVED-JUDGE-PIN-F4***",
         "laps": 1,
         "distance_km": None,
         "elevation_gain_m": None,
@@ -232,7 +229,8 @@ async def upsert_stage(session: AsyncSession, cfg: Dict[str, Any]) -> Stage:
     stage.start_location = cfg.get("start_location")
     stage.start_time = cfg.get("start_time", "08:00 AM")
     stage.poster_url = cfg["poster_url"]
-    stage.judge_pin = cfg["judge_pin"]
+    # El PIN sale del ENTORNO, no del repositorio: ver `core/secrets.py`.
+    stage.judge_pin = judge_pin_for(cfg["stage_number"])
     stage.laps = cfg["laps"]
     stage.strava_route_url = cfg.get("strava_route_url")
     stage.distance_km = cfg["distance_km"]

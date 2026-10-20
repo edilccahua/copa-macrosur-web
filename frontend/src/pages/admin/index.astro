@@ -9,7 +9,37 @@ const stages = await getStages();
 <Base title="Consola del Organizador — Copa MacroSur MTB">
   <SiteHeader />
 
-  <main class="container page-content">
+  <!--
+    La puerta. La clave de administrador NO está en el código de la página:
+    antes estaba escrita en el bundle (`const ADMIN_KEY = '…'`), y cualquiera
+    que abriera el DevTools podía leerla. Ahora la escribe el organizador y
+    queda en `sessionStorage` (se pierde al cerrar la pestaña).
+  -->
+  <div id="admin-gate" class="admin-gate">
+    <div class="admin-gate__card">
+      <span class="admin-badge font-mono">CONSOLA CENTRAL DE ADMINISTRACIÓN</span>
+      <h1 class="admin-title">ACCESO RESTRINGIDO</h1>
+      <p class="admin-desc">
+        Esta consola aprueba pagos, sube las listas de inscritos y controla la
+        transmisión en vivo. Introduce la clave de administrador para continuar.
+      </p>
+      <form id="admin-key-form" class="admin-gate__form">
+        <input
+          type="password"
+          id="admin-key"
+          class="admin-key-input font-mono"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="CLAVE DE ADMINISTRADOR"
+        />
+        <button type="submit" class="btn-action font-mono">ENTRAR</button>
+      </form>
+      <p id="admin-gate-error" class="admin-gate__error font-mono"></p>
+    </div>
+  </div>
+
+  <main id="admin-console" class="container page-content" hidden>
     <div class="admin-header">
       <span class="admin-badge font-mono">CONSOLA CENTRAL DE ADMINISTRACIÓN</span>
       <h1 class="admin-title">GESTIÓN DE CARRERA Y VALIDACIONES</h1>
@@ -121,7 +151,36 @@ const stages = await getStages();
 
 <script>
   import { API_V1 } from '../../lib/api';
-  const ADMIN_KEY = '***REMOVED-ADMIN-API-KEY***';
+  import { adminHeaders, adminKey, clearAdminKey, safeUrl, setAdminKey } from '../../lib/admin';
+
+  /**
+   * La clave de administrador NO está en este archivo. Se pide en la puerta y
+   * vive en `sessionStorage` durante la sesión (ver `lib/admin.ts`).
+   */
+  const gateEl = document.getElementById('admin-gate');
+  const consoleEl = document.getElementById('admin-console');
+  const gateErrorEl = document.getElementById('admin-gate-error');
+  const keyInput = document.getElementById('admin-key') as HTMLInputElement | null;
+  const keyForm = document.getElementById('admin-key-form') as HTMLFormElement | null;
+
+  function showGate(message?: string): void {
+    if (gateEl) gateEl.hidden = false;
+    if (consoleEl) consoleEl.hidden = true;
+    if (gateErrorEl) gateErrorEl.textContent = message ?? '';
+  }
+
+  function showConsole(): void {
+    if (gateEl) gateEl.hidden = true;
+    if (consoleEl) consoleEl.hidden = false;
+  }
+
+  /** Una etiqueta corta para un texto que puede ser largo. */
+  function el(tag: string, className?: string, text?: string): HTMLElement {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
 
   // Cargar pagos pendientes
   async function loadPendingPayments() {
@@ -129,35 +188,77 @@ const stages = await getStages();
     if (!listEl) return;
     try {
       const res = await fetch(`${API_V1}/admin/pending-payments`, {
-        headers: { 'X-Admin-Key': ADMIN_KEY }
+        headers: adminHeaders()
       });
-      if (res.ok) {
-        const items = await res.json();
-        if (items.length === 0) {
-          listEl.innerHTML = '<div class="empty-tag font-mono">No hay pagos pendientes de revisión.</div>';
-          return;
-        }
-        listEl.innerHTML = items.map((p: any) => `
-          <div class="payment-item">
-            <div class="p-info">
-              <div class="p-name">${p.rider_name} (Dorsal #${p.bib_number})</div>
-              <div class="p-sub font-mono">${p.category_name} | ${p.stage_name} | DNI: ${p.rider_dni}</div>
-              ${p.voucher_url ? `<a href="${p.voucher_url}" target="_blank" class="voucher-link font-mono">Ver Comprobante Adjunto ↗</a>` : '<span class="no-voucher font-mono">Sin enlace de voucher</span>'}
-            </div>
-            <button class="btn-approve font-mono" onclick="window.approvePayment(${p.entry_id})">Aprobar 1-Clic</button>
-          </div>
-        `).join('');
+      if (!res.ok) {
+        listEl.replaceChildren(
+          el('div', 'empty-tag font-mono', 'No se pudieron cargar los pagos pendientes.')
+        );
+        return;
       }
+      const items = await res.json();
+      if (!Array.isArray(items) || items.length === 0) {
+        listEl.replaceChildren(
+          el('div', 'empty-tag font-mono', 'No hay pagos pendientes de revisión.')
+        );
+        return;
+      }
+
+      /*
+        Los datos vienen de QUIEN SE INSCRIBE (nombre, club, comprobante): se
+        pintan con NODOS y `textContent`, nunca con `innerHTML` interpolado.
+        Con `innerHTML` un nombre como `<img src=x onerror=…>` se ejecutaba en
+        el navegador del organizador.
+      */
+      const frag = document.createDocumentFragment();
+      for (const p of items) {
+        const item = el('div', 'payment-item');
+
+        const info = el('div', 'p-info');
+        info.appendChild(
+          el('div', 'p-name', `${p.rider_name} (Dorsal #${p.bib_number})`)
+        );
+        info.appendChild(
+          el(
+            'div',
+            'p-sub font-mono',
+            `${p.category_name} | ${p.stage_name} | DNI: ${p.rider_dni}`
+          )
+        );
+
+        const voucher = safeUrl(p.voucher_url);
+        if (voucher) {
+          const link = el('a', 'voucher-link font-mono', 'Ver Comprobante Adjunto ↗');
+          link.href = voucher;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          info.appendChild(link);
+        } else {
+          info.appendChild(
+            el('span', 'no-voucher font-mono', 'Sin enlace de voucher')
+          );
+        }
+        item.appendChild(info);
+
+        const approve = el('button', 'btn-approve font-mono', 'Aprobar 1-Clic');
+        approve.addEventListener('click', () => void approvePayment(p.entry_id));
+        item.appendChild(approve);
+
+        frag.appendChild(item);
+      }
+      listEl.replaceChildren(frag);
     } catch (e) {
-      listEl.innerHTML = '<div class="empty-tag font-mono">Servidor offline o sin respuesta.</div>';
+      listEl.replaceChildren(
+        el('div', 'empty-tag font-mono', 'Servidor offline o sin respuesta.')
+      );
     }
   }
 
-  (window as any).approvePayment = async (entryId: number) => {
+  async function approvePayment(entryId: number) {
     try {
       const res = await fetch(`${API_V1}/admin/entries/${entryId}/approve-payment`, {
         method: 'POST',
-        headers: { 'X-Admin-Key': ADMIN_KEY }
+        headers: adminHeaders()
       });
       if (res.ok) {
         loadPendingPayments();
@@ -165,9 +266,7 @@ const stages = await getStages();
     } catch (e) {
       alert('Error aprobando pago.');
     }
-  };
-
-  loadPendingPayments();
+  }
 
   // Excel submit
   const excelForm = document.getElementById('excel-form') as HTMLFormElement;
@@ -182,7 +281,7 @@ const stages = await getStages();
     try {
       const res = await fetch(`${API_V1}/stages/${stageId}/import-excel?is_legacy=${isLegacy}`, {
         method: 'POST',
-        headers: { 'X-Admin-Key': ADMIN_KEY },
+        headers: adminHeaders(),
         body: fd
       });
       const data = await res.json();
@@ -208,7 +307,7 @@ const stages = await getStages();
     try {
       const res = await fetch(`${API_V1}/stages/${stageId}/upload-gpx`, {
         method: 'POST',
-        headers: { 'X-Admin-Key': ADMIN_KEY },
+        headers: adminHeaders(),
         body: fd
       });
       const data = await res.json();
@@ -257,7 +356,7 @@ const stages = await getStages();
       const res = await fetch(`${API_V1}/stages/${liveSelect.value}/live`, {
         method: 'POST',
         headers: {
-          'X-Admin-Key': ADMIN_KEY,
+          ...adminHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ active }),
@@ -273,12 +372,102 @@ const stages = await getStages();
 
   document.getElementById('live-open')?.addEventListener('click', () => void setLive(true));
   document.getElementById('live-close')?.addEventListener('click', () => void setLive(false));
-  loadLiveStatus();
+
+  /**
+   * La puerta: sin clave no se llama a la API. Con clave, se comprueba contra
+   * el servidor (un 403 significa que la clave no vale) y sólo entonces se
+   * abre la consola.
+   */
+  async function unlockConsole(): Promise<void> {
+    const clave = (keyInput?.value ?? '').trim();
+    if (!clave) {
+      showGate('Escribe la clave de administrador.');
+      return;
+    }
+    setAdminKey(clave);
+    try {
+      const res = await fetch(`${API_V1}/admin/pending-payments`, {
+        headers: adminHeaders()
+      });
+      if (res.status === 403 || res.status === 503) {
+        clearAdminKey();
+        showGate('La clave no es válida.');
+        return;
+      }
+      if (!res.ok) {
+        clearAdminKey();
+        showGate('No se pudo contactar al servidor.');
+        return;
+      }
+    } catch (e) {
+      clearAdminKey();
+      showGate('No se pudo contactar al servidor.');
+      return;
+    }
+    showConsole();
+    if (keyInput) keyInput.value = '';
+    await loadPendingPayments();
+    await loadLiveStatus();
+  }
+
+  keyForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    void unlockConsole();
+  });
+
+  // Al abrir la pagina: si la sesion ya tiene clave, se abre la consola
+  // directamente; si no, se muestra la puerta.
+  if (adminKey()) {
+    void unlockConsole();
+  } else {
+    showGate();
+  }
 </script>
 
 <style>
   .page-content {
     padding-top: 3rem;
+  }
+
+  /* ── Puerta de acceso ───────────────────────────────────────────────── */
+  .admin-gate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem 6rem;
+  }
+
+  .admin-gate__card {
+    width: 100%;
+    max-width: 34rem;
+    padding: 2rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+  }
+
+  .admin-gate__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .admin-key-input {
+    flex: 1 1 16rem;
+    min-width: 0;
+    padding: 0.75rem 0.875rem;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 0.875rem;
+    letter-spacing: 0.12em;
+  }
+
+  .admin-gate__error {
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: #b3261e;
+    min-height: 1rem;
   }
 
   .admin-header {

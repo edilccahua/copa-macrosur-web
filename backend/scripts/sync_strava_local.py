@@ -24,6 +24,7 @@ Requiere: `pip install playwright` (usa una instalación de Chrome ya existente,
 from __future__ import annotations
 
 import argparse
+import os
 import datetime
 import re
 import sys
@@ -161,7 +162,12 @@ def main() -> None:
     parser.add_argument("--activity", default=None, help="URL de actividad para descubrir segmentos")
     parser.add_argument("--date", default="today", help="today | this_month | all ...")
     parser.add_argument("--api-base", default=API_BASE_DEFAULT)
-    parser.add_argument("--admin-key", default="***REMOVED-ADMIN-API-KEY***")
+    # La clave sale del entorno: nunca esta en el repositorio.
+    parser.add_argument(
+        "--admin-key",
+        default=os.environ.get("ADMIN_API_KEY", "").strip(),
+        help="Clave de administrador (por defecto, la variable de entorno ADMIN_API_KEY).",
+    )
     args = parser.parse_args()
 
     pw, _browser, context = _connect()
