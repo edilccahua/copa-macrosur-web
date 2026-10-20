@@ -21,13 +21,30 @@ from backend.app.routers import timing, stages, riders, teams, excel, public, ad
 
 
 class SettingsAwareCORSMiddleware(CORSMiddleware):
-    """CORS que consulta la configuración EN CADA petición.
+    """CORS cuya política de orígenes se consulta EN CADA petición.
 
-    `CORSMiddleware` resuelve los orígenes AL ARRANCAR el servidor: con él,
-    cambiar `ENVIRONMENT` (o escribir las pruebas) exigiría reiniciar, y la
-    política de producción seguiría siendo la de desarrollo. Aquí la política
-    vive en `settings` y se lee en cada petición.
+    `CORSMiddleware` resuelve los orígenes AL ARRANCAR el servidor. Aquí la
+    política vive en `settings` (`origen_permitido`) y se lee en cada
+    petición: así las pruebas, que cambian la configuración en caliente, ven
+    el cambio.
+
+    OJO: `settings` se instancia al IMPORTAR el módulo, así que en
+    PRODUCCIÓN cambiar `ENVIRONMENT` o `CORS_ORIGINS` en el entorno EXIGE
+    reiniciar el servicio (en Render, un redeploy). Lo que se resuelve en
+    caliente es sólo lo que las pruebas mutan en memoria.
     """
+
+    def __init__(self, app, **kwargs):
+        # La lista de orígenes la decide `origen_permitido`, no Starlette.
+        # Se fuerza `allow_origins=[]` para que el middleware NUNCA entre por
+        # la rama `allow_all_origins`: con `allow_origins=["*"]` y
+        # `allow_credentials=True`, Starlette refleja el `Origin` del atacante
+        # con `Access-Control-Allow-Credentials: true` SIN consultar la
+        # política. Un `*` en `CORS_ORIGINS` es, además, el error de operador
+        # más probable ("añado `*` para que no me dé error de CORS"): aquí se
+        # ignora en vez de abrir la API.
+        kwargs["allow_origins"] = []
+        super().__init__(app, **kwargs)
 
     def is_allowed_origin(self, origin: str) -> bool:
         return origen_permitido(origin)
@@ -64,15 +81,19 @@ app = FastAPI(
 # `allow_methods` y `allow_headers` dejan de ser `"*"`: el cliente sólo usa
 # esos tres verbos y esas tres cabeceras (la de contenido, la de
 # administrador y la de juez).
+#
+# `allow_origins` se pasa VACÍO a propósito: la política la decide
+# `origen_permitido` en cada petición (ver `SettingsAwareCORSMiddleware`).
+# Si la lista de orígenes se pasara a Starlette, un `*` en `CORS_ORIGINS`
+# haría que Starlette reflejase el `Origin` de cualquiera con credenciales.
 cors_options = {
-    "allow_origins": settings.CORS_ORIGINS or [],
+    "allow_origins": [],
     "allow_credentials": True,
     "allow_methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type", "X-Admin-Key", "X-Judge-Pin"],
 }
-# El regex de localhost NO se pasa al constructor: se aplica en vivo, dentro
-# de `origen_permitido`, para que `ENVIRONMENT=production` lo apague sin
-# necesidad de reiniciar el servidor.
+# El regex de localhost NO se pasa al constructor: se aplica dentro de
+# `origen_permitido`, que es donde vive toda la política.
 app.add_middleware(SettingsAwareCORSMiddleware, **cors_options)
 
 # Límites de entrada (cuota por IP, tope del cuerpo y tope del archivo).
