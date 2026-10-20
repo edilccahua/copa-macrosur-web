@@ -9,14 +9,19 @@ import { API_V1 } from '../lib/api';
 
 // --- Argumentos de la URL ----------------------------------------------------
 // La tabla se puede abrir en cualquier vista y compartirla por enlace:
-//   ?modo=acumulado|fecha  ·  ?tabla=PRO|NORMAL|E-MTB|EQUIPO
+//   ?modo=acumulado|fecha  ·  ?tabla=PRO|NORMAL|E-BIKE|EQUIPO
 //   ?categoria=ELI          ·  ?fecha=2   (número de fecha, no el id)
 const qp = Astro.url.searchParams;
 
 const mode: 'acumulado' | 'fecha' = qp.get('modo') === 'fecha' ? 'fecha' : 'acumulado';
 const tabla = (qp.get('tabla') ?? 'PRO').toUpperCase();
 const kind: 'individual' | 'teams' = tabla === 'EQUIPO' ? 'teams' : 'individual';
-const scope = ['PRO', 'NORMAL', 'E-MTB'].includes(tabla) ? tabla : 'PRO';
+// Los enlaces viejos con el ámbito anterior ("E-MTB") siguen funcionando.
+const scope = ['PRO', 'NORMAL', 'E-BIKE'].includes(tabla)
+  ? tabla
+  : tabla === 'E-MTB'
+    ? 'E-BIKE'
+    : 'PRO';
 const catCode = (qp.get('categoria') ?? '').toUpperCase();
 const stageNumber = Number(qp.get('fecha'));
 
@@ -28,6 +33,7 @@ let context: any = {
   total_distance_km: 0,
   groups: {},
   scope_labels: {},
+  scope_labels_long: {},
   scope_order: [],
   categories: [],
 };

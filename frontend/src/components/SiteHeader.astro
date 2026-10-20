@@ -137,6 +137,14 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
     página ni produce salto de layout. Entra con un desplazamiento corto y
     los items se escalonan.
   -->
+  <!--
+    Barra de avance de lectura. Va pegada al borde inferior del menú y
+    sólo aparece donde NO hay regulador lateral (por debajo de 48em), que
+    es donde el usuario no tiene ninguna otra indicación de en qué parte
+    de la página está.
+  -->
+  <span class="hdr__progress" data-read-progress aria-hidden="true"></span>
+
   <div class="hdr__scrim" id="nav-scrim" aria-hidden="true"></div>
 
   <nav class="hdr__drawer" id="nav-panel" aria-label="Menú">
@@ -460,6 +468,31 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
   .hdr__drawer-current strong {
     color: var(--ink);
     font-weight: 700;
+  }
+
+  /**
+   * Barra de avance de lectura: una línea bajo el menú que se llena según
+   * lo scrolleado. Sólo se dibuja donde no hay regulador lateral (por debajo
+   * de 48em), que es donde el usuario no tiene ninguna otra referencia de
+   * en qué parte de la página está.
+   */
+  .hdr__progress {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
+  }
+
+  @media (max-width: 47.99em) {
+    .hdr__progress {
+      display: block;
+    }
   }
 
   /**

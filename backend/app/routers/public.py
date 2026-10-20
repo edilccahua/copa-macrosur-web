@@ -12,7 +12,8 @@ from backend.app.models.schemas import PreRegistrationCreate, FeedbackTicketCrea
 from backend.app.services.excel_service import slugify, resolve_or_create_team
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.standings_service import (
-    compute_standings, compute_team_standings, normalize_mode, standings_context,
+    compute_standings, compute_team_standings, normalize_mode, normalize_scope,
+    standings_context,
 )
 
 router = APIRouter(prefix="/public", tags=["Public Portal"])
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/public", tags=["Public Portal"])
 @router.get("/standings")
 async def get_standings(
     stage: Optional[int] = Query(None, description="Id de la fecha; None = última disputada"),
-    scope: str = Query("COMBINED", description="COMBINED | PRO | NORMAL | E-MTB"),
+    scope: str = Query("COMBINED", description="COMBINED | PRO | NORMAL | E-BIKE"),
     category_id: Optional[int] = Query(None, description="Acota a una categoría concreta"),
     kind: str = Query("individual", description="individual | teams"),
     mode: str = Query("acumulado", description="acumulado | fecha"),
@@ -41,6 +42,7 @@ async def get_standings(
     la Copa de Equipos con la misma fecha.
     """
     mode = normalize_mode(mode)
+    scope = normalize_scope(scope)
     # Se resuelve primero la fecha efectiva (la última disputada si no se indica):
     # la DELTA necesita un corte concreto para compararlo con la fecha anterior.
     context = await standings_context(session, stage_limit=stage, mode=mode)

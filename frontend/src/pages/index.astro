@@ -6,6 +6,7 @@ import HeroWordmark from '../components/HeroWordmark.astro';
 import DisplayTitle from '../components/DisplayTitle.astro';
 import HeroScene from '../components/HeroScene.astro';
 import SectionLabel from '../components/bento/SectionLabel.astro';
+import MedalIcon from '../components/MedalIcon.astro';
 import EventCountdown from '../components/svelte/EventCountdown.svelte';
 import TimelineEvents from '../components/TimelineEvents.astro';
 import { API_V1 } from '../lib/api';
@@ -177,7 +178,7 @@ const countdownTarget = nextStage
                 {
                   topTeams.map((t, idx) => (
                     <li class="podium__row">
-                      <span class="podium__rank">0{idx + 1}</span>
+                      <MedalIcon rank={(idx + 1) as 1 | 2 | 3} size={20} class="podium__medal" />
                       <span class="podium__name">{t.name}</span>
                       <span class="podium__pts">{t.points} pts</span>
                     </li>
@@ -472,17 +473,17 @@ const countdownTarget = nextStage
 
   .podium__row {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1.25rem 1fr auto;
     gap: 1rem;
-    align-items: baseline;
+    align-items: center;
     padding-block: 0.6rem;
     border-bottom: var(--hairline) solid var(--line);
     font-family: var(--font-mono);
     font-size: 0.75rem;
   }
 
-  .podium__rank {
-    color: var(--faint);
+  .podium__medal {
+    align-self: center;
   }
 
   .podium__name {

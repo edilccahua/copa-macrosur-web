@@ -4,7 +4,7 @@
   Patrón de navegación tomado de letour.fr/es/clasificaciones:
     · Selector de FECHA (casi escondido): la clasificación es el ACUMULADO
       "a la fecha" elegida.
-    · Pestañas de grupo de categorías: PRO · NORMAL · E-MTB, separadas por una
+    · Pestañas de grupo de categorías: PRO · NORMAL · E-BIKE, separadas por una
       regla de la Copa de EQUIPOS. Control segmentado: grupo con borde de 1px,
       celdas separadas por hairline y la celda activa invertida.
     · Selector de CATEGORÍA (casi escondido) dentro de la pestaña: "COMBINADO"
@@ -64,7 +64,7 @@
     initialKind = 'individual',
   }: Props = $props();
 
-  type ScopeKey = 'PRO' | 'NORMAL' | 'E-MTB';
+  type ScopeKey = 'PRO' | 'NORMAL' | 'E-BIKE';
 
   /**
    * `mode` es el modo PEDIDO (el de la pestaña activa) y `tableMode` el que la
@@ -77,7 +77,7 @@
   let mode = $state<Mode>(initialMode);
   let tableMode = $state<Mode>(initialMode);
   let stageId = $state<number | null>(initialStageId);
-  let scope = $state<ScopeKey>(initialScope as ScopeKey);
+  let scope = $state<ScopeKey>(normalizeScopeKey(initialScope));
   let categoryId = $state<number | null>(initialCategoryId);
   let kind = $state<Kind>(initialKind);
   let search = $state('');
@@ -168,16 +168,21 @@
 
   // --- Identidad -------------------------------------------------------------
 
+  /**
+   * Las pestañas de ámbito. La etiqueta es CORTA (el ancho es escaso): el
+   * E-BIKE va como "E-BIKE" y su forma larga, "E-BIKE OPEN", se reserva para
+   * los rótulos con sitio (la cinta de la tabla).
+   */
   const SCOPES: { key: ScopeKey; label: string }[] = [
     { key: 'PRO', label: 'PRO' },
     { key: 'NORMAL', label: 'NORMAL' },
-    { key: 'E-MTB', label: 'E-MTB' },
+    { key: 'E-BIKE', label: 'E-BIKE' },
   ];
 
   const SCOPE_CLASS: Record<string, string> = {
     PRO: 'scope-pro',
     NORMAL: 'scope-normal',
-    'E-MTB': 'scope-ebike',
+    'E-BIKE': 'scope-ebike',
   };
 
   // --- Opciones de los selectores --------------------------------------------
@@ -199,6 +204,30 @@
   );
 
   // --- Acciones --------------------------------------------------------------
+
+  /**
+   * Normaliza el ámbito que llega del servidor o de la URL. El E-BIKE se
+   * llamaba antes "E-MTB": los enlaces viejos siguen funcionando.
+   */
+  function normalizeScopeKey(value: string | null | undefined): ScopeKey {
+    const key = (value ?? '').toUpperCase();
+    if (key === 'E-MTB') return 'E-BIKE';
+    if (key === 'NORMAL') return 'NORMAL';
+    if (key === 'E-BIKE') return 'E-BIKE';
+    return 'PRO';
+  }
+
+  /**
+   * Si la URL trae el nombre viejo del ámbito, se reescribe con el vigente
+   * para que el enlace que se copia y comparte ya no lleve el nombre former.
+   */
+  $effect(() => {
+    const current = new URLSearchParams(location.search).get('tabla');
+    if (!current || current.toUpperCase() !== 'E-MTB') return;
+    const params = new URLSearchParams(location.search);
+    params.set('tabla', 'E-BIKE');
+    history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+  });
 
   function setScope(next: ScopeKey) {
     scope = next;
@@ -272,11 +301,17 @@
       : ''
   );
 
-  /** Rótulo de la cinta: qué categorías muestra la tabla. */
+  /**
+   * Rótulo de la cinta: qué categorías muestra la tabla. Aquí sí hay sitio,
+   * así que el ámbito va con su nombre LARGO (el E-BIKE se llama "E-BIKE
+   * OPEN", igual que su categoría).
+   */
   let scopeLabel = $derived(
     kind === 'teams'
       ? 'COPA DE EQUIPOS'
-      : (categoryId != null ? activeCategoryLabel : scope)
+      : (categoryId != null
+          ? activeCategoryLabel
+          : (meta.scope_labels_long[scope] ?? scope))
   );
 
   // --- Filtrado por búsqueda -------------------------------------------------
@@ -847,7 +882,7 @@
        para que las CUATRO pestañas quepan, incluida EQUIPO. */
     --w-pro: 4.5rem;
     --w-normal: 7rem;
-    --w-ebike: 5.75rem;
+    --w-ebike: 6.5rem;
     --w-teams: 6.5rem;
   }
 
@@ -896,7 +931,7 @@
   /* Anchos fijos: la pastilla se posiciona con CSS puro (sin medición JS). */
   .tab[data-tab='PRO'] { width: var(--w-pro); }
   .tab[data-tab='NORMAL'] { width: var(--w-normal); }
-  .tab[data-tab='E-MTB'] { width: var(--w-ebike); }
+  .tab[data-tab='E-BIKE'] { width: var(--w-ebike); }
   .tab[data-tab='teams'] { width: var(--w-teams); }
 
   /* La pastilla invierte lo que hay debajo (`difference`): en tema oscuro el
@@ -932,7 +967,7 @@
     opacity: 1;
   }
 
-  .tabs__group[data-active='E-MTB'] .tabs__pill {
+  .tabs__group[data-active='E-BIKE'] .tabs__pill {
     width: var(--w-ebike);
     transform: translateX(calc(var(--w-pro) + var(--w-normal)));
     opacity: 1;
@@ -1316,7 +1351,7 @@
     .tabs__group {
       --w-pro: 3.5rem;
       --w-normal: 5rem;
-      --w-ebike: 4.25rem;
+      --w-ebike: 4.75rem;
       --w-teams: 4.75rem;
     }
 

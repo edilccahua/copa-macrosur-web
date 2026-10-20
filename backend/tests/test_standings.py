@@ -18,7 +18,8 @@ from backend.app.models.entities import (
     Category, Stage, StageEntry, Rider, Team, RaceStatusEnum, PaymentStatusEnum,
 )
 from backend.app.services.standings_service import (
-    SCOPE_GROUPS, SCOPE_LABELS, compute_standings, compute_team_standings,
+    SCOPE_GROUPS, SCOPE_LABELS, SCOPE_LABELS_LONG, compute_standings,
+    compute_team_standings, normalize_scope,
 )
 
 
@@ -94,8 +95,24 @@ async def world(async_session):
 def test_scope_groups_cover_every_official_category():
     assert SCOPE_GROUPS["PRO"] == ["ELI", "MSA", "MSB", "MSC"]
     assert SCOPE_GROUPS["NORMAL"] == ["TOV", "TMV", "MSD", "OPD", "DMM", "JUV"]
-    assert SCOPE_GROUPS["E-MTB"] == ["EBK"]
-    assert set(SCOPE_LABELS) == {"PRO", "NORMAL", "E-MTB"}
+    assert SCOPE_GROUPS["E-BIKE"] == ["EBK"]
+    assert set(SCOPE_LABELS) == {"PRO", "NORMAL", "E-BIKE"}
+
+
+def test_ebike_scope_has_a_short_and_a_long_label():
+    """La forma corta es la de la pestaña; la larga, la de la cinta."""
+    assert SCOPE_LABELS["E-BIKE"] == "E-BIKE"
+    assert SCOPE_LABELS_LONG["E-BIKE"] == "E-BIKE OPEN"
+
+
+def test_old_scope_name_still_resolves():
+    """Los enlaces viejos con "E-MTB" se normalizan a "E-BIKE"."""
+    assert normalize_scope("E-MTB") == "E-BIKE"
+    assert normalize_scope("E-BIKE") == "E-BIKE"
+    assert normalize_scope("PRO") == "PRO"
+    assert normalize_scope("COMBINED") == "COMBINED"
+    assert normalize_scope("no-existe") == "COMBINED"
+    assert normalize_scope(None) == "COMBINED"
 
 
 # --- Ranking combinado -------------------------------------------------------

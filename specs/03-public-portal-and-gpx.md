@@ -3,7 +3,7 @@
 > **Estado:** COMPLETADO ✅  
 > **Fecha de Verificación:** 20 de Octubre de 2026  
 > **Evidencia:** Build limpio con Astro 5 en modo **SSR** (`npm run build` + `node dist/server/entry.mjs`), `astro check` con **0 errores de tipos**, diseño editorial GetArtCraft adaptado de `copiaartcraft`, visor GPX interactivo SVG + altimetría y cero emojis en la UI.
-> **20-Oct-2026:** `/ranking-general` se rediseña como clasificación acumulada "a la fecha" con grupos PRO / NORMAL / E-MTB, selector de fecha y de categoría reutilizables, control segmentado de pestañas, celda apilada en móvil y una sola identidad cromática por vista (el Δ usa colores semánticos). Ver §1.3.1.
+> **20-Oct-2026:** `/ranking-general` se rediseña como clasificación acumulada "a la fecha" con grupos PRO / NORMAL / E-BIKE, selector de fecha y de categoría reutilizables, control segmentado de pestañas, celda apilada en móvil y una sola identidad cromática por vista (el Δ usa colores semánticos). Ver §1.3.1.
 
 ## 0. Modo de Render: SSR (Server-Side Rendering) — decisión de integridad de datos
 
@@ -374,7 +374,7 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 1. **Hero con datos reales:** póster oficial, nombre de la fecha sin el prefijo `Fecha N:`, fecha, punto de partida y hora, **distancia y desnivel por vuelta Y total** (`Stage.distance_km` y `Stage.elevation_gain_m` son **por vuelta**; el total es `× Stage.laps`), estado y sinopsis derivada de los datos. Botones a la tabla de resultados, al ranking acumulado y a la ruta de Strava.
 2. **Navegación de campeonato ARRIBA del hero:** fecha anterior y siguiente (`navigation` del resumen) en dos bloques con flecha grande y nombre de la fecha; el hover desplaza la flecha 2 px. La cuenta regresiva aparece en las fechas con inscripción abierta y el badge `[ EN VIVO ]` cuando `Stage.status == LIVE`. La hora de largada se interpreta con su meridiem (`"02:30 PM"` son las 14:30, no las 02:30) mediante `frontend/src/lib/datetime.ts`.
 3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha. Los "no finalizados" son solo los abandonos de una fecha **ya disputada**: en una fecha con inscripción abierta, `REGISTERED` significa "aún no compite" y se rotula así.
-4. **Leaderboard de podio por categoría** (`StageLeaderboard`): una fila por categoría con **solo el título de la categoría** (sin recuadro de código corto) y los tres ganadores con su club. **Sin dorsal, sin tiempo y sin puntos**: el detalle completo está en el ranking, en modo FECHA (`/ranking-general?modo=fecha&tabla=PRO&fecha={n}`). El título **no va en blanco como el resto del texto**: usa la tipografía display en mayúsculas y el acento de su grupo (`PRO` / `NORMAL` / `E-MTB`, tokens `.scope-*` de `tokens.css`), de modo que se lee de un vistazo a qué categoría pertenece cada bloque; al pasar el ratón el título toma el color vivo del grupo. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
+4. **Leaderboard de podio por categoría** (`StageLeaderboard`): una fila por categoría con **solo el título de la categoría** (sin recuadro de código corto) y los tres ganadores con su club. **Sin dorsal, sin tiempo y sin puntos**: el detalle completo está en el ranking, en modo FECHA (`/ranking-general?modo=fecha&tabla=PRO&fecha={n}`). El título **no va en blanco como el resto del texto**: usa la tipografía display en mayúsculas y el acento de su grupo (`PRO` / `NORMAL` / `E-BIKE`, tokens `.scope-*` de `tokens.css`), de modo que se lee de un vistazo a qué categoría pertenece cada bloque; al pasar el ratón el título toma el color vivo del grupo. El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
    - **El puesto se dibuja con una MEDALLA, no con un número.** Es la insignia de leaderboard de Strava (`icon-at-pr-01/02/03`), reproducida con su geometría exacta: silueta de "bolsillo" con la cinta y el puesto **calado al vacío** dentro del disco (`fill-rule="evenodd"`). La pieza vive en `src/assets/medals/medal-N.svg` (canónica, `currentColor`) y en `public/icons/medals/medal-N.svg` (plana, para reutilizar fuera de Astro); la genera `frontend/tools/build-medals.mjs`. El "2" y el "3" son los trazados literales de Strava; el "1" está dibujado con la misma construcción. Los tonos (`--medal-1/2/3`) son el oro, la plata y el bronce exactos de Strava. El componente `MedalIcon.astro` la inserta **en línea** (no como `<img>`) para que herede el color del tema y para que el número calado deje ver el fondo real de la página.
 5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales, **medalla del lugar** (en lugar del índice numérico), nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce). Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
 6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo). Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro.
@@ -403,7 +403,7 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
    3. **Selección.** Se descarta el segmento que cubre ≥80% de la etapa —**es la ruta, no un tramo**— y se muestran los **cinco** más relevantes: primero las subidas y bajadas más empinadas, luego los más largos.
 
    Cada segmento muestra su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava. Encima, dos tarjetas: el **King of the Mountain** (la subida más empinada) y la **Queen of the Mountain** (la bajada más empinada), con el corredor más rápido de cada tramo.
-9. **La E-MTB no compite por el título de la fecha.** El E-BIKE OPEN conserva su propio leaderboard de categoría, pero un e-bike no puede ser el scratch ni el KOM/QOM de la jornada.
+9. **La E-BIKE no compite por el título de la fecha.** El E-BIKE OPEN conserva su propio leaderboard de categoría, pero un e-bike no puede ser el scratch ni el KOM/QOM de la jornada.
 10. **El ganador es el de mayor VELOCIDAD**, no el de menor tiempo: en un circuito por vueltas no todos completan lo mismo, y el tiempo más bajo puede ser el de quien dio menos vueltas. En Z Xtreme el scratch pasa de SERGIO PINEDA (2 vueltas, 23.7 km/h) a RONALD LUZA (3 vueltas, 26.7 km/h).
 11. **Premios de la jornada:** título, patrocinador, descripción del premio y **ganador** resuelto desde `SpecialAward.winner_rider_id`. El logotipo del patrocinador sale de `sponsor_logo_url`.
 12. **Numeración de secciones:** consecutiva y sin huecos. Los bloques que no aplican a una fecha (sin podio, sin equipos, sin Strava, sin premios) se omiten enteros.
@@ -429,7 +429,7 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
   | :--- | :--- | :--- |
   | `PRO` | ELITE, MASTER A, MASTER B, MASTER C | azul `#2f7bf5` |
   | `NORMAL` | TURISMO OPEN, TURISMO MASTER, MASTER D, OPEN DAMAS, DAMAS MASTER, JUVENILES 15-17 | lima `#7bb51c` |
-  | `E-MTB` | E-BIKE OPEN | naranja `#f26b1d` |
+  | `E-BIKE` | E-BIKE OPEN | naranja `#f26b1d` |
   | `EQUIPO` | Copa de Clubes (todas las categorías) | magenta `#e0368f` |
 
   El color identifica **una cosa por vista**: el grupo activo. Los tokens viven
@@ -450,7 +450,7 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
 **Interfaz:**
 1. **Cinta:** rótulo `CATEGORÍAS` + el grupo o la categoría seleccionada, y a la
    derecha los metadatos (fechas disputadas, km acumulados, fecha de corte).
-2. **Pestañas = control segmentado en dos grupos:** `[ PRO | NORMAL | E-MTB ]` y
+2. **Pestañas = control segmentado en dos grupos:** `[ PRO | NORMAL | E-BIKE ]` y
    `[ EQUIPO ]`, con un hueco deliberado de 12px entre ambos. La Copa de Equipos es
    una clasificación distinta, no una categoría más. Cada grupo lleva borde de 1px,
    las celdas se separan por hairline y **la celda activa se invierte**
@@ -550,8 +550,14 @@ Rediseño del 20 de Octubre de 2026 siguiendo el patrón de navegación de
     (`acumulado` | `fecha`), `initialScope`, `initialCategoryId`,
     `initialStageId` e `initialKind` (`individual` | `teams`).
     `/ranking-general` además lee los query params y los pasa como props:
-    `?modo=acumulado|fecha` · `?tabla=PRO|NORMAL|E-MTB|EQUIPO` ·
+    `?modo=acumulado|fecha` · `?tabla=PRO|NORMAL|E-BIKE|EQUIPO` ·
     `?categoria=ELI` (short_code) · `?fecha=2` (número de fecha).
+    El ámbito se llama siempre **E-BIKE** (antes "E-MTB"): los enlaces viejos
+    con el nombre anterior se normalizan al entrar —en la API
+    (`normalize_scope`) y en la isla (`normalizeScopeKey`)— y la URL se
+    reescribe con el nombre vigente. El rótulo largo del ámbito es
+    "E-BIKE OPEN" (el mismo nombre que su categoría) y aparece donde hay
+    sitio; la pestaña lleva la forma corta "E-BIKE".
     Tras una interacción, la vista se escribe en la URL con `replaceState`
     (compartible, sin llenar el historial). Por defecto: **ACUMULADO + PRO + TODOS**.
 17. **No hay página de resultados por evento.** `/fechas/[slug]/resultados` se

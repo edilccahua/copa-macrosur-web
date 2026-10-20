@@ -11,6 +11,7 @@
  * Un club, una ficha. El acento lo da el lugar en el podio: oro, plata, bronce.
  */
 import type { TeamPodium } from '../lib/api';
+import MedalIcon from './MedalIcon.astro';
 
 interface Props {
   teams: TeamPodium[];
@@ -44,7 +45,11 @@ function context(team: TeamPodium): string {
       <li class={`bento bento--span-4 ${placeClass(index)}`}>
         <header class="bento__head">
           <span class="bento__label">CLUB</span>
-          <span class="bento__index tabular">{String(index + 1).padStart(2, '0')}</span>
+          <MedalIcon
+            rank={(index + 1) as 1 | 2 | 3}
+            size={22}
+            class="bento__medal"
+          />
         </header>
 
         <div class="bento__media">
@@ -127,10 +132,8 @@ function context(team: TeamPodium): string {
     color: var(--muted);
   }
 
-  .bento__index {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    color: var(--app-ink, var(--faint));
+  .bento__medal {
+    align-self: center;
   }
 
   .bento__media {
