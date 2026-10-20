@@ -1,0 +1,65 @@
+---
+/**
+ * Icon.astro — el set de iconos del portal.
+ *
+ * `copiaartcraft` no usa librerías: dibuja los iconos en SVG inline, con
+ * `stroke="currentColor"` y `stroke-width: 1.5`, para que hereden el color
+ * del texto y el grosor de línea de la casa. Este componente es ese mismo
+ * patrón, con el set que necesita la ficha de carrera.
+ *
+ * Cada icono es un trazo de 24×24, sin relleno, salvo donde hace falta.
+ */
+interface Props {
+  name: keyof typeof PATHS;
+  size?: number;
+  class?: string;
+}
+
+const PATHS = {
+  /** Reloj: tiempo. */
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  /** Rayo: velocidad. */
+  bolt: '<path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z"/>',
+  /** Montaña: cima. */
+  mountain: '<path d="m3 19 6-11 4 7 2-3 6 7z"/><path d="m9 8 2 3.5"/>',
+  /** Flecha hacia abajo: bajada. */
+  descent: '<path d="M12 4v14"/><path d="m6 13 6 6 6-6"/>',
+  /** Bandera: meta. */
+  flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 3.5L16 11H5z"/>',
+  /** Mapa: ruta. */
+  map: '<path d="m9 4-5 2v14l5-2 6 2 5-2V4l-5 2z"/><path d="M9 4v14M15 6v14"/>',
+  /** Bicicleta. */
+  bike: '<circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M12 17 8 6h4l3 7 2.5 4"/><path d="m10 13 3.5 4"/>',
+  /** Trofeo: premios. */
+  trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/><path d="M10 14h4v3h-4zM8 20h8"/>',
+  /** Personas: participation. */
+  users:
+    '<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.5a3.5 3.5 0 0 1 0 6.5M17 14a6 6 0 0 1 4 5.5"/>',
+  /** Rayo descendente: farolito / persistencia. */
+  endurance: '<path d="M12 2v6M12 22v-4M4.9 4.9 8.8 8.8M19.1 19.1l-3.9-3.9M2 12h6M22 12h-4M4.9 19.1l3.9-3.9M19.1 4.9l-3.9 3.9"/>',
+  /** Termómetro: altitud. */
+  altitude: '<path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 11v6"/>',
+  /** Regla: distancia. */
+  ruler: '<path d="m3 15 6-6 3 3 6-6 3 3-9 9z"/><path d="m7 11 2 2M10 8l2 2M13 5l2 2"/>',
+  /** Salida: largada. */
+  start: '<path d="M5 3v18"/><path d="M5 12h13l-3-4M5 12l13 0-3 4"/>',
+  /** Termómetro de carrera: ritmo. */
+  pace: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+} as const;
+
+const { name, size = 16, class: className = '' } = Astro.props;
+---
+
+<svg
+  class={className}
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.5"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  set:html={PATHS[name]}
+/>
