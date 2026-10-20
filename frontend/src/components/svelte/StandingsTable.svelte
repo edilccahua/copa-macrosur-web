@@ -137,12 +137,15 @@
   let stageOptions = $derived(
     stages.map((s) => ({
       value: String(s.id),
-      label: `FECHA ${s.stage_number}`,
-      meta: `${new Date(s.date + 'T00:00:00').toLocaleDateString('es-PE', {
+      // Solo el nombre de la carrera: "FECHA 2 · 23 AGO. 2026 · KÚSPIDE Z
+      // XXTREME III" era una línea interminable en la cabecera. La fecha sigue
+      // visible en la cinta ("CORTE …") y en la lista desplegable.
+      label: s.name.replace(/^Fecha\s+\d+\s*:\s*/i, '').toUpperCase(),
+      meta: new Date(s.date + 'T00:00:00').toLocaleDateString('es-PE', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
-      }).toUpperCase()} · ${s.name.replace(/^Fecha\s+\d+\s*:\s*/i, '').toUpperCase()}`,
+      }).toUpperCase(),
     }))
   );
 
@@ -286,6 +289,7 @@
           options={stageOptions}
           value={String(stageId ?? '')}
           label="ACUMULADO HASTA"
+          hideMeta
           onchange={(v) => (stageId = Number(v))}
         />
       </div>

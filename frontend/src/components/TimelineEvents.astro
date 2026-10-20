@@ -306,7 +306,7 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     top: 0;
     width: 2px;
     height: 0;
-    background: linear-gradient(180deg, #f59e0b 0%, #10b981 40%, #06b6d4 70%, #8b5cf6 100%);
+    background: linear-gradient(180deg, #f59e0b 0%, #06b6d4 20%, #f97316 40%, #10b981 60%, #2563eb 80%, #d946ef 100%);
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
     pointer-events: none;
     z-index: 2;
@@ -352,7 +352,7 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     .timeline-col {
       display: flex;
       flex-direction: column;
-      gap: 3.5rem;
+      gap: 5.5rem;
       position: relative;
     }
 
@@ -362,8 +362,8 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
 
     .timeline-col--right {
       align-items: flex-start;
-      /* Desfase de traslape: la columna derecha empieza a mitad de la primera tarjeta izquierda */
-      padding-top: 135px;
+      /* Desfase de traslape: la columna derecha empieza desfasada a la mitad de la primera tarjeta */
+      padding-top: 220px;
     }
 
     .timeline-desktop-item {
@@ -495,7 +495,7 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     .timeline-mobile__list {
       display: flex;
       flex-direction: column;
-      gap: 2rem;
+      gap: 2.75rem;
       width: 100%;
       position: relative;
       z-index: 3;
