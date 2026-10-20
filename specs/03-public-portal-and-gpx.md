@@ -1109,6 +1109,75 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 - **Buzón de Reclamos y Sugerencias (`/reclamos`):**
   - Formulario conectado a `FeedbackTicket` para reclamos de tiempos (con referencia a dorsal y DNI), observaciones de ruta o sugerencias técnicas.
 
+### 1.9 El agregado de la portada, la caché en memoria y la caché de borde
+
+> **20-Oct-2026.** La portada hacía **siete** llamadas a la API desde el SSR
+> de Cloudflare (que NO cachea el HTML): siete esperas de red entre Render y
+> Neon para construir una sola página (1,2 s de TTFB medidos). Con este
+> apartado la portada hace **una** llamada, el backend cachea en memoria y el
+> edge cachea el HTML.
+
+**1.9.1 El agregado de la portada (`GET /api/v1/public/home`)**
+
+- Devuelve **todo** lo que la portada muestra, en una sola respuesta:
+
+  | Clave | Contenido |
+  | :--- | :--- |
+  | `stages` | el calendario, en su versión **pública** (sin `judge_pin` ni `route_geojson`) |
+  | `live_status` | el estado de la transmisión (misma forma que `/public/live-status`) |
+  | `pro_podium` | las tres primeras filas del acumulado PRO (`rider_name`, `total_points`, `rider_slug`) |
+  | `normal_podium` | las tres primeras filas del acumulado NORMAL |
+  | `teams_podium` | las tres primeras filas de la Copa de Equipos (`team_name`, `total_points`, `team_slug`) |
+  | `remontada` | el Premio CLARO a la remontada |
+  | `mountain_titles` | `kom`, `qom`, `kamikaze_male` y `kamikaze_female` de la **primera** fecha `FINISHED` |
+
+- El corte del acumulado es la **última fecha disputada** (el mismo corte que
+  usa `/public/standings`), así que la portada y la tabla del ranking no
+  pueden discrepar.
+- El payload **no** lleva el PIN del juez (es una credencial) ni la geometría
+  de la ruta (pesa ~58 KB por fecha y ninguna página la consume), igual que
+  `StagePublicRead` en el resto de la API (specs/00 §1.4).
+- Se cachea en memoria **60 s** bajo la clave `public:home`.
+- La página degrada como antes si la llamada falla: secciones vacías y el
+  aviso "no pudimos cargar" en los podios. Nunca inventa datos (§0.2).
+
+**1.9.2 La caché en memoria se invalida cuando algo cambia de verdad**
+
+- `backend/app/core/cache.py` expone `delete_prefix(prefix)`,
+  `invalidate_public()` y `keys()`.
+- `invalidate_public()` vacía `public:`, `stages:`, `stage:summary:` y
+  `stage:list:`. Se llama **después de cada mutación**:
+  - `timing.py`: `record_timing_event`, `start_wave`, `start_entry`.
+  - `admin.py`: `set_stage_live`, `upload_gpx_file`, `sync_strava_efforts`.
+  - `excel.py`: `import_excel_endpoint`.
+- Sin esto, con el TTL de 120 s el público veía datos viejos hasta dos
+  minutos después de una marcación del juez.
+- La caché **funciona también en los tests** (antes estaba desactivada por un
+  bypass `PYTEST_CURRENT_TEST`): como es global al proceso, el fixture
+  `client` de `backend/tests/conftest.py` la vacía antes de cada prueba.
+
+**1.9.3 GZip en la API**
+
+- `GZipMiddleware` con `minimum_size=1000`: las respuestas grandes bajan
+  (la clasificación PRO: 52 KB → 8 KB) y las diminutas (`/health`) no se
+  comprimen.
+- La transmisión en vivo (SSE) **no** se comprime: sus eventos son pequeños
+  y seguidos, y comprimidos llegarían a ráfugas. Starlette excluye
+  `text/event-stream` por defecto; `test_el_sse_no_se_comprime` lo fija.
+
+**1.9.4 La caché de borde (`frontend/src/middleware.ts`)**
+
+- El middleware de Astro guarda el HTML renderizado en `caches.default` (la
+  Cache API del edge) y lo devuelve en las visitas siguientes. Si no hay
+  caché (adaptador Node, `astro dev`), se aparta y el sitio funciona igual.
+- **Sólo se cachea lo público y lo que no cambia en cada visita.** `/en-vivo`
+  (transmisión) y `/admin/*` (paneles) **nunca** se cachean.
+- La clave de la caché es la URL **completa, con su query string**: así
+  `/ranking-general?fecha=2` y `/ranking-general?fecha=3` son dos páginas
+  distintas y jamás comparten el mismo HTML.
+- La copia se guarda en segundo plano (`waitUntil`): el visitante no espera a
+  que termine de escribirse en el edge.
+
 ---
 
 ## 2. Directrices de Implementación Visual y Assets
