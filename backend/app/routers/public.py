@@ -6,9 +6,12 @@ from sqlmodel import select
 from backend.app.core.db import get_session
 from backend.app.models.entities import (
     Rider, Team, Category, Stage, StageEntry, ChampionshipStanding,
-    TeamChampionshipStanding, FeedbackTicket, PaymentStatusEnum, RaceStatusEnum, ExtraEvent
+    TeamChampionshipStanding, FeedbackTicket, PaymentStatusEnum, RaceStatusEnum, ExtraEvent,
+    PrizeTier,
 )
-from backend.app.models.schemas import PreRegistrationCreate, FeedbackTicketCreate, ExtraEventRead
+from backend.app.models.schemas import (
+    PreRegistrationCreate, FeedbackTicketCreate, ExtraEventRead, PrizeTierRead,
+)
 from backend.app.services.excel_service import slugify, resolve_or_create_team
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.standings_service import (
@@ -17,6 +20,29 @@ from backend.app.services.standings_service import (
 )
 
 router = APIRouter(prefix="/public", tags=["Public Portal"])
+
+
+@router.get("/prizes", response_model=List[PrizeTierRead])
+async def get_prize_tiers(session: AsyncSession = Depends(get_session)):
+    """La escala de premios, en dólares, por categoría y por ámbito.
+
+    Dos ámbitos: `FECHA` (el podio de cada carrera) y `ACUMULADO` (el podio
+    final del campeonato). El premio es por categoría: el 1º de cada una de
+    las 11 categorías cobra lo que dice su fila.
+    """
+    tiers = (
+        await session.exec(select(PrizeTier).order_by(PrizeTier.scope, PrizeTier.position))
+    ).all()
+    return [
+        PrizeTierRead(
+            scope=tier.scope,
+            position=tier.position,
+            amount_usd=tier.amount_usd,
+            label=tier.label,
+            currency=tier.currency,
+        )
+        for tier in tiers
+    ]
 
 
 @router.get("/standings")
@@ -45,7 +71,9 @@ async def get_standings(
     scope = normalize_scope(scope)
     # Se resuelve primero la fecha efectiva (la última disputada si no se indica):
     # la DELTA necesita un corte concreto para compararlo con la fecha anterior.
-    context = await standings_context(session, stage_limit=stage, mode=mode)
+    context = await standings_context(
+        session, stage_limit=stage, mode=mode, scope=scope, category_id=category_id
+    )
     target_stage = context["selected_stage_id"]
 
     if kind == "teams":

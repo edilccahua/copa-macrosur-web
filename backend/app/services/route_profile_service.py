@@ -239,11 +239,19 @@ def build_route_profile(
     route_geojson: Optional[Dict[str, Any]],
     *,
     stage_laps: int = 1,
+    official_gain_m: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     """Perfil de altimetría de la ruta, derivado de su geometría real.
 
     Devuelve `None` si la etapa no tiene geometría: la ficha lo dice en vez
     de dibujar un perfil vacío.
+
+    `official_gain_m` es el desnivel **de la ruta oficial** (el que sale del
+    GPX a resolución completa). La geometría que se guarda está simplificada a
+    500 puntos, y al simplificarla se pierden unos treinta metros de subida:
+    el perfil calculaba +359 m donde la ruta oficial tiene +384 m, y la misma
+    ficha mostraba las dos cifras. Con este parámetro el perfil usa la cifra
+    oficial y solo ella: **un solo desnivel por carrera**.
     """
     coords = _coords_from_geojson(route_geojson)
     if len(coords) < 2:
@@ -268,6 +276,11 @@ def build_route_profile(
         if grade > max_grade:
             max_grade = grade
             max_grade_at_km = coords[index + 1][3]
+
+    # El desnivel que se muestra es el de la ruta oficial, no el de la traza
+    # simplificada. El descenso no tiene cifra oficial: sale de la traza.
+    if official_gain_m is not None:
+        gain = float(official_gain_m)
 
     distance_km = kilometres[-1] - kilometres[0]
     mean_grade = (gain / (distance_km * 1000.0) * 100.0) if distance_km > 0 else 0.0

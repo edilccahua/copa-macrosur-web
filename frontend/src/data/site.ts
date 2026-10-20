@@ -1,12 +1,48 @@
 /**
  * site.ts — datos editoriales del campeonato.
  *
- * Modulo portado de la referencia `copiaartcraft/src/data/site.ts` (que alimenta
- * las tarjetas de `/apps`). Aqui la "app" es cada FECHA del campeonato: el
- * componente `AppCard.astro` las presenta con el mismo indice tecnico, el bloque
- * de medio, el titulo y la fila de etiquetas.
+ * FUENTE ÚNICA de la marca. Antes estos valores vivían sueltos: el pie decía
+ * "La Copa MacroSur MTB", los rótulos del timeline decían "COPA MACROSUR MTB" y
+ * el hero decía "KÚSPIDE", que es el ORGANIZADOR, no el campeonato. Ahora:
+ *
+ *   - `SITE_NAME`     → el nombre del campeonato (el que va en `<title>`).
+ *   - `BRAND_WORDMARK`→ el rótulo grande del hero (dos palabras, sin acentos).
+ *   - `BRAND_EDITION` → el año de la edición.
+ *   - `BRAND_NAV`     → la marca en el MENÚ PRINCIPAL. Aquí sí va "KÚSPIDE":
+ *     es el logo del organizador (Kuspide Xtreme Sports), que es lo que
+ *     aparece en la cabecera de los pósters oficiales.
+ *
+ * Los rótulos salen de los pósters oficiales de `races/info/`:
+ * "LA COPA MACROSUR MTB · EDICIÓN 2026 · KUSPIDE".
  */
 
+/** El campeonato, como aparece en el `<title>` y en los textos legales. */
+export const SITE_NAME = 'Copa MacroSur MTB';
+
+/** Bajada: edición + organizador. */
+export const SITE_TAGLINE = 'Edición 2026 · Kuspide Xtreme Sports';
+
+/** Rótulo grande del hero. */
+export const BRAND_WORDMARK = 'COPA MACROSUR MTB';
+
+/** Etiqueta de edición que acompaña al rótulo. */
+export const BRAND_EDITION = 'EDICIÓN 2026';
+
+/**
+ * La marca en el MENÚ PRINCIPAL (cabecera). Se queda "KÚSPIDE" a propósito:
+ * en los pósters oficiales, Kúspide es el organizador y la copa es el
+ * campeonato. Son dos cosas distintas y la cabecera muestra al organizador.
+ */
+export const BRAND_NAV = 'KÚSPIDE';
+
+/**
+ * Forma de una "fila de campeonato" para `AppCard.astro` (puerto de
+ * `copiaartcraft`). Se conserva el TIPO porque el componente sigue portado;
+ * el ARRAY de datos que había aquí (`craftApps`) se eliminó: duplicaba a mano
+ * las cuatro fechas y por eso se quedó desfasado (decía 55.4 km y +920 m
+ * para La Joya cuando la ruta oficial son 40.85 km y +384 m). Los datos de las
+ * fechas salen de la API.
+ */
 export interface CraftApp {
   /** Identificador de clase CSS (`app-<app>`). */
   app: string;
@@ -23,45 +59,3 @@ export interface CraftApp {
   /** Etiquetas de la base (distancia, desnivel, Etc.). */
   platforms: string[];
 }
-
-export const SITE_NAME = 'La Copa MacroSur MTB';
-export const SITE_TAGLINE = 'Edición 2026 Kúspide · Kúspide Xtreme Sports';
-
-export const craftApps: CraftApp[] = [
-  {
-    app: 'joya',
-    index: '01',
-    name: 'La Joya Extreme',
-    category: 'Cross-Country Marathon',
-    body: 'Circuito de alta velocidad en Arequipa: 40.85 km con +384 m de desnivel acumulado y cronometraje electrónico por chip.',
-    status: 'Finalizada — Resultados oficiales publicados',
-    platforms: ['40.85 KM', '+384 M', '17 MAY 2026'],
-  },
-  {
-    app: 'zxtreme',
-    index: '02',
-    name: 'Kúspide Z Xtreme III',
-    category: 'Circuito por Vueltas',
-    body: 'Circuito de 11.83 km por vuelta y +280 m de desnivel: 3 vueltas para ELITE y MASTERS, 2 vueltas para el resto de categorías.',
-    status: 'Finalizada — Resultados oficiales publicados',
-    platforms: ['11.83 KM', '+280 M', '3 VUELTAS', '23 AGO 2026'],
-  },
-  {
-    app: 'poblados',
-    index: '03',
-    name: 'El Retorno a los Poblados 2',
-    category: 'Cross-Country Marathon',
-    body: 'Tercera fecha oficial con partida en Chiguata (8:00 AM): 47.23 km con +761 m de desnivel acumulado por los poblados tradicionales.',
-    status: 'Inscripciones abiertas',
-    platforms: ['47.23 KM', '+761 M', '25 OCT 2026'],
-  },
-  {
-    app: 'quequena',
-    index: '04',
-    name: 'Quequeña Xtreme III',
-    category: 'Cross-Country Marathon',
-    body: 'Gran final del campeonato: 45 km con +950 m de desnivel positivo acumulado con partida en la Plaza Principal de Quequeña.',
-    status: 'Próximamente',
-    platforms: ['45 KM', '+950 M', '13 DIC 2026'],
-  },
-];

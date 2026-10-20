@@ -111,8 +111,8 @@ class Stage(SQLModel, table=True):
     poster_url: Optional[str] = Field(default=None)
     gpx_file_url: Optional[str] = Field(default=None)
     route_geojson: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    distance_km: float = Field(default=0.0)
-    elevation_gain_m: int = Field(default=0)
+    distance_km: Optional[float] = Field(default=None)
+    elevation_gain_m: Optional[int] = Field(default=None)
     # Vueltas del circuito: para circuitos por vueltas (p.ej. Z Xtreme),
     # `distance_km` y `elevation_gain_m` son POR VUELTA y `laps` es el máximo de vueltas.
     laps: int = Field(default=1)
@@ -120,6 +120,13 @@ class Stage(SQLModel, table=True):
     judge_pin: str = Field(default="***REMOVED-JUDGE-PIN-DEFAULT***")
     # Enlace público a la ruta de Strava de esta fecha (si existe)
     strava_route_url: Optional[str] = Field(default=None)
+    # Cifras PUBLICADAS en el PDF oficial de resultados, para poder contrastar
+    # lo que publica el organizador con lo que recalcula el motor (specs/01
+    # §3.1). `official_points` puede diferir de la suma recalculada: el PDF de
+    # Z Xtreme no imprime el 6º lugar de OPEN DAMAS, y al rellenarse el hueco
+    # el motor reparte un punto más. `None` = la fecha no se ha disputado.
+    official_results: Optional[int] = Field(default=None)
+    official_points: Optional[int] = Field(default=None)
 
     waves: List["StartWave"] = Relationship(back_populates="stage")
     checkpoints: List["Checkpoint"] = Relationship(back_populates="stage")
@@ -328,6 +335,11 @@ class StravaEffort(SQLModel, table=True):
     measured_on: Optional[str] = Field(default=None, index=True)
     # Identificador del atleta en Strava, para cruzar sin depender del nombre.
     strava_athlete_id: Optional[str] = Field(default=None, index=True)
+    # Género del atleta según Strava ("M" | "F"). Los títulos de damas (QOM y
+    # la Kamikaze) se resuelven por este campo: hay corredoras de la fecha que
+    # no están en `riders`, y su intento solo se reconoce por el filtro de
+    # género del leaderboard de Strava.
+    athlete_gender: Optional[str] = Field(default=None, index=True)
 
     segment: StravaSegment = Relationship(back_populates="efforts")
 
@@ -383,4 +395,30 @@ class ExtraEvent(SQLModel, table=True):
     registration_fee_text: Optional[str] = Field(default=None)
     status: str = Field(default="UPCOMING")
     is_active: bool = Field(default=True)
+
+
+# 17. PrizeTier (escala de premios en dólares, por categoría y por ámbito)
+class PrizeTier(SQLModel, table=True):
+    """Premio en dólares para un puesto de una categoría.
+
+    Hay dos ámbitos, porque hay dos clasificaciones:
+      · `FECHA`     — el podio de CADA fecha: 1º 70 USD, 2º 50, 3º 30.
+      · `ACUMULADO` — el podio final del campeonato: 1º 300 USD, 2º 200, 3º 100.
+
+    El premio es POR CATEGORÍA: el 1º de cada una de las 11 categorías cobra
+    lo que dice su fila.
+
+    Montos decididos por el organizador el 20 de Octubre de 2026; en dólares
+    porque es como se pagan.
+    """
+
+    __tablename__ = "prize_tiers"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    scope: str = Field(index=True)
+    position: int
+    amount_usd: int
+    label: str
+    currency: str = Field(default="USD")
+
 

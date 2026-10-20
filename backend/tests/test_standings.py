@@ -110,7 +110,7 @@ def test_old_scope_name_still_resolves():
     assert normalize_scope("E-MTB") == "E-BIKE"
     assert normalize_scope("E-BIKE") == "E-BIKE"
     assert normalize_scope("PRO") == "PRO"
-    assert normalize_scope("COMBINED") == "COMBINED"
+    assert normalize_scope("COMBINADO") == "COMBINED"
     assert normalize_scope("no-existe") == "COMBINED"
     assert normalize_scope(None) == "COMBINED"
 
@@ -343,3 +343,60 @@ async def test_unknown_mode_falls_back_to_acumulado(world):
                                     mode="inventado")
     by_name = {r["rider_name"]: r for r in rows}
     assert by_name["ALEX ALPHA"]["total_points"] == 19
+
+
+# --- Cifras de la carrera (participantes / finalizados / tiempo medio) -------
+
+@pytest.mark.asyncio
+async def test_scope_stats_counts_participants_and_finishers(world):
+    """Las cifras de la cabecera: quién compitió, quién cerró y el tiempo medio."""
+    from backend.app.services.standings_service import standings_context
+
+    # Fecha 1: 4 entradas (ALEX, BETA, GAMMA, DELTA) y los 4 cerraron.
+    ctx = await standings_context(world["session"], stage_limit=1, scope="PRO")
+    stats = ctx["stats"]
+    assert stats["participants"] == 4
+    assert stats["finishers"] == 4
+    assert stats["non_finishers"] == 0
+    # Media de 1:00, 1:02, 1:04 y 1:06 -> 1:03 (3.780.000 ms)
+    assert stats["avg_time_ms"] == 3780000
+
+
+@pytest.mark.asyncio
+async def test_scope_stats_in_fecha_mode_is_only_that_race(world):
+    from backend.app.services.standings_service import standings_context
+
+    stage2 = world["stages"][2].id
+    ctx = await standings_context(world["session"], stage_limit=stage2, scope="PRO", mode="fecha")
+    stats = ctx["stats"]
+    # En la fecha 2 compitieron GAMMA, ALEX y EPSILON
+    assert stats["participants"] == 3
+    assert stats["finishers"] == 3
+
+
+@pytest.mark.asyncio
+async def test_scope_stats_counts_distinct_riders_in_the_window(world):
+    """En el acumulado se cuentan corredores DISTINTOS, no participaciones."""
+    from backend.app.services.standings_service import standings_context
+
+    ctx = await standings_context(world["session"], stage_limit=2, scope="PRO")
+    stats = ctx["stats"]
+    # 5 corredores distintos en las dos fechas (GAMMA y ALEX competieron dos veces)
+    assert stats["participants"] == 5
+    assert stats["finishers"] == 5
+
+
+@pytest.mark.asyncio
+async def test_scope_stats_follows_the_scope(world):
+    """Las cifras son del ÁMBITO de la tabla: al cambiar de pestaña cambian."""
+    from backend.app.services.standings_service import standings_context
+
+    # MASTER A: BETA (fecha 1) y GAMMA (fecha 2)
+    ctx = await standings_context(world["session"], stage_limit=2, scope="PRO")
+    assert ctx["stats"]["participants"] == 5
+
+    cat_msa = world["cats"]["MSA"].id
+    ctx_cat = await standings_context(
+        world["session"], stage_limit=2, scope="PRO", category_id=cat_msa
+    )
+    assert ctx_cat["stats"]["participants"] == 2

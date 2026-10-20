@@ -283,7 +283,7 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 | :--- | :--- | :--- |
 | `SITE_NAME` | `Copa MacroSur MTB` | `<title>` de todas las páginas y textos legales |
 | `SITE_TAGLINE` | `Edición 2026 · Kuspide Xtreme Sports` | pie de página |
-| `BRAND_WORDMARK` | `COPA MACROSUR` | rótulo grande del hero |
+| `BRAND_WORDMARK` | `COPA MACROSUR MTB` | rótulo grande del hero |
 | `BRAND_EDITION` | `EDICIÓN 2026` | línea superior del hero |
 | `BRAND_NAV` | `KÚSPIDE` | **marca del menú principal (cabecera)** |
 
@@ -298,20 +298,43 @@ Con la corrección de integridad de datos (ver `specs/01` §1.5) se volvió crí
 
 **Hero**
 
+```
+[ EDICIÓN 2026 ]
+COPA MACROSUR MTB
+Cuatro fechas de MTB en Arequipa.
+[ Ver ranking ]
+LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
+```
+
 | Elemento | Escritorio | Móvil (< 48em) |
 | :--- | :--- | :--- |
 | Eyebrow | `[ EDICIÓN 2026 ]` | igual |
-| Rótulo | `COPA MACROSUR` (una línea) | dos líneas (`COPA` / `MACROSUR`) |
-| Titular | `Circuito oficial *de MTB.*` | igual |
-| Bajada | 3 renglones | **1 renglón**: la segunda frase (cronometraje, clasificaciones, Copa de Equipos) se oculta; ya está en el pie |
+| Rótulo | `COPA MACROSUR MTB` (una línea si cabe; si no, dos) | dos líneas |
+| Titular | `Cuatro fechas de MTB en *Arequipa.*` | 2 renglones |
+| Bajada | **no hay**: el párrafo se eliminó | — |
+| Botones | solo `Ver ranking` (fantasma) | igual |
 | Índice de fechas | 4 nombres cortos en una línea | igual |
 
-- El rótulo son **dos palabras**: `HeroWordmark` agrupa las letras por palabra
-  (`wordmark__word`) y el espacio va en el `column-gap`. Con un `<span>` más
-  para el espacio, el colapso de espacios en línea lo borraría y se leería
-  "COPAMACROSUR".
-- La bajada dice **Copa de Equipos**, no "Copa de Clubes": es como lo llama el
-  resto del sitio y la BD.
+- **El rótulo es un solo color.** El "MTB" del póster oficial va en amarillo,
+  pero el sistema del sitio manda **un solo color por vista**
+  (`tokens.css`, "Identidad cromática del campeonato"): el acento lo lleva el
+  grupo de categorías activo. Por eso el rótulo va entero en la tinta y el
+  "MTB" no segoldiza. Una cinta con separadores dorados, ni una palabra
+  suelta en oro: el color se gana con una sola señal, no con dos.
+- **El titular es una frase, no una etiqueta.** Antes decía "Circuito oficial
+  de MTB.", que no aparece en ningún póster ni en la BD. Ahora resume lo que
+  sí es verdad: cuatro fechas, en Arequipa.
+- **No hay párrafo.** La bajada larga ("Cuatro fechas de cross-country y
+  maratón en Arequipa. Cronometraje electrónico, clasificaciones por categoría
+  y Copa de Equipos.") se eliminó: el pie de página ya dice lo mismo y el
+  hero solo necesitaba una línea.
+- **Un solo botón.** El de pre-inscripción se quitó: llevaba a la misma
+  `/inscripciones` que el "Inscribirse" de la banda de la próxima fecha, dos
+  CTA para lo mismo en la misma pantalla. La inscripción se hace desde la
+  banda; el hero ofrece las clasificaciones.
+- El rótulo agrupa las letras por palabra (`wordmark__word`) y el espacio va
+  en el `column-gap`. Con un `<span>` más para el espacio, el colapso de
+  espacios en línea lo borraría y se leería "COPAMACROSURMTB".
 
 **Banda de la próxima fecha (`hero__next`)**
 
@@ -735,12 +758,64 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 
 ### 1.7 Página de Premios (`/premios`)
 
-- Página de presentación de los premios de la edición (premio de montaña,
-  premios por etapa, distintivos de la organización).
-- **Estado actual (20-Oct-2026): en blanco.** La estructura (título, bajada
-  y rótulo de sección) está montada y lista para llenarse con los
-  `SpecialAward` de la base de datos; el texto de "[ EN PREPARACIÓN ]"
-  desaparece cuando se publiquen.
+- Página de presentación de los premios de la edición.
+- **20-Oct-2026: la escala de premios sale de la BD** (`prize_tiers`), en
+  **dólares**, por categoría y por ámbito. La página no escribe ningún monto.
+
+  | Ámbito | 1º | 2º | 3º |
+  | :--- | :--- | :--- | :--- |
+  | Por fecha | 70 USD | 50 USD | 30 USD |
+  | Del campeonato (acumulado) | 300 USD | 200 USD | 100 USD |
+
+  El premio es **por categoría**: el 1º de cada una de las 11 categorías cobra
+  lo que dice su fila. Montos decididos por el organizador el 20-Oct-2026.
+- Los **premios especiales** (Premio Especial Coca, Rey de la Montaña) salen
+  de `special_awards`, también en dólares: USD 100 y USD 150 más el distintivo.
+  Se muestran con su ganador cuando `winner_rider_id` está resuelto, y con
+  "GANADOR POR ANUNCIAR" mientras no lo esté.
+- La portada (`/`) muestra los mismos premios especiales, leídos de la API: no
+  los escribe a mano (antes el texto del panel no coincidía con la BD).
+
+### 1.7.1 Reglas de integridad de los datos de una fecha
+
+> **20-Oct-2026.** Auditoría de las cuatro fechas y las dos clásicas contra la
+> BD, los pósters de `races/info/`, los GPX de `races/` y los PDF/XLSX
+> oficiales. Cuatro reglas que el sitio no puede incumplir. Cubiertas por
+> `backend/tests/test_stage_data_integrity.py`.
+
+1. **Un solo desnivel por carrera.** La cabecera de la ficha y el perfil de
+   altimetría mostraban cifras distintas (F1: +384 m y +359 m; F3: +761 m y
+   +732 m): la cabecera usa el desnivel de la **ruta oficial** (GPX a
+   resolución completa) y el perfil recalculaba sobre la traza **simplificada
+   a 500 puntos**, que pierde unos treinta metros de subida. Ahora el perfil
+   usa la cifra oficial (`build_route_profile(..., official_gain_m=...)`) y el
+   descenso, que no tiene cifra oficial, sigue saliendo de la traza.
+
+2. **Una fecha sin ruta no afirma cifras.** La Fecha 4 (Quequeña Xtreme III)
+   no tiene GPX, ni ruta de Strava, ni póster, ni cimas: su distancia, su
+   desnivel y su lugar de partida son `NULL` en la BD (antes valían 45 km,
+   +950 m y "Plaza Principal de Quequeña", inventados en el plan) y la ficha
+   los rotula **POR CONFIRMAR**. Sus checkpoints inventados ("Control
+   Intermedio Cumbre" a 22.5 km) se borran: sin ruta no hay control que
+   colocar.
+
+3. **Lo que recalcula el motor se documenta.** El PDF oficial de Z Xtreme no
+   imprime el 6º lugar de OPEN DAMAS: publica **554 puntos** y el motor, al
+   rellenar el hueco, reparte **555**. Las dos cifras se exponen
+   (`Stage.official_points` / `Stage.official_results`) y la ficha enseña las
+   dos con el motivo, en vez de esconder la diferencia.
+
+4. **La hora de salida es siempre las 8:00 AM.** Regla del organizador: las
+   cuatro fechas y las dos clásicas de ruta salen a esa hora, esté o no
+   confirmada en el póster. Por eso la Clásica Arequipa-Mollendo muestra las
+   8:00 AM aunque su póster no las mencione.
+
+- **Los alias de categoría** cubren todas las cadenas que aparecen en los
+  Excel: se añadieron `TURISMO OPEN VARON (18-34)`, `TURISMO MASTER
+  VARON(35+)` y `MASTER DAMAS (35+)`. Hoy no hacen falta (las tres filas donde
+  aparecen son cabeceras repetidas que el seed descarta) y en la BD no queda
+  ninguna entrada sin categoría, pero un Excel nuevo con esas cadenas las
+  habría dejado sin categoría y sin puntos.
 
 ### 1.8 Inscripciones y Buzón de Reclamos (`/inscripciones` y `/reclamos`)
 - **Pre-inscripciones (`/inscripciones`):**

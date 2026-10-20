@@ -120,6 +120,31 @@
   // de render y la pastilla aparecía tarde (o no aparecía) en pestañas de
   // segundo plano.
 
+  /**
+   * El tiempo medio mezcla categorías (un ELITE a 1:08 y un MASTER D a 1:50):
+   * es un dato de contexto, no un récord. Se explica en el tooltip.
+   */
+  const AVG_TIME_HINT =
+    'Media de los tiempos de los que cerraron. Mezcla categorías (un ELITE a 1:08 y un MASTER D a 1:50): ' +
+    'es un dato de contexto, no un récord. El tiempo del ganador está en la tabla, arriba.';
+
+  let stats = $derived(
+    meta.stats ?? { participants: 0, finishers: 0, non_finishers: 0, avg_time_ms: null }
+  );
+
+  let avgTime = $derived(
+    stats.avg_time_ms != null ? formatMs(stats.avg_time_ms) : '—'
+  );
+
+  function formatMs(ms: number): string {
+    const total = Math.round(ms / 1000);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
   const GAP_HINT =
     'Diferencia de tiempo acumulado respecto al líder de la vista actual (ordenada por puntos). ' +
     'En COMBINADO puede ser negativa si acumulaste menos tiempo con menos puntos. ' +
@@ -273,17 +298,9 @@
     history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
   });
 
-  /**
-   * El rótulo de la página cambia con el modo ("Ranking general acumulado" vs
-   * "Clasificación de la fecha"). La página marca los dos huecos con
-   * `data-mode-title` y `data-mode-word`; si no están, no pasa nada.
-   */
-  $effect(() => {
-    const t = document.querySelector('[data-mode-title]');
-    if (t) t.textContent = tableMode === 'acumulado' ? 'Ranking general' : 'Clasificación';
-    const w = document.querySelector('[data-mode-word]');
-    if (w) w.textContent = tableMode === 'acumulado' ? 'acumulado' : 'de la fecha';
-  });
+  /** El titulo sigue al modo: "Ranking general acumulado" <-> "Clasificacion de la fecha". */
+  let titleMain = $derived(tableMode === 'acumulado' ? 'Ranking general' : 'Clasificación');
+  let titleWord = $derived(tableMode === 'acumulado' ? 'acumulado' : 'de la fecha');
 
   function setCategory(code: string) {
     urlTouched = true;
@@ -344,6 +361,41 @@
 
 <div class="standings {kind === 'teams' ? 'scope-team' : SCOPE_CLASS[scope]}">
   <!--
+    Cabecera de la vista: el rótulo del campeonato, el titulo (que cambia con
+    el modo) y las cifras de lo que se esta viendo, TODO en la misma linea.
+    La cabecera la lleva el componente porque las cifras dependen de la vista
+    activa (ambito y categoria) y del modo.
+  -->
+  <header class="standhead">
+    <div class="standhead__title">
+      <div class="standhead__crumb font-mono">COPA MACROSUR MTB 2026 / CLASIFICACIÓN OFICIAL</div>
+      <h1 class="standhead__h1">
+        {titleMain} <em>{titleWord}</em>
+      </h1>
+    </div>
+
+    <!-- Cifras de lo que se esta viendo (la carrera o la ventana acumulada). -->
+    <div class="figures">
+      <span class="figure">
+        <span class="figure__label font-mono">Participantes</span>
+        <span class="figure__num font-mono">{stats.participants}</span>
+      </span>
+      <span class="figure">
+        <span class="figure__label font-mono">Finalizaron</span>
+        <span class="figure__num font-mono">{stats.finishers}</span>
+      </span>
+      <span class="figure">
+        <span class="figure__label font-mono">No finalizaron</span>
+        <span class="figure__num font-mono">{stats.non_finishers}</span>
+      </span>
+      <span class="figure" title={AVG_TIME_HINT}>
+        <span class="figure__label font-mono">Tiempo medio</span>
+        <span class="figure__num font-mono">{avgTime}</span>
+      </span>
+    </div>
+  </header>
+
+  <!--
     Cabecera FUERA de la caja, patrón Tour de Francia: primero la etapa (con
     flechas para recorrer las fechas) y debajo las pestañas de modo. El
     navegador de fechas es el ÚNICO selector de fecha y funciona en los dos
@@ -359,8 +411,8 @@
         disabled={!prevStage}
         aria-label="FECHA ANTERIOR"
       >
-        <svg width="11" height="11" viewBox="0 0 10 10" aria-hidden="true">
-          <path d="M6.5 1 L3 5 L6.5 9" fill="none" stroke="currentColor" stroke-width="1.4" />
+        <svg width="14" height="14" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M6.5 1 L3 5 L6.5 9" fill="none" stroke="currentColor" stroke-width="1.6" />
         </svg>
       </button>
       <div class="stagehead__id">
@@ -381,8 +433,8 @@
         disabled={!nextStage}
         aria-label="FECHA SIGUIENTE"
       >
-        <svg width="11" height="11" viewBox="0 0 10 10" aria-hidden="true">
-          <path d="M3.5 1 L7 5 L3.5 9" fill="none" stroke="currentColor" stroke-width="1.4" />
+        <svg width="14" height="14" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M3.5 1 L7 5 L3.5 9" fill="none" stroke="currentColor" stroke-width="1.6" />
         </svg>
       </button>
     </div>
@@ -705,10 +757,10 @@
 
   .mode {
     position: relative;
-    padding: 0.25rem 0 0.6rem;
+    padding: 0.25rem 0 0.45rem;
     background: transparent;
     border: none;
-    color: var(--muted);
+    color: var(--faint);
     font-size: 0.875rem;
     font-weight: 800;
     letter-spacing: 0.1em;
@@ -721,20 +773,23 @@
     color: var(--ink);
   }
 
+  /* El ACTIVO se distingue por estilo, no por tamaño: toma el color del
+     grupo (la señal más fuerte que hay) y lleva una raya gruesa pegada al
+     texto. El inactivo se retira a --faint. */
   .mode.is-active {
-    color: var(--ink);
+    color: var(--scope-ink, var(--scope));
   }
 
-  /* La raya del activo es gruesa y se posa sobre el borde de la caja: la
-     pestaña queda unida al panel (el gesto clásico de "GENERAL / CLASIFICACIÓN
-     DE PASO" del Tour). */
+  /* La raya del activo se posa sobre el borde de la caja: la pestaña queda
+     unida a su panel (el gesto clásico de "GENERAL / CLASIFICACIÓN DE PASO"
+     del Tour). */
   .mode.is-active::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    bottom: -2px;
-    height: 3px;
+    bottom: -1px;
+    height: 4px;
     background: var(--scope-ink, var(--scope));
   }
 
@@ -743,14 +798,17 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding-bottom: 0.85rem;
+    /* Aire con la sección de arriba: las burbujas no deben pintar contra la
+       línea del título. */
+    padding-top: 1.1rem;
+    padding-bottom: 0.9rem;
   }
 
   .stagehead__nav {
     display: grid;
     place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2.25rem;
+    height: 2.25rem;
     flex: 0 0 auto;
     padding: 0;
     background: transparent;
@@ -760,12 +818,16 @@
     cursor: pointer;
     transition: border-color var(--default-transition-duration)
         var(--default-transition-timing-function),
+      background var(--default-transition-duration) var(--default-transition-timing-function),
       color var(--default-transition-duration) var(--default-transition-timing-function);
   }
 
+  /* Al pasar el ratón la burbuja se llena con el color del grupo y la flecha
+     se invierte: el control se lee al instante. */
   .stagehead__nav:hover:not(:disabled) {
+    background: var(--scope-ink, var(--scope));
     border-color: var(--scope-ink, var(--scope));
-    color: var(--scope-ink, var(--scope));
+    color: var(--invert-fg);
   }
 
   .stagehead__nav:disabled {
@@ -782,22 +844,22 @@
   }
 
   .stagehead__num {
-    font-size: 0.875rem;
+    font-size: 1.125rem;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     color: var(--ink-strong);
   }
 
   .stagehead__meta {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     letter-spacing: 0.08em;
     color: var(--muted);
   }
 
   .stagehead__name {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     color: var(--scope-ink, var(--muted));
   }
 
@@ -844,6 +906,74 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--muted);
+  }
+
+  /* Cabecera de la vista: rótulo del campeonato + título + cifras, en la
+     MISMA línea (el título a la izquierda, las cifras a la derecha). */
+  .standhead {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem 3rem;
+    padding-bottom: 1.25rem;
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .standhead__crumb {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .standhead__h1 {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 620;
+    font-stretch: 118%;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    color: var(--ink-strong);
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .standhead__h1 em {
+    font-family: var(--font-serif, Georgia, serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+
+  /* Cifras de la carrera: la tipografía del rótulo del campeonato, no un
+     titular: son datos de contexto, no otro título. */
+  .figures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 1.4rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .figure {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .figure__label {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .figure__num {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
   }
 
   /* --- Controles --- */
@@ -1320,7 +1450,7 @@
     }
 
     .stagehead__nav {
-      margin-top: -0.3rem;
+      margin-top: -0.45rem;
     }
 
     .ribbon {

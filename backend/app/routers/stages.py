@@ -161,6 +161,8 @@ async def get_stage_summary(slug: str, session: AsyncSession = Depends(get_sessi
         "summits": await compute_stage_summits(session, stage.id),
         "kom": mountain_titles["kom"],
         "qom": mountain_titles["qom"],
+        "kamikaze_male": mountain_titles["kamikaze_male"],
+        "kamikaze_female": mountain_titles["kamikaze_female"],
         "navigation": {
             "prev_slug": prev_stage.slug if prev_stage else None,
             "prev_name": prev_stage.title or prev_stage.name if prev_stage else None,

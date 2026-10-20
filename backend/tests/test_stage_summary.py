@@ -843,6 +843,10 @@ async def test_summary_exposes_route_profile_with_the_real_trace(async_session):
         async_session, entries=1, finishers=1, points=10, categories=1
     )
     session = async_session
+    # El desnivel que muestra el perfil es el de la RUTA OFICIAL: la traza
+    # guardada está simplificada a 500 puntos y al simplificarla se pierden
+    # unos treinta metros de subida (specs/03 §1.2).
+    stage.elevation_gain_m = 100
     stage.route_geojson = {
         "type": "FeatureCollection",
         "features": [
@@ -878,18 +882,30 @@ async def test_summary_route_profile_is_none_without_geometry(async_session):
     assert await compute_stage_route_profile(async_session, stage) is None
 
 
-async def test_mountain_titles_pick_the_steepest_climb_and_descent(async_session):
-    """El KOM es la subida más empinada; el QOM, la bajada más empinada."""
+async def test_mountain_titles_split_by_gender_and_discipline(async_session):
+    """KOM = varón en la subida; QOM = dama en la subida; los Kamikaze, en la bajada."""
     stage = await _seed_stage_with_results(
         async_session, entries=1, finishers=1, points=10, categories=1
     )
     session = async_session
-    for seg_id, name, dist, grade, athlete, secs in [
-        ("1", "SUBIDA SUAVE", 5000.0, 3.0, "RIDER A", 600),
-        ("2", "SUBIDA EMPINADA", 1000.0, 9.0, "RIDER B", 300),
-        ("3", "BAJADA SUAVE", 5000.0, -2.0, "RIDER C", 400),
-        ("4", "BAJADA EMPINADA", 1000.0, -8.0, "RIDER D", 200),
-        ("5", "PLANO", 9000.0, 0.0, "RIDER E", 900),
+    for seg_id, name, dist, grade, efforts in [
+        ("1", "SUBIDA SUAVE", 5000.0, 3.0, [("SUAVE M", 600, "M")]),
+        (
+            "2",
+            "SUBIDA EMPINADA",
+            1000.0,
+            9.0,
+            [("ESCALADOR M", 300, "M"), ("ESCALADORA F", 360, "F")],
+        ),
+        ("3", "BAJADA SUAVE", 5000.0, -2.0, [("BAJADA M", 400, "M")]),
+        (
+            "4",
+            "BAJADA EMPINADA",
+            1000.0,
+            -8.0,
+            [("KAMIKAZE M", 200, "M"), ("KAMIKAZE F", 260, "F")],
+        ),
+        ("5", "PLANO", 9000.0, 0.0, [("PLANO M", 900, "M")]),
     ]:
         segment = StravaSegment(
             stage_id=stage.id,
@@ -900,34 +916,81 @@ async def test_mountain_titles_pick_the_steepest_climb_and_descent(async_session
         )
         session.add(segment)
         await session.flush()
-        session.add(
-            StravaEffort(
-                segment_id=segment.id,
-                athlete_name_raw=athlete,
-                elapsed_time_sec=secs,
-                measured_on=stage.date.isoformat(),
-                is_kom_qom=0,
+        for athlete, secs, gender in efforts:
+            session.add(
+                StravaEffort(
+                    segment_id=segment.id,
+                    athlete_name_raw=athlete,
+                    elapsed_time_sec=secs,
+                    measured_on=stage.date.isoformat(),
+                    is_kom_qom=0,
+                    athlete_gender=gender,
+                )
             )
+    await session.commit()
+
+    titles = await compute_stage_mountain_titles(session, stage)
+
+    # KOM y QOM comparten la subida: los separa el género.
+    assert titles["kom"] is not None
+    assert titles["kom"].segment_name == "SUBIDA EMPINADA"
+    assert titles["kom"].athlete_name == "ESCALADOR M"
+    assert titles["qom"] is not None
+    assert titles["qom"].segment_name == "SUBIDA EMPINADA"
+    assert titles["qom"].athlete_name == "ESCALADORA F"
+
+    # Los Kamikaze comparten la bajada: los separa el género.
+    assert titles["kamikaze_male"] is not None
+    assert titles["kamikaze_male"].segment_name == "BAJADA EMPINADA"
+    assert titles["kamikaze_male"].athlete_name == "KAMIKAZE M"
+    assert titles["kamikaze_female"] is not None
+    assert titles["kamikaze_female"].segment_name == "BAJADA EMPINADA"
+    assert titles["kamikaze_female"].athlete_name == "KAMIKAZE F"
+
+
+async def test_qom_is_never_a_man(async_session):
+    """Sin intentos de damas no hay QOM: no se cuela el mejor varón."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    session = async_session
+    segment = StravaSegment(
+        stage_id=stage.id,
+        strava_segment_id="1",
+        name="SUBIDA SOLO VARONES",
+        distance_m=2000.0,
+        average_grade=7.0,
+    )
+    session.add(segment)
+    await session.flush()
+    session.add(
+        StravaEffort(
+            segment_id=segment.id,
+            athlete_name_raw="RIDER M",
+            elapsed_time_sec=300,
+            measured_on=stage.date.isoformat(),
+            athlete_gender="M",
         )
+    )
     await session.commit()
 
     titles = await compute_stage_mountain_titles(session, stage)
     assert titles["kom"] is not None
-    assert titles["kom"].segment_name == "SUBIDA EMPINADA"
-    assert titles["kom"].athlete_name == "RIDER B"
-    assert titles["qom"] is not None
-    assert titles["qom"].segment_name == "BAJADA EMPINADA"
-    assert titles["qom"].athlete_name == "RIDER D"
+    assert titles["qom"] is None
+    assert titles["kamikaze_male"] is None
+    assert titles["kamikaze_female"] is None
 
 
 async def test_mountain_titles_are_none_without_segments(async_session):
-    """Sin segmentos no hay KOM ni QOM."""
+    """Sin segmentos no hay títulos de montaña."""
     stage = await _seed_stage_with_results(
         async_session, entries=1, finishers=1, points=10, categories=1
     )
     titles = await compute_stage_mountain_titles(async_session, stage)
     assert titles["kom"] is None
     assert titles["qom"] is None
+    assert titles["kamikaze_male"] is None
+    assert titles["kamikaze_female"] is None
 
 
 async def test_strava_segments_expose_kind_and_location(async_session):

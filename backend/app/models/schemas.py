@@ -111,20 +111,30 @@ class StageStatsRead(BaseModel):
     `distance_km` y `elevation_gain_m` de la tabla `stages` son POR VUELTA
     (ver `entities.Stage`); aquí se exponen las dos lecturas para que la
     página no las mezcle.
+
+    La distancia y el desnivel pueden ser `None`: una fecha sin ruta publicada
+    (la Fecha 4) no puede afirmar cifras. `None` = "por confirmar", no 0.
+
+    `official_results` y `official_points` son las cifras que PUBLICA el PDF
+    oficial de resultados. Pueden diferir de las recalculadas: el motor
+    reparte los puntos por posición (specs/01 §3.1) y, cuando el PDF tiene un
+    hueco, al rellenarlo reparte un punto más. La página muestra las dos.
     """
 
     entries_total: int
     finishers: int
     non_finishers: int
     points_total: int
-    distance_km_per_lap: float
-    distance_km_total: float
-    elevation_m_per_lap: int
-    elevation_m_total: int
+    distance_km_per_lap: Optional[float] = None
+    distance_km_total: Optional[float] = None
+    elevation_m_per_lap: Optional[int] = None
+    elevation_m_total: Optional[int] = None
     laps: int
     winner_time_ms: Optional[int] = None
     winner_avg_speed_kmh: Optional[float] = None
     categories_count: int
+    official_results: Optional[int] = None
+    official_points: Optional[int] = None
 
 
 class PodiumEntryRead(BaseModel):
@@ -258,6 +268,16 @@ class AwardSummaryRead(BaseModel):
     winner_name: Optional[str] = None
 
 
+class PrizeTierRead(BaseModel):
+    """Un peldaño de la escala de premios: un puesto de una categoría."""
+
+    scope: str
+    position: int
+    amount_usd: int
+    label: str
+    currency: str = "USD"
+
+
 class StageExtremesRead(BaseModel):
     """Extremos de la jornada. Cualquiera de los dos puede ser `None`."""
 
@@ -378,6 +398,9 @@ class StravaEffortItem(BaseModel):
     # fechas en un mismo segmento: sin esto no se puede filtrar los de la
     # carrera.
     measured_on: Optional[str] = None
+    # Género del atleta según Strava ("M" | "F"), tal como lo devuelve el
+    # filtro del leaderboard. Es lo que permite separar KOM de QOM.
+    athlete_gender: Optional[str] = None
 
 
 class StravaSyncPayload(BaseModel):
@@ -386,3 +409,7 @@ class StravaSyncPayload(BaseModel):
     distance_m: float
     average_grade: float
     efforts: List[StravaEffortItem]
+    # `True` reemplaza los intentos del segmento (comportamiento histórico).
+    # El sincronizador de género manda `False` para ir sumando las pasadas de
+    # "Todos los tiempos" y "Este año" sin destruir las anteriores.
+    replace: bool = True

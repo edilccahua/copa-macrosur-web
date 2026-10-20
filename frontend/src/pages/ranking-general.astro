@@ -89,18 +89,14 @@ const initialStageId = stageArg ? stageArg.id : (context.selected_stage_id ?? nu
 const initialCategoryId = catArg ? catArg.id : null;
 ---
 
-<Base title="Ranking General Acumulado — Kúspide MTB">
+<Base
+  title={mode === 'fecha'
+    ? 'Clasificación de la Fecha — Copa MacroSur MTB'
+    : 'Ranking General Acumulado — Copa MacroSur MTB'}
+>
   <SiteHeader />
 
   <main class="container page-content">
-    <div class="page-header">
-      <div class="breadcrumb font-mono">CAMPEONATO MTB 2026 / CLASIFICACIÓN OFICIAL</div>
-      <!-- El rótulo cambia con el modo (acumulado / de la fecha): lo ajusta la isla. -->
-      <h1 class="page-title">
-        <span data-mode-title>Ranking general</span> <em data-mode-word>acumulado</em>
-      </h1>
-    </div>
-
     <StandingsTable
       client:load
       stages={context.stages}
@@ -136,35 +132,4 @@ const initialCategoryId = catArg ? catArg.id : null;
     }
   }
 
-  .page-header {
-    border-bottom: var(--hairline) solid var(--line);
-    padding-bottom: 1.25rem;
-    margin-bottom: 0;
-  }
-
-  .breadcrumb {
-    font-size: 0.6875rem;
-    color: var(--muted);
-    letter-spacing: 0.12em;
-    margin-bottom: 0.75rem;
-  }
-
-  .page-title {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 620;
-    font-stretch: 118%;
-    letter-spacing: -0.03em;
-    line-height: 1.02;
-    color: var(--ink-strong);
-    text-wrap: balance;
-    margin: 0;
-  }
-
-  .page-title em {
-    font-family: var(--font-serif, Georgia, serif);
-    font-style: italic;
-    font-weight: 400;
-    color: var(--accent);
-  }
 </style>

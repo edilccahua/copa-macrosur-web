@@ -91,11 +91,15 @@ async def sync_strava_efforts(
         segment.average_grade = payload.average_grade
         session.add(segment)
 
-    # Limpiar esfuerzos previos del segmento para sobreescribir con los actualizados
-    stmt_del = select(StravaEffort).where(StravaEffort.segment_id == segment.id)
-    existing_efforts = (await session.exec(stmt_del)).all()
-    for eff in existing_efforts:
-        await session.delete(eff)
+    # Limpiar esfuerzos previos del segmento para sobreescribir con los
+    # actualizados. El sincronizador de género manda `replace=False` para sumar
+    # varias pasadas (todos los tiempos / este año) sin perder las anteriores.
+    stmt_prev = select(StravaEffort).where(StravaEffort.segment_id == segment.id)
+    existing_efforts = (await session.exec(stmt_prev)).all()
+    if payload.replace:
+        for eff in existing_efforts:
+            await session.delete(eff)
+        existing_efforts = []
 
     # Insertar nuevos esfuerzos
     all_riders = (await session.exec(select(Rider))).all()
@@ -117,7 +121,38 @@ async def sync_strava_efforts(
                     best, best_len = rider, len(toks)
         return best
 
+    # Clave natural de un intento: atleta + fecha + tiempo. Sin esto, sumar
+    # pasadas duplicaría la misma fila que ya está en la BD.
+    seen = {
+        (
+            eff.strava_athlete_id or normalize_name(eff.athlete_name_raw),
+            eff.measured_on,
+            eff.elapsed_time_sec,
+        )
+        for eff in existing_efforts
+    }
+    # El género ya guardado no se pierde si una pasada posterior no lo trae.
+    gender_by_key = {
+        (
+            eff.strava_athlete_id or normalize_name(eff.athlete_name_raw),
+            eff.measured_on,
+            eff.elapsed_time_sec,
+        ): eff.athlete_gender
+        for eff in existing_efforts
+        if eff.athlete_gender
+    }
+
+    inserted = 0
     for item in payload.efforts:
+        key = (
+            item.strava_athlete_id or normalize_name(item.athlete_name_raw),
+            item.measured_on,
+            item.elapsed_time_sec,
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+
         # El identificador de Strava manda; el nombre es el respaldo.
         rider = (
             rider_by_strava_id.get(item.strava_athlete_id)
@@ -133,11 +168,13 @@ async def sync_strava_efforts(
             is_kom_qom=item.is_kom_qom,
             measured_on=item.measured_on,
             strava_athlete_id=item.strava_athlete_id,
+            athlete_gender=item.athlete_gender or gender_by_key.get(key),
         )
         session.add(effort)
+        inserted += 1
 
     await session.commit()
-    return {"status": "success", "efforts_synced": len(payload.efforts)}
+    return {"status": "success", "efforts_synced": inserted}
 
 
 @router.get("/admin/pending-payments")

@@ -137,13 +137,15 @@ const {
     se extienden hacia la izquierda (~7rem). Con solo 4.5rem de reserva el
     contenido se metía debajo de las etiquetas: a 1280 px, "CLASIFICACIÓN" se
     montaba sobre el botón "Ficha de ruta" de la banda de la próxima fecha.
-    Aquí se reserva la banda entera, pero SOLO cuando el contenedor no está
-    centrado con margen de sobra: por encima de 96em los 80rem del contenedor
-    ya dejan el hueco libre y reservarlo sería tirar espacio.
+
+    La reserva NO es fija: el contenedor es de 80rem y va centrado, así que
+    cuanto más ancho es el viewport, más margen hay a los lados y menos banda
+    hay que reservar. Por encima de 96em el margen ya basta y se queda el
+    4.5rem de siempre.
   */
   @media (min-width: 48em) and (max-width: 95.99em) {
     :global(html.has-pageindex .container) {
-      padding-right: 12.5rem;
+      padding-right: max(4.5rem, calc(13rem - max(0rem, (100vw - 80rem) / 2)));
     }
   }
 

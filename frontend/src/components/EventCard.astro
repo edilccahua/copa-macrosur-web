@@ -491,7 +491,10 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     position: relative;
     z-index: 2;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* `minmax(0, 1fr)`: con `1fr` a secas la columna no baja del ancho de su
+       contenido, y una fecha larga ("07 - 08 NOV 2026") empujaba la tercera
+       minitarjeta fuera de la tarjeta en móvil. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.4rem;
   }
 
@@ -528,9 +531,11 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     font-weight: 600;
     color: var(--ink-strong);
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* El dato es lo importante: si no cabe en la minitarjeta, baja a dos
+       renglones en vez de recortarse con puntos suspensivos. La fila de tres
+       sigue cuadrada porque la rejilla estira las tres cajas a la misma
+       altura. */
+    overflow-wrap: break-word;
   }
 
   /* Footer compacto con acción directa (z-index: 2 para prevalecer sobre el stretched-link) */
@@ -588,7 +593,7 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
 
   @media (max-width: 480px) {
     .event-card__specs {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 0.3rem;
     }
     .event-card__spec {
