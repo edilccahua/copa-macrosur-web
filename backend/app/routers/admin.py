@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
+from backend.app.core.config import settings
 from backend.app.core.db import get_session
+from backend.app.core.limits import detalle_excede_tope
 from backend.app.core.security import verify_admin_key
 from backend.app.models.entities import (
     Stage, StageEntry, PaymentStatusEnum, FeedbackTicket, TicketStatusEnum,
@@ -66,7 +68,13 @@ async def upload_gpx_file(
     if not stage:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
 
-    content = await file.read()
+    # Tope del archivo: se lee UN byte más que el límite para saber que se
+    # pasó sin tragarse la traza entera en memoria.
+    limite = settings.MAX_UPLOAD_BYTES
+    content = await file.read(limite + 1)
+    if len(content) > limite:
+        raise HTTPException(status_code=413, detail=detalle_excede_tope(limite))
+
     # 1. Parsear en memoria
     parsed = parse_gpx_in_memory(content, max_points=500)
 

@@ -12,6 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings, origen_permitido
 from backend.app.core.db import init_db
+from backend.app.core.limits import (
+    RATE_LIMIT_RULES,
+    RateLimitMiddleware,
+    default_limiter_factory,
+)
 from backend.app.routers import timing, stages, riders, teams, excel, public, admin
 
 
@@ -69,6 +74,20 @@ cors_options = {
 # de `origen_permitido`, para que `ENVIRONMENT=production` lo apague sin
 # necesidad de reiniciar el servidor.
 app.add_middleware(SettingsAwareCORSMiddleware, **cors_options)
+
+# Límites de entrada (cuota por IP, tope del cuerpo y tope del archivo).
+#
+# Se registra DESPUÉS del CORS porque `add_middleware` apila al revés: el
+# ÚLTIMO registrado es el PRIMERO que se ejecuta. Así el limitador decide
+# antes de que la petición llegue a la ruta.
+#
+# Y los preflight (OPTIONS) no gastan cuota: son la negociación de CORS, no
+# trabajo real del servidor.
+app.add_middleware(
+    RateLimitMiddleware,
+    rules=RATE_LIMIT_RULES,
+    limiter_factory=default_limiter_factory,
+)
 
 # Routers bajo /api/v1
 app.include_router(timing.router, prefix=settings.API_V1_PREFIX)

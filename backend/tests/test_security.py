@@ -218,3 +218,134 @@ async def test_cors_en_desarrollo_acepta_cualquier_puerto_de_localhost(client, m
         headers={"Origin": "http://localhost:4327"},
     )
     assert res.headers.get("access-control-allow-origin") == "http://localhost:4327"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Límites de entrada
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _feedback_de_prueba() -> dict:
+    return {
+        "stage_id": None,
+        "type": "OTHER",
+        "submitted_by_name": "Prueba",
+        "contact_whatsapp_or_email": "a@b.pe",
+        "message": "Mensaje de prueba",
+    }
+
+
+@pytest.fixture
+def cuota_publica_limpia():
+    """Vacía la cuota de las escrituras públicas antes de cada prueba.
+
+    El limitador es GLOBAL en memoria (por IP y bucket): sin esta limpieza,
+    la prueba que manda 11 reclamos deja a las siguientes sin cuota y el
+    resultado dependería del orden de ejecución.
+    """
+    from backend.app.core.limits import rate_limiter_registry
+
+    limitador = rate_limiter_registry.get("public_write")
+    if limitador is not None:
+        limitador.reset()
+    yield
+
+
+async def test_rate_limit_public_write(client, cuota_publica_limpia):
+    """La 11.ª escritura pública en un minuto recibe 429 y `Retry-After`.
+
+    El limitador es GLOBAL en memoria (por IP y bucket), así que el test
+    vacía su bucket antes de su propio bucle: si no, el resultado dependería
+    de los tests que se ejecutaron antes.
+    """
+    from backend.app.core.limits import rate_limiter_registry
+
+    rate_limiter_registry["public_write"].reset()
+    for _ in range(10):
+        res = await client.post("/api/v1/public/feedback", json=_feedback_de_prueba())
+        assert res.status_code == 200
+    res = await client.post("/api/v1/public/feedback", json=_feedback_de_prueba())
+    assert res.status_code == 429
+    assert "retry-after" in res.headers
+
+
+async def test_preregistro_nombre_demasiado_largo(client, cuota_publica_limpia):
+    """Un nombre de 500 caracteres se rechaza con 422 (no se guarda nada)."""
+    res = await client.post(
+        "/api/v1/public/pre-register",
+        json={
+            "stage_id": 1,
+            "dni": "12345678",
+            "full_name": "X" * 500,
+            "gender": "M",
+            "category_id": 1,
+            "team_name_or_libre": "LIBRE",
+        },
+    )
+    assert res.status_code == 422
+
+
+async def test_json_supera_el_tope_responde_413(client, monkeypatch, cuota_publica_limpia):
+    """Un cuerpo JSON por encima del tope se rechaza ANTES de leerlo."""
+    monkeypatch.setattr(settings, "MAX_JSON_BYTES", 64)
+    res = await client.post("/api/v1/public/feedback", json=_feedback_de_prueba())
+    assert res.status_code == 413
+
+
+async def test_json_dentro_del_tope_se_procesa(client, cuota_publica_limpia):
+    """El control: con el tope normal, el mismo cuerpo se guarda (200)."""
+    res = await client.post("/api/v1/public/feedback", json=_feedback_de_prueba())
+    assert res.status_code == 200
+
+
+async def test_upload_excel_supera_el_tope(client, monkeypatch):
+    """Un .xlsx por encima del tope se rechaza con 413 (sin tragárselo).
+
+    El tope se baja a 1 KB en vez de mandar 26 MB por el cable: lo que se
+    comprueba es que EXISTE el tope, no que el servidor aguante 26 MB.
+    """
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", CLAVE_DE_PRUEBA)
+    monkeypatch.setattr(settings, "MAX_UPLOAD_BYTES", 1024)
+    res = await client.post(
+        "/api/v1/stages/1/import-excel",
+        headers={"X-Admin-Key": CLAVE_DE_PRUEBA},
+        files={
+            "file": (
+                "grande.xlsx",
+                b"x" * 4096,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert res.status_code == 413
+    assert "límite" in res.json()["detail"]
+
+
+async def test_upload_excel_dentro_del_tope_no_se_rechaza(client, monkeypatch):
+    """El control: un archivo pequeño LLEGA al importador (no es un 413)."""
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", CLAVE_DE_PRUEBA)
+    monkeypatch.setattr(settings, "MAX_UPLOAD_BYTES", 1024 * 1024)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "LISTA"
+    ws.append(["DORSAL", "NOMBRE", "TEAM", "ELITE", "T. TOTAL", "PUNTOS", "PUESTO"])
+    ws.append([15, "JUAN PEREZ", "LIBRE", "ELITE", None, None, None])
+    ws.append([15, "PEDRO GOMEZ", "LIBRE", "ELITE", None, None, None])  # dorsal duplicado
+    buf = io.BytesIO()
+    wb.save(buf)
+
+    res = await client.post(
+        "/api/v1/stages/1/import-excel",
+        headers={"X-Admin-Key": CLAVE_DE_PRUEBA},
+        files={
+            "file": (
+                "lista.xlsx",
+                buf.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    # Llega al importador, que lo rechaza por el dorsal duplicado (422),
+    # no por el tamaño.
+    assert res.status_code == 422

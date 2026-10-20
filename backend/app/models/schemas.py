@@ -25,12 +25,16 @@ class TimingEventCreate(BaseModel):
     stage_entry_id: int
     checkpoint_id: int
     recorded_at_ms: int
-    recorded_by_admin: str = "judge"
+    # El nombre de quien marca (el juez de la fecha). Acotado: el campo
+    # acaba en la base de datos y no tiene por qué ser un texto libre.
+    recorded_by_admin: str = Field(default="judge", max_length=64)
     force_update: bool = False
 
 
 class BatchSyncRequest(BaseModel):
-    events: List[TimingEventCreate]
+    # El juez sincroniza lo que anotó OFFLINE: 500 marcas cubren una jornada
+    # entera. Más que eso es un abuso (o un bucle).
+    events: List[TimingEventCreate] = Field(max_length=500)
 
 
 class BatchSyncResponse(BaseModel):
@@ -499,23 +503,32 @@ class TeamStandingRead(BaseModel):
 
 # Pre-Registration
 class PreRegistrationCreate(BaseModel):
+    """La pre-inscripción que escribe el público.
+
+    Los campos están ACOTADOS: llegan sin verificar (escriben en la base de
+    datos de la competición) y un nombre de 500 caracteres o un DNI de 2
+    dígitos no son datos, son ruido.
+    """
+
     stage_id: int
-    dni: str
-    full_name: str
+    dni: str = Field(min_length=6, max_length=20)
+    full_name: str = Field(min_length=3, max_length=120)
     gender: GenderEnum
     category_id: int
-    team_name_or_libre: str
-    voucher_url: Optional[str] = None
+    team_name_or_libre: str = Field(max_length=120)
+    voucher_url: Optional[str] = Field(default=None, max_length=500)
 
 
 # Feedback Ticket
 class FeedbackTicketCreate(BaseModel):
+    """El reclamo que escribe el público."""
+
     stage_id: Optional[int] = None
     type: TicketTypeEnum = TicketTypeEnum.TIMING_CLAIM
-    submitted_by_name: str
-    contact_whatsapp_or_email: str
+    submitted_by_name: str = Field(min_length=2, max_length=120)
+    contact_whatsapp_or_email: str = Field(min_length=3, max_length=160)
     bib_number_ref: Optional[int] = None
-    message: str
+    message: str = Field(min_length=1, max_length=2000)
 
 
 # Strava sync

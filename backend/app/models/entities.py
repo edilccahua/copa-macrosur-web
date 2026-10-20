@@ -379,7 +379,13 @@ class FeedbackTicket(SQLModel, table=True):
     bib_number_ref: Optional[int] = Field(default=None)
     message: str
     status: TicketStatusEnum = Field(default=TicketStatusEnum.OPEN)
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    # SQLModel mapea `datetime` a una columna CON zona horaria: un valor
+    # naive (como el `utcnow()` de antes) hace fallar el INSERT en SQLite
+    # ("Datetime values must have timezone information"). Se guarda aware,
+    # como ya hace `live_service.utc_now()`.
+    created_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
 
 
 # 16. ExtraEvent (Eventos Especiales y de Ruta no puntuables del campeonato)

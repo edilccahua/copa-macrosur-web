@@ -61,6 +61,19 @@ class Settings(BaseSettings):
     # para que nadie deje el regex activo en el servidor.
     CORS_ALLOW_LOCALHOST: bool = True
 
+    # ── Límites de entrada ─────────────────────────────────────────────────
+    # Cuota por IP y ventana (ver `core/limits.py`). Se puede apagar para
+    # depurar, pero en el servidor va ENCENDIDA.
+    RATE_LIMIT_ENABLED: bool = True
+
+    # Tope del cuerpo JSON (2 MB): un envío gigante se rechaza por su
+    # `Content-Length` sin llegar a leerse.
+    MAX_JSON_BYTES: int = 2 * 1024 * 1024
+
+    # Tope de los archivos subidos (25 MB): es la lista de inscritos y la
+    # traza GPX de una fecha.
+    MAX_UPLOAD_BYTES: int = 25 * 1024 * 1024
+
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""
