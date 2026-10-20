@@ -451,3 +451,67 @@ export async function getRemontada(): Promise<RemontadaData | null> {
   }
 }
 
+// --- Agregado de la portada (`GET /public/home`) ----------------------------
+//
+// La portada hacía SIETE llamadas a la API desde el SSR de Cloudflare (que
+// NO cachea el HTML): siete esperas de red entre Render y Neon para
+// construir una sola página. `/public/home` devuelve todo en una respuesta:
+// una llamada, una espera, un payload que además viene cacheado 60 s en el
+// backend.
+//
+// El payload NO lleva el PIN del juez ni la geometría de la ruta: lo
+// primero es una credencial y lo segundo pesa ~58 KB por fecha.
+
+/** Una fila del podio de la portada: nombre y puntos. */
+export interface HomePodiumRow {
+  rider_name: string;
+  total_points: number;
+  /** Slug del perfil público (`/corredor/{slug}`). */
+  rider_slug?: string | null;
+}
+
+/** Una fila del podio de equipos de la portada: club y puntos. */
+export interface HomeTeamRow {
+  team_name: string;
+  total_points: number;
+  team_slug?: string | null;
+}
+
+/** Los cuatro títulos de montaña de la primera fecha disputada. */
+export interface HomeMountainTitles {
+  kom: MountainTitle | null;
+  qom: MountainTitle | null;
+  kamikaze_male: MountainTitle | null;
+  kamikaze_female: MountainTitle | null;
+}
+
+/** Todo lo que la portada necesita, en una sola respuesta. */
+export interface HomeBundle {
+  /** El calendario, sin credenciales y sin geometría. */
+  stages: StageOption[];
+  /** El estado de la transmisión (misma forma que `/public/live-status`). */
+  live_status: LiveStatus;
+  /** Los tres primeros del acumulado PRO. */
+  pro_podium: HomePodiumRow[];
+  /** Los tres primeros del acumulado NORMAL. */
+  normal_podium: HomePodiumRow[];
+  /** Los tres primeros de la Copa de Equipos. */
+  teams_podium: HomeTeamRow[];
+  /** El premio CLARO a la remontada. */
+  remontada: RemontadaData | null;
+  /** KOM, QOM y los dos Kamikaze de la primera fecha disputada. */
+  mountain_titles: HomeMountainTitles;
+}
+
+/**
+ * El agregado de la portada.
+ *
+ * Lanza si el backend no responde: la página degrada a secciones vacías
+ * (nunca inventa datos, specs/03 §0.2).
+ */
+export async function getHomeBundle(): Promise<HomeBundle> {
+  const res = await fetch(`${API_V1}/public/home`);
+  if (!res.ok) throw new Error(`home HTTP ${res.status}`);
+  return res.json();
+}
+

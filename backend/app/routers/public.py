@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
@@ -8,21 +8,120 @@ from backend.app.core.db import get_session
 from backend.app.models.entities import (
     Rider, Team, Category, Stage, StageEntry, ChampionshipStanding,
     TeamChampionshipStanding, FeedbackTicket, PaymentStatusEnum, RaceStatusEnum, ExtraEvent,
-    PrizeTier,
+    PrizeTier, StageStatusEnum,
 )
 from backend.app.models.schemas import (
     PreRegistrationCreate, FeedbackTicketCreate, ExtraEventRead, PrizeTierRead,
+    StagePublicRead,
 )
 from backend.app.services.excel_service import slugify, resolve_or_create_team
 from backend.app.services.live_service import resolve_live_status
 from backend.app.services.special_prizes_service import compute_claro_remontada
 from backend.app.services.pdf_service import format_ms_to_time
+from backend.app.services.stage_summary_service import compute_stage_mountain_titles
 from backend.app.services.standings_service import (
     compute_standings, compute_team_standings, normalize_mode, normalize_scope,
     standings_context,
 )
 
 router = APIRouter(prefix="/public", tags=["Public Portal"])
+
+
+def _podium_de_corredores(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Las tres primeras filas de una clasificación, en la forma de la portada.
+
+    La portada sólo pinta tres filas y sólo necesita el nombre, los puntos y
+    el slug (para enlazar al perfil público del corredor). Cuanto menos viaja
+    el agregado, menos pesa la respuesta.
+    """
+    return [
+        {
+            "rider_name": row["rider_name"],
+            "total_points": row["total_points"],
+            "rider_slug": row.get("rider_slug"),
+        }
+        for row in rows[:3]
+    ]
+
+
+def _podium_de_equipos(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Las tres primeras filas de la Copa de Equipos, en la forma de la portada."""
+    return [
+        {
+            "team_name": row["team_name"],
+            "total_points": row["total_points"],
+            "team_slug": row.get("team_slug"),
+        }
+        for row in rows[:3]
+    ]
+
+
+@router.get("/home")
+async def get_home_bundle(session: AsyncSession = Depends(get_session)):
+    """El agregado de la portada: TODO lo que la portada muestra, en UNA llamada.
+
+    Antes la portada hacía **siete** peticiones a la API desde el SSR de
+    Cloudflare (que no cachea el HTML): siete esperas de red entre Render
+    (Oregon) y Neon (São Paulo) para construir una sola página. Aquí se
+    resuelve todo en una respuesta y se cachea 60 s en memoria.
+
+    Lo que lleva:
+      · `stages` — el calendario, en su versión PÚBLICA (sin credenciales y
+        sin geometría: el `response_model` es la puerta, specs/00 §1.4).
+      · `live_status` — el estado de la transmisión (misma forma que
+        `/public/live-status`).
+      · `pro_podium` / `normal_podium` / `teams_podium` — los tres podios de
+        tres filas cada uno.
+      · `remontada` — el premio CLARO a la remontada.
+      · `mountain_titles` — los cuatro títulos de montaña de la PRIMERA fecha
+        disputada.
+
+    NO lleva el PIN del juez (es una credencial) ni la geometría de la ruta
+    (pesa ~58 KB por fecha y ninguna página la consume).
+    """
+    cached = cache.get("public:home")
+    if cached is not None:
+        return cached
+
+    stages = (await session.exec(select(Stage).order_by(Stage.stage_number))).all()
+
+    # El corte del acumulado es la ÚLTIMA fecha disputada (patrón Tour de
+    # Francia): es el mismo corte que usa `/public/standings`, así que la
+    # portada y la tabla del ranking no pueden discrepar.
+    disputed = [s for s in stages if s.status == StageStatusEnum.FINISHED]
+    corte = disputed[-1].id if disputed else None
+
+    pro_rows = await compute_standings(session, stage_limit=corte, scope="PRO")
+    normal_rows = await compute_standings(session, stage_limit=corte, scope="NORMAL")
+    team_rows = await compute_team_standings(session, stage_limit=corte)
+
+    live_status = await resolve_live_status(session)
+    remontada = await compute_claro_remontada(session)
+
+    if disputed:
+        mountain_titles = await compute_stage_mountain_titles(session, disputed[0])
+    else:
+        mountain_titles = {
+            "kom": None,
+            "qom": None,
+            "kamikaze_male": None,
+            "kamikaze_female": None,
+        }
+
+    res = {
+        "stages": [StagePublicRead.model_validate(stage) for stage in stages],
+        "live_status": live_status,
+        "pro_podium": _podium_de_corredores(pro_rows),
+        "normal_podium": _podium_de_corredores(normal_rows),
+        "teams_podium": _podium_de_equipos(team_rows),
+        "remontada": remontada,
+        "mountain_titles": mountain_titles,
+    }
+    # 60 s: lo bastante corto para que una marcación del juez se vea pronto
+    # (y la invalidación explícita la baja a cero), lo bastante largo para
+    # que la portada no golpee la base de datos en cada visita.
+    cache.set("public:home", res, ttl_seconds=60)
+    return res
 
 
 @router.get("/live-status")

@@ -13,13 +13,13 @@ import Icon from '../components/Icon.astro';
 import EventCountdown from '../components/svelte/EventCountdown.svelte';
 import TimelineEvents from '../components/TimelineEvents.astro';
 import {
-  API_V1,
-  getRemontada,
+  getHomeBundle,
+  type HomeBundle,
   type LiveStageBrief,
   type LiveStatus,
   type MountainTitle,
 } from '../lib/api';
-import { getStages, formatStageDate } from '../lib/stages';
+import { formatStageDate } from '../lib/stages';
 import { SITE_NAME, BRAND_WORDMARK, BRAND_ACCENT, BRAND_EDITION } from '../data/site';
 import {
   ACCUMULATED_PRIZES,
@@ -41,93 +41,59 @@ import type { PrizeLeader } from '../components/PrizeScale.astro';
  */
 type PodiumRow = { name: string; points: number; slug?: string };
 
-async function fetchScopePodium(
-  scope: 'PRO' | 'NORMAL'
-): Promise<{ rows: PodiumRow[]; error: boolean }> {
-  try {
-    const res = await fetch(`${API_V1}/public/standings?scope=${scope}`);
-    if (!res.ok) return { rows: [], error: true };
-    const data = await res.json();
-    const rows = Array.isArray(data.rows) ? data.rows : [];
-    return {
-      rows: rows
-        .slice(0, 3)
-        .map((r: any) => ({
-          name: r.rider_name,
-          points: r.total_points,
-          slug: r.rider_slug,
-        })),
-      error: false,
-    };
-  } catch (e) {
-    return { rows: [], error: true };
-  }
+/** Una fila del podio aggregated por la API, en la forma de la tarjeta. */
+function aPodiumRow(fila: { rider_name: string; total_points: number; rider_slug?: string | null }): PodiumRow {
+  return {
+    name: fila.rider_name,
+    points: fila.total_points,
+    slug: fila.rider_slug ?? undefined,
+  };
 }
 
-async function fetchTeams(): Promise<{ rows: PodiumRow[]; error: boolean }> {
-  try {
-    const res = await fetch(`${API_V1}/public/standings/teams`);
-    if (!res.ok) return { rows: [], error: true };
-    const data = await res.json();
-    if (!Array.isArray(data)) return { rows: [], error: true };
-    return {
-      rows: data.slice(0, 3).map((t: any) => ({ name: t.team_name, points: t.total_points })),
-      error: false,
-    };
-  } catch (e) {
-    return { rows: [], error: true };
-  }
+/**
+ * LA PORTADA SE LEE EN UNA SOLA LLAMADA.
+ *
+ * Antes eran siete (dos clasificaciones, la de equipos, el calendario, el
+ * estado en vivo, los títulos de montaña y el premio CLARO) y todas salían
+ * del SSR de Cloudflare, que no cachea el HTML: siete esperas de red para
+ * construir una página. Ahora la API devuelve el agregado entero en una
+ * respuesta y el backend lo cachea 60 s.
+ *
+ * Si la llamada falla, la portada degrada como antes: secciones vacías y el
+ * aviso "no pudimos cargar" en los podios. Nunca inventa datos.
+ */
+let bundle: HomeBundle | null = null;
+let cargaFallida = true;
+try {
+  bundle = await getHomeBundle();
+  cargaFallida = false;
+} catch (e) {
+  bundle = null;
 }
 
-async function fetchLiveStatus(): Promise<LiveStatus | null> {
-  try {
-    const res = await fetch(`${API_V1}/public/live-status`, { cache: 'no-store' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return null;
-}
-
-async function fetchMountainTitles(): Promise<Record<'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female', MountainTitle | null>> {
-  const m: Record<'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female', MountainTitle | null> = {
+const stages = bundle?.stages ?? [];
+const proPodium = {
+  rows: (bundle?.pro_podium ?? []).map(aPodiumRow),
+  error: cargaFallida,
+};
+const normalPodium = {
+  rows: (bundle?.normal_podium ?? []).map(aPodiumRow),
+  error: cargaFallida,
+};
+const topTeams = (bundle?.teams_podium ?? []).map((fila) => ({
+  name: fila.team_name,
+  points: fila.total_points,
+}));
+const teamsError = cargaFallida;
+const liveStatusRaw = bundle?.live_status ?? null;
+const mountain: Record<'kom' | 'qom' | 'kamikaze_male' | 'kamikaze_female', MountainTitle | null> =
+  bundle?.mountain_titles ?? {
     kom: null,
     qom: null,
     kamikaze_male: null,
     kamikaze_female: null,
   };
-  try {
-    const res = await fetch(`${API_V1}/stages/la-joya-extreme/summary`);
-    if (res.ok) {
-      const data = await res.json();
-      m.kom = data.kom ?? null;
-      m.qom = data.qom ?? null;
-      m.kamikaze_male = data.kamikaze_male ?? null;
-      m.kamikaze_female = data.kamikaze_female ?? null;
-    }
-  } catch (e) {}
-  return m;
-}
-
-// Ejecución paralela de todos los datos de la portada en una sola tanda
-const [
-  proPodium,
-  normalPodium,
-  teamsData,
-  stages,
-  liveStatusRaw,
-  mountain,
-  remontada,
-] = await Promise.all([
-  fetchScopePodium('PRO'),
-  fetchScopePodium('NORMAL'),
-  fetchTeams(),
-  getStages(),
-  fetchLiveStatus(),
-  fetchMountainTitles(),
-  getRemontada(),
-]);
-
-const topTeams = teamsData.rows;
-const teamsError = teamsData.error;
+const remontada = bundle?.remontada ?? null;
 
 const nextStage =
   stages.find((s) => s.status === 'REGISTRATION_OPEN') ??
