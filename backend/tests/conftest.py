@@ -6,6 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from backend.app.main import app
+from backend.app.core.cache import cache
 from backend.app.core.db import get_session
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -30,6 +31,13 @@ async def async_session():
 
 @pytest_asyncio.fixture
 async def client(async_session: AsyncSession):
+    # La caché en memoria es GLOBAL al proceso. Si un test dejara una
+    # clasificación cacheada, el siguiente la vería sin tocar la base de
+    # datos y comprobaría el valor viejo. Se vacía ANTES de cada prueba:
+    # la caché sí funciona en los tests (eso permite probar la
+    # invalidación), pero nunca arrastra valores entre pruebas.
+    cache.clear()
+
     async def override_get_session():
         yield async_session
 

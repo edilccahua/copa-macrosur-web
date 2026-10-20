@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
+from backend.app.core.cache import cache
 from backend.app.core.config import settings
 from backend.app.core.db import get_session
 from backend.app.core.limits import detalle_excede_tope
@@ -53,6 +54,11 @@ async def set_stage_live(
     await session.commit()
     await session.refresh(stage)
 
+    # El estado de la transmisión lo anuncia la portada: si el público lo
+    # leyera de la caché, vería el enlace "en vivo" (o su ausencia) con
+    # hasta dos minutos de retraso.
+    cache.invalidate_public()
+
     return await live_service.resolve_live_status(session)
 
 
@@ -90,6 +96,10 @@ async def upload_gpx_file(
 
     session.add(stage)
     await session.commit()
+
+    # La traza nueva cambia la distancia, el desnivel y el perfil de la
+    # fecha: el calendario y el resumen cacheados ya no valen.
+    cache.invalidate_public()
 
     return {
         "status": "success",
@@ -219,6 +229,11 @@ async def sync_strava_efforts(
         inserted += 1
 
     await session.commit()
+
+    # Los intentos de Strava son los que deciden el KOM, el QOM y los
+    # Kamikaze: el resumen de la fecha cacheado ya no vale.
+    cache.invalidate_public()
+
     return {"status": "success", "efforts_synced": inserted}
 
 
