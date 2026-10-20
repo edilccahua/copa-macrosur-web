@@ -24,18 +24,15 @@ html {
      propia hoja (importada en src/scripts/showcase-motion.ts). */
 }
 
-/* El regulador lateral REEMPLAZA a la barra nativa, así que la del
-   navegador se oculta. Pero sólo donde el regulador está visible: por
-   debajo de 48em la banda no se dibuja (en móvil no cabe) y sin barra
-   nativa el usuario se queda sin indicación de scroll. */
-@media (min-width: 48em) {
-  .no-scrollbar {
-    scrollbar-width: none;
-  }
+/* La barra de scroll NATIVA se oculta en todo el sitio: en escritorio la
+   sustituye el regulador lateral y en móvil la barra de avance de lectura
+   que va bajo el menú. Dejar la nativa era un indicador duplicado. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
 
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 body {
