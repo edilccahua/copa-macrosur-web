@@ -339,6 +339,23 @@ ok(
   `/premios: los rótulos no repiten los montos (${rotulos.join(' · ')})`
 );
 
+// ── 6e · El premio va SIN color y SIN repetir la moneda ─────────────────────
+ok(
+  await page.$$eval('#premios .prize', (els) =>
+    els.every((el) => !el.querySelector('.prize__currency'))
+  ),
+  'portada: el encabezado de la tarjeta no repite "USD"'
+);
+ok(
+  await page.$$eval('.podium__value', (els) =>
+    els.every((el) => {
+      const c = getComputedStyle(el).color;
+      return c === 'rgb(255, 255, 255)' || c === 'rgb(0, 0, 0)';
+    })
+  ),
+  'los montos del podio van en tinta, sin color de acento'
+);
+
 // ── 7 · La cabecera: masthead de la referencia, sin panel ───────────────────
 const masthead = await page.evaluate(() => {
   const m = document.querySelector('.masthead');

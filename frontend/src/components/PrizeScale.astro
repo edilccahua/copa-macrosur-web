@@ -119,7 +119,6 @@ const leaderDetail = leader
       <h2 class="prize__label">{title}</h2>
       <span class="prize__scope font-mono">· {label}</span>
     </span>
-    <span class="prize__currency font-mono">{currency}</span>
   </header>
 
   {body && <p class="prize__body">{body}</p>}
@@ -271,9 +270,10 @@ const leaderDetail = leader
 
   .prize__body {
     margin: 0;
-    max-width: 42ch;
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
     color: var(--muted);
   }
 

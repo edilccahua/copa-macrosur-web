@@ -43,8 +43,7 @@ export const ACCUMULATED_PRIZES: AccumulatedPrize[] = [
   {
     scope: 'PRO',
     label: 'PRO',
-    blurb:
-      'Al líder de puntos del acumulado PRO, sumando Elite, Master A, Master B y Master C.',
+    blurb: 'Al que más puntos suma en PRO.',
     icon: 'bolt',
     tiers: [
       { position: 1, amountUsd: 300 },
@@ -55,8 +54,7 @@ export const ACCUMULATED_PRIZES: AccumulatedPrize[] = [
   {
     scope: 'NORMAL',
     label: 'NORMAL',
-    blurb:
-      'Al líder de puntos del acumulado NORMAL, sumando Turismo, Master D, Damas y Juveniles.',
+    blurb: 'Al que más puntos suma en NORMAL.',
     icon: 'users',
     tiers: [
       { position: 1, amountUsd: 300 },

@@ -87,6 +87,19 @@
         </radialGradient>
       </defs>
 
+      <!--
+        El filtro de tinta se aplica al GRUPO DEL TERRENO, no al <svg> entero.
+        Con el filtro sobre el <svg>, el `feTurbulence` + `feDisplacementMap`
+        se recalculaba en CPU en CADA FOTOGRAMA, porque el ciclista animado
+        estaba DENTRO del elemento filtrado: el mayor coste de CPU de la
+        portada. Con el terreno solo dentro del filtro y el ciclista fuera
+        (como hermano), la capa filtrada es estática y el navegador la cachea;
+        el resultado visual es idéntico (el desplazamiento de tinta de 3,5 px
+        sobre una figura de 72 px de alto es imperceptible) y la animación de
+        12 s del ciclista se conserva EXACTAMENTE igual.
+      -->
+      <g class="scene__terrain">
+
       <!-- ── 0. Halo de cumbre ──────────────────────────────────────── -->
       <ellipse class="mountain__glow" cx="820" cy="220" rx="420" ry="200" fill="url(#sun-peak-glow)" />
 
@@ -231,8 +244,12 @@
         stroke-dasharray="8 4"
       />
 
+      </g>
+
       <!-- ── 8. Ciclista MTB XCO en avance sobre el sendero singletrack ─── -->
-      <!-- Avance continuo de 12s a lo largo del sendero sincronizado con cadencia 60 RPM -->
+      <!-- Avance continuo de 12s a lo largo del sendero sincronizado con cadencia 60 RPM.
+           FUERA del grupo filtrado: si el ciclista estuviera dentro, el filtro
+           de tinta se recalcularía en cada fotograma (ver la nota de arriba). -->
       <g class="scene__cyclist-track">
         <g class="scene__cyclist" data-cyclist>
           <!-- Sombra en el suelo del sendero -->
@@ -704,7 +721,17 @@
     max-width: none;
     height: auto;
     will-change: transform;
-    /* Aplicar filtro orgánico de tinta linograbado */
+  }
+
+  /*
+    El filtro orgánico de tinta linograbado va sobre el TERRENO, no sobre el
+    <svg> entero: dentro del elemento filtrado no hay nada que se mueva, así
+    que el `feTurbulence` + `feDisplacementMap` no se recalcula en cada
+    fotograma (antes, con el ciclista dentro, sí lo hacía: era el mayor coste
+    de CPU de la portada). El desplazamiento de 3,5 px se sigue viendo igual
+    sobre las montañas.
+  */
+  .scene__terrain {
     filter: url(#pulso-tinta);
   }
 

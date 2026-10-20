@@ -3,7 +3,11 @@ import Base from '../layouts/Base.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import StandingsTable from '../components/svelte/StandingsTable.svelte';
-import { API_V1 } from '../lib/api';
+import {
+  API_V1,
+  packStandingsRows,
+  packTeamStandingsRows,
+} from '../lib/api';
 
 // SSR: la clasificación se resuelve contra la API en cada request (ver specs/03 §0).
 
@@ -40,53 +44,114 @@ let context: any = {
 let fallbackRows: any[] = [];
 let fallbackTeams: any[] = [];
 
-try {
-  const res = await fetch(`${API_V1}/public/standings?scope=${scope}&mode=${mode}`);
-  if (res.ok) {
-    const payload = await res.json();
-    context = payload.context ?? context;
-    fallbackRows = payload.rows ?? [];
+/**
+ * Una lectura de la clasificación. `null` si el backend no responde: la isla
+ * muestra el estado vacío y reintenta al interactuar (specs/03 §0.2).
+ */
+async function pedir(url: string): Promise<any | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
-} catch (e) {
-  // Modo SSR sin backend: la isla muestra el estado vacío con su mensaje.
 }
 
-// --- Los argumentos se resuelven contra el contexto -------------------------
-const stageArg = Number.isFinite(stageNumber) && stageNumber > 0
-  ? (context.stages.find((s: any) => s.stage_number === stageNumber) ?? null)
-  : null;
-const catArg = catCode
-  ? (context.categories.find((c: any) => c.short_code === catCode) ?? null)
-  : null;
+/**
+ * UNA sola tanda de llamadas al backend.
+ *
+ * Antes eran TRES: la general (siempre) y, si la URL traía argumentos, la
+ * individual y la de equipos dentro de un `Promise.all`. La general sólo
+ * servía para traducir `?fecha=2` y `?categoria=ELI` a los ids que pide la
+ * API... y sus FILAS se descartaban, porque la respuesta de la vista pedida
+ * trae el mismo contexto (fechas, categorías, grupos).
+ *
+ * Ahora:
+ * · La respuesta de la clasificación trae el contexto, así que la lectura
+ *   general sólo hace falta cuando hay que traducir `?fecha=`/`?categoria=`
+ *   a ids.
+ * · La Copa de Equipos sólo se pide cuando la vista ES la de equipos: antes
+ *   se pedía siempre y se tiraba a la basura en cuanto la isla cambiaba de
+ *   pestaña (la isla la vuelve a pedir sola al pulsar EQUIPO).
+ */
+/**
+ * Los ids que pide la API (`stage`, `category_id`) salen del contexto: la URL
+ * trae el NÚMERO de la fecha y el CÓDIGO de la categoría, no sus ids.
+ */
+function resuelveFecha(ctx: any) {
+  return Number.isFinite(stageNumber) && stageNumber > 0
+    ? (ctx.stages.find((s: any) => s.stage_number === stageNumber) ?? null)
+    : null;
+}
 
-// Si la URL pide otra fecha, otra categoría, la Copa de Equipos o el modo
-// "fecha", se piden esos datos (el corte por defecto ya vino arriba).
-if (stageArg || catArg || kind === 'teams' || mode === 'fecha') {
-  const q = new URLSearchParams();
-  q.set('mode', mode);
-  q.set('scope', scope);
-  if (stageArg) q.set('stage', String(stageArg.id));
-  if (catArg) q.set('category_id', String(catArg.id));
+function resuelveCategoria(ctx: any) {
+  return catCode
+    ? (ctx.categories.find((c: any) => c.short_code === catCode) ?? null)
+    : null;
+}
 
-  try {
+const params = new URLSearchParams();
+params.set('mode', mode);
+params.set('scope', scope);
+
+// ¿La URL pide una fecha o una categoría concretas? Entonces hacen falta sus
+// ids, y los ids sólo salen del contexto.
+const pideIds = (Number.isFinite(stageNumber) && stageNumber > 0) || catCode !== '';
+
+if (pideIds) {
+  // 1) El contexto: de aquí salen el id de la fecha y el de la categoría.
+  const general = await pedir(`${API_V1}/public/standings?${params.toString()}`);
+  if (general) {
+    context = general.context ?? context;
+
+    // 2) La vista pedida, ya con sus ids: una sola tanda.
+    const q = new URLSearchParams(params);
+    const stageArg = resuelveFecha(context);
+    const catArg = resuelveCategoria(context);
+    if (stageArg) q.set('stage', String(stageArg.id));
+    if (catArg) q.set('category_id', String(catArg.id));
+
     const [ind, tms] = await Promise.all([
-      fetch(`${API_V1}/public/standings?${q.toString()}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${API_V1}/public/standings?${q.toString()}&kind=teams`).then((r) =>
-        r.ok ? r.json() : null
-      ),
+      kind === 'teams'
+        ? Promise.resolve(null)
+        : pedir(`${API_V1}/public/standings?${q.toString()}`),
+      kind === 'teams'
+        ? pedir(`${API_V1}/public/standings?${q.toString()}&kind=teams`)
+        : Promise.resolve(null),
     ]);
     if (ind) {
       fallbackRows = ind.rows ?? [];
       context = ind.context ?? context;
     }
     if (tms) fallbackTeams = tms.rows ?? [];
-  } catch (e) {
-    // Sin backend: la isla reintenta al interactuar.
+  }
+} else {
+  // Una sola llamada: la vista pedida. Su respuesta trae el contexto.
+  const suffix = kind === 'teams' ? '&kind=teams' : '';
+  const payload = await pedir(`${API_V1}/public/standings?${params.toString()}${suffix}`);
+  if (payload) {
+    context = payload.context ?? context;
+    if (kind === 'teams') {
+      fallbackTeams = payload.rows ?? [];
+    } else {
+      fallbackRows = payload.rows ?? [];
+    }
   }
 }
 
+// --- Los argumentos se resuelven contra el contexto -------------------------
+const stageArg = resuelveFecha(context);
+const catArg = resuelveCategoria(context);
+
 const initialStageId = stageArg ? stageArg.id : (context.selected_stage_id ?? null);
 const initialCategoryId = catArg ? catArg.id : null;
+
+// Las filas viajan COLUMNADAS (ver `packStandingsRows`): el atributo `props`
+// del <astro-island> pesa ~25 KB en vez de ~90 KB. La tabla recibe los mismos
+// datos; sólo cambia el formato del viaje.
+const packedRows = packStandingsRows(fallbackRows);
+const packedTeams = packTeamStandingsRows(fallbackTeams);
 
 Astro.response.headers.set(
   'Cache-Control',
@@ -104,10 +169,9 @@ Astro.response.headers.set(
   <main class="container page-content">
     <StandingsTable
       client:load
-      stages={context.stages}
       context={context}
-      initialRows={fallbackRows}
-      initialTeams={fallbackTeams}
+      initialRows={packedRows}
+      initialTeams={packedTeams}
       initialStageId={initialStageId}
       initialScope={scope}
       initialCategoryId={initialCategoryId}

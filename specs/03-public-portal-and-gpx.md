@@ -1019,6 +1019,13 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
       necesita un podio: necesita una etiqueta.
     - La tira plana ("USD 300 / 200 / 100") queda sólo en el rótulo de la
       sección, como resumen.
+  - **El premio va en tinta, no en color.** La cifra es dato, no decoración:
+    el único acento de la tarjeta es su rótulo (el color del ámbito). Las
+    medallas conservan el oro, la plata y el bronce, porque son el puesto.
+  - **La tarjeta no repite la moneda.** El encabezado no lleva "USD": cada
+    cifra del podio lo lleva consigo.
+  - **El texto descriptivo va en la monoespaciada de la casa**, a una línea
+    y corto: la tarjeta es un cartel de datos, no un párrafo.
   - **En los premios acumulados, cada peldaño lleva su ganador PROVISIONAL**
     (el primero, el segundo y el tercero de la clasificación): el podio dice
     quién cobra cada cifra, no sólo cuánto cobra. El nombre va **centrado**

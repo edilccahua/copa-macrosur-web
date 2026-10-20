@@ -11,7 +11,12 @@
  */
 import { ClientRouter } from 'astro:transitions';
 import PageRuler from '../components/PageRuler.astro';
-import '@fontsource-variable/archivo';
+// SÓLO la variante `standard`: declara `font-weight: 100 900` Y
+// `font-stretch: 62% 125%`, que es lo que usa el sitio (`font-stretch: 118%`
+// en los títulos). La variante `wght` que se importaba además es un
+// subconjunto redundante: el navegador tenía que descargarla aparte
+// (~120 KB de woff2) sin ganar nada, porque el `font-stretch` del sitio sólo
+// existe en la variante `standard`.
 import '@fontsource-variable/archivo/standard.css';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/geist-mono';

@@ -30,29 +30,35 @@ export interface StageOption {
   live_closed_at?: string | null;
 }
 
+/**
+ * Una fila de la clasificación individual: SÓLO los campos que la tabla
+ * pinta. Los que el backend devuelve y la tabla no usa (`team_id`,
+ * `category_id`, `category_short_code`, `first_places_count`,
+ * `total_elapsed_ms`, `stages_completed`) no viajan: son bytes muertos en el
+ * HTML de cada página de clasificación.
+ */
 export interface StandingsRow {
   rider_id: number;
   rider_name: string;
   rider_slug: string;
   team_name: string;
   team_slug: string | null;
-  category_id: number;
   category_name: string;
-  category_short_code: string;
   category_rank: number;
   current_rank: number;
   previous_rank: number | null;
   rank_delta: number;
   is_debut: boolean;
   total_points: number;
-  first_places_count: number;
-  total_elapsed_ms: number;
   formatted_total_time: string;
   gap_to_leader_ms: number;
   formatted_gap: string;
-  stages_completed: number;
 }
 
+/**
+ * Una fila de la Copa de Equipos: también SÓLO lo que la tabla pinta
+ * (aquí lo único que sobra es `total_elapsed_ms`).
+ */
 export interface TeamStandingRow {
   team_id: number;
   team_name: string;
@@ -63,10 +69,117 @@ export interface TeamStandingRow {
   second_places: number;
   third_places: number;
   total_riders: number;
-  total_elapsed_ms: number;
   formatted_total_time: string;
   gap_to_leader_ms: number;
   formatted_gap: string;
+}
+
+// --- Transporte compacto de las filas ----------------------------------------
+//
+// Las filas viajan al navegador dentro del atributo `props` del
+// `<astro-island>`. Astro serializa ahí cada valor con un envoltorio
+// (`[0, valor]`) y escapa cada comilla del atributo: con objetos sueltos, 102
+// filas de clasificación occupy ~90 KB de HTML (el 33 % de la página) para
+// acabar pintando los MISMOS datos que ya están en el HTML de la tabla.
+//
+// Por eso las filas viajan COLUMNADAS: la primera fila son los nombres de los
+// campos y cada fila es la lista de sus valores. Se repiten los 102 valores,
+// no los 102 × 15 nombres de campo. Con el mismo contenido, el payload pasa
+// de ~90 KB a ~25 KB de HTML.
+
+/** El orden de los campos de una fila columnada de la clasificación individual. */
+export const STANDINGS_ROW_FIELDS = [
+  'rider_id',
+  'rider_name',
+  'rider_slug',
+  'team_name',
+  'team_slug',
+  'category_name',
+  'category_rank',
+  'current_rank',
+  'previous_rank',
+  'rank_delta',
+  'is_debut',
+  'total_points',
+  'formatted_total_time',
+  'gap_to_leader_ms',
+  'formatted_gap',
+] as const;
+
+/** El orden de los campos de una fila columnada de la Copa de Equipos. */
+export const TEAM_STANDINGS_ROW_FIELDS = [
+  'team_id',
+  'team_name',
+  'team_slug',
+  'current_rank',
+  'total_points',
+  'first_places',
+  'second_places',
+  'third_places',
+  'total_riders',
+  'formatted_total_time',
+  'gap_to_leader_ms',
+  'formatted_gap',
+] as const;
+
+/**
+ * Empaqueta filas en el JSON columnar que viaja a la isla.
+ * `null` conserva los valores ausentes (`previous_rank`, `team_slug`).
+ */
+function packColumnar<T extends Record<string, unknown>>(
+  rows: T[],
+  fields: readonly string[]
+): string {
+  return JSON.stringify([
+    fields,
+    ...rows.map((row) => fields.map((field) => row[field] ?? null)),
+  ]);
+}
+
+/**
+ * Desempaqueta el JSON columnar y devuelve las filas como objetos.
+ * Un payload corrupto no debe tumbar la tabla: se devuelve la lista vacía y
+ * la isla vuelve a pedir los datos a la API.
+ */
+function unpackColumnar<T>(payload: string, fields: readonly string[]): T[] {
+  if (!payload) return [];
+  try {
+    const parsed = JSON.parse(payload) as [string[], unknown[]];
+    const [, values] = parsed;
+    if (!Array.isArray(values)) return [];
+    return values.map((row) => {
+      const out: Record<string, unknown> = {};
+      fields.forEach((field, i) => {
+        out[field] = (row as unknown[])[i] ?? null;
+      });
+      return out as T;
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Empaqueta las filas individuales para el viaje al navegador. */
+export function packStandingsRows(rows: StandingsRow[]): string {
+  return packColumnar(rows as unknown as Record<string, unknown>[], STANDINGS_ROW_FIELDS);
+}
+
+/** Empaqueta las filas de equipos para el viaje al navegador. */
+export function packTeamStandingsRows(rows: TeamStandingRow[]): string {
+  return packColumnar(
+    rows as unknown as Record<string, unknown>[],
+    TEAM_STANDINGS_ROW_FIELDS
+  );
+}
+
+/** Desempaqueta las filas individuales que viajan al navegador. */
+export function unpackStandingsRows(payload: string): StandingsRow[] {
+  return unpackColumnar<StandingsRow>(payload, STANDINGS_ROW_FIELDS);
+}
+
+/** Desempaqueta las filas de equipos que viajan al navegador. */
+export function unpackTeamStandingsRows(payload: string): TeamStandingRow[] {
+  return unpackColumnar<TeamStandingRow>(payload, TEAM_STANDINGS_ROW_FIELDS);
 }
 
 export interface CategoryOption {

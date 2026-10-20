@@ -34,7 +34,7 @@ const { steps, holders = false, currency = 'USD' } = Astro.props;
 /** El orden en que se ven los peldaños: tercero, primero y segundo. */
 const escalones = steps.length === 3 ? [steps[2], steps[0], steps[1]] : steps;
 
-const medallero = { 1: 34, 2: 28, 3: 28 } as const;
+const medallero = { 1: 26, 2: 22, 3: 22 } as const;
 ---
 
 <div class:list={['podium', holders && 'podium--holders']}>
@@ -84,7 +84,9 @@ const medallero = { 1: 34, 2: 28, 3: 28 } as const;
     font-stretch: 118%;
     line-height: 1;
     letter-spacing: -0.02em;
-    color: var(--podium-accent, var(--copa-gold));
+    /* El premio NO va en color: la cifra es dato, no decoración. El único
+       acento de la tarjeta es su rótulo. */
+    color: var(--ink-strong);
   }
 
   .podium__currency {
