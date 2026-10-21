@@ -144,9 +144,11 @@ function packColumnar<T extends Record<string, unknown>>(
 function unpackColumnar<T>(payload: string, fields: readonly string[]): T[] {
   if (!payload) return [];
   try {
-    const parsed = JSON.parse(payload) as [string[], unknown[]];
-    const [, values] = parsed;
-    if (!Array.isArray(values)) return [];
+    // El primer elemento del array es la lista de campos; el resto son las
+    // filas (una lista de valores cada una).
+    const parsed = JSON.parse(payload) as unknown[];
+    if (!Array.isArray(parsed)) return [];
+    const values = parsed.slice(1);
     return values.map((row) => {
       const out: Record<string, unknown> = {};
       fields.forEach((field, i) => {
