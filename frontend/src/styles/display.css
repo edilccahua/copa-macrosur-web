@@ -48,6 +48,28 @@
   line-height: 1.05;
   max-width: 24ch;
   margin-inline: auto;
+  /* La bajada también corre: el oblicuo de carrera del póster. */
+  font-style: italic;
+}
+
+/* El acento del hero (`Arequipa.` en la portada) es el único con vida:
+   degradado llama amarilla→roja de los pósters, sobre la serif itálica del
+   sistema. Solo vive en `size="hero"`: `size="page"` (fichas, interiores)
+   conserva el serif gris editorial. Reutilizable: cualquier hero que use
+   `size="hero"` hereda la tinta sin tocar su marcado. */
+.display-title--hero .display-accent {
+  color: var(--copa-flame);
+  padding-right: 0.08em;
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .display-title--hero .display-accent {
+    background: linear-gradient(96deg, var(--copa-flame) 5%, var(--copa-race) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
 }
 
 @media (min-width: 768px) {

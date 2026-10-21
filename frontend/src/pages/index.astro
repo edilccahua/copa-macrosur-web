@@ -136,6 +136,34 @@ const nextStageName = nextStage
   : '';
 
 /**
+ * Título de la tarjeta con contador con el mismo corte de las tarjetas del
+ * calendario (`titlePrefix` + `titleHighlight` en serif del hero):
+ * "El Retorno a / los Poblados 2", "La Joya / Extreme", etc. Clave por
+ * `stage_number`; si la fecha no está en el mapa, el highlight son las dos
+ * últimas palabras.
+ */
+const NEXT_TITLE_BY_STAGE: Record<number, { prefix: string; highlight: string; color: string }> = {
+  1: { prefix: 'La Joya', highlight: 'Extreme', color: '#f59e0b' },
+  2: { prefix: 'Kúspide', highlight: 'Z Xtreme III', color: '#f97316' },
+  3: { prefix: 'El Retorno a', highlight: 'los Poblados 2', color: '#10b981' },
+  4: { prefix: 'Quequeña', highlight: 'Xtreme III', color: '#d946ef' },
+};
+
+function splitNextTitle(name: string, stageNumber?: number | null) {
+  const styled = stageNumber != null ? NEXT_TITLE_BY_STAGE[stageNumber] : undefined;
+  if (styled) return styled;
+  const words = name.split(' ').filter(Boolean);
+  if (words.length <= 2) return { prefix: name, highlight: '', color: '#f59e0b' };
+  return {
+    prefix: words.slice(0, -2).join(' '),
+    highlight: words.slice(-2).join(' '),
+    color: '#f59e0b',
+  };
+}
+
+const nextTitle = nextStage ? splitNextTitle(nextStageName, nextStage.stage_number) : null;
+
+/**
  * DISTANCIA y DESNIVEL son POR VUELTA en la BD (specs/01 §1.4): en una
  * fecha de varias vueltas hay que multiplicar por las vueltas para no
  * prometer un tercio de la carrera. Una fecha sin ruta publicada no tiene
@@ -209,7 +237,9 @@ const nextDistanceText =
                 <span>{formatStageDate(nextStage.date)}</span>
               </div>
               <div class="next__main">
-                <h2 class="next__title">{nextStageName}</h2>
+                <h2 class="next__title" style={nextTitle ? `--next-color: ${nextTitle.color};` : undefined}>
+                  {nextTitle ? nextTitle.prefix : nextStageName}{nextTitle && nextTitle.highlight ? <> <span class="next__title-accent">{nextTitle.highlight}</span></> : null}
+                </h2>
                 <p class="next__specs">
                   {nextDistanceText}
                   {nextGainTotal != null ? ` · +${nextGainTotal} M` : ''}
@@ -226,12 +256,6 @@ const nextDistanceText =
                 />
               </div>
               <div class="next__actions">
-                <a class="btn btn--solid" href="/inscripciones">
-                  <span>Inscribirse</span>
-                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                    <path d="M3 8h10M9 4l4 4-4 4" />
-                  </svg>
-                </a>
                 <a class="btn btn--ghost" href={`/fechas/${nextStage.slug}`}>
                   <span>Ficha de ruta</span>
                   <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -454,15 +478,22 @@ const nextDistanceText =
   }
 
   .hero__eyebrow {
+    align-self: center;
+    display: inline-block;
     margin-bottom: 1.5rem;
+    padding: 0.35rem 0.7rem;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    /* El oro de la copa: en el póster oficial "EDICIÓN 2026" también va en
-       amarillo. Es el único color del hero. */
-    color: var(--copa-gold);
+    /* Pastilla brocha del cartel madre: EDICIÓN 2026 en amarillo de carrera
+       sobre negro, levemente rotada. Es la puerta del hero, no un texto
+       suelto. En oscuro el carbón es negro puro (token). */
+    color: var(--copa-race);
+    background: var(--copa-carbon);
+    transform: rotate(-1.5deg);
+    box-shadow: 3px 3px 0 color-mix(in srgb, var(--copa-carbon) 35%, transparent);
   }
 
   .hero__copy {
@@ -555,6 +586,17 @@ const nextDistanceText =
     line-height: var(--leading-tight);
     letter-spacing: var(--tracking-tight);
     color: var(--ink-strong);
+  }
+
+  /* El highlight de la tarjeta con contador lleva la serif itálica de
+     `Arequipa.` con el color de su fecha (el mismo de su tarjeta). */
+  .next__title-accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0;
+    padding-right: 0.06em;
+    color: var(--next-color, var(--copa-flame));
   }
 
   @media (min-width: 48em) {

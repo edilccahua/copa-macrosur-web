@@ -158,6 +158,12 @@
      van en amarillo. En claro es un oro oscuro: sobre el papel claro un oro
      claro no llegaría al contraste mínimo de un texto grande. */
   --copa-gold: #9a6a00;
+  /* TINTA DE CARRERA (pósters de `races/info/`): amarillos y rojos vivos con
+     borde/sombra negra dura. Solo para heroes (portada + fichas de fecha).
+     No sustituyen a `--copa-gold` (premios) ni a `--scope` (tablas). */
+  --copa-race: #ffc400;
+  --copa-flame: #e8262d;
+  --copa-carbon: #101014;
 }
 
 :root[data-theme='dark'] {
@@ -172,6 +178,9 @@
   --medal-2: #9ba6ae;
   --medal-3: #cd7039;
   --copa-gold: #f0c22e;
+  --copa-race: #ffc400;
+  --copa-flame: #ff2e36;
+  --copa-carbon: #000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -187,6 +196,9 @@
     --medal-2: #9ba6ae;
     --medal-3: #cd7039;
     --copa-gold: #f0c22e;
+    --copa-race: #ffc400;
+    --copa-flame: #ff2e36;
+    --copa-carbon: #000;
   }
 }
 

@@ -25,6 +25,8 @@ interface Props {
     statusKey: 'finished' | 'open' | 'upcoming' | 'special';
     distance: string;
     elevation: string;
+    /** Dato de la primera minitarjeta: llegadas en meta, cupos u "—". */
+    participants: string;
     highlight?: string;
     description?: string;
     poster: string;
@@ -173,11 +175,12 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
       </a>
     </h3>
 
-    <!-- Minitarjetas técnicas limpias: FECHA, DISTANCIA y DESNIVEL -->
+    <!-- Minitarjetas técnicas: PARTICIPANTES, DISTANCIA y DESNIVEL.
+         La fecha ya va en el chip sobre el póster: no se repite aquí. -->
     <div class="event-card__specs">
-      <div class="event-card__spec event-card__spec--date">
-        <span class="event-card__spec-label">FECHA</span>
-        <span class="event-card__spec-val">{event.date}</span>
+      <div class="event-card__spec event-card__spec--accent">
+        <span class="event-card__spec-label">PARTICIPANTES</span>
+        <span class="event-card__spec-val">{event.participants}</span>
       </div>
       <div class="event-card__spec">
         <span class="event-card__spec-label">DISTANCIA</span>
@@ -242,7 +245,10 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     max-width: 450px;
     width: 100%;
     background: var(--bg-raised);
+    /* Borde neutro en laterales e inferior para que se lea como tarjeta;
+       arriba manda la barra de acento (transparente para no duplicarla). */
     border: var(--hairline) solid var(--line);
+    border-top-color: transparent;
     border-radius: 0;
     overflow: hidden;
     cursor: pointer;
@@ -252,22 +258,18 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
   }
 
   .event-card:hover {
-    border-color: var(--event-color, var(--line-strong));
+    border-color: var(--line);
+    border-top-color: transparent;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   }
 
-  /* Estado cuando el scroll marker pasa este hito */
-  :global(.timeline-item.passed) .event-card {
-    border-color: color-mix(in srgb, var(--event-color) 45%, var(--line));
-  }
-
-  /* Barra de acento superior */
+  /* Barra de acento superior: hairline de 2px que se expande al hover/pasar. */
   .event-card__accent-bar {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 2px;
     background: var(--event-color);
     transform-origin: left;
     transform: scaleX(0);
@@ -287,7 +289,7 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     justify-content: space-between;
     gap: 0.5rem;
     padding: 0.65rem 0.95rem;
-    border-bottom: var(--hairline) solid var(--line);
+    border-bottom: var(--hairline) solid transparent;
     background: var(--bg);
   }
 
@@ -381,7 +383,7 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     max-height: 275px;
     overflow: hidden;
     background: var(--bg-sunken);
-    border-bottom: var(--hairline) solid var(--line);
+    border-bottom: var(--hairline) solid transparent;
   }
 
   .event-card__media img {
@@ -500,6 +502,14 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
   }
 
   .event-card__title-accent {
+    /* La tinta de `Arequipa.` del hero (Instrument Serif itálica) con el
+       color propio de cada fecha: se conservan los colores de los pósters,
+       cambia solo la familia. */
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0;
+    padding-right: 0.06em;
     color: var(--event-ink);
   }
 
@@ -524,12 +534,12 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     border: var(--hairline) solid var(--line);
   }
 
-  .event-card__spec--date {
+  .event-card__spec--accent {
     border-color: color-mix(in srgb, var(--event-color) 40%, var(--line));
     background: color-mix(in srgb, var(--event-color) 5%, var(--bg-sunken));
   }
 
-  .event-card__spec--date .event-card__spec-val {
+  .event-card__spec--accent .event-card__spec-val {
     color: var(--event-color);
     font-weight: 700;
   }
@@ -562,7 +572,7 @@ const directLabel = event.directCta || event.cta || 'Ver ficha de carrera';
     display: flex;
     align-items: center;
     padding: 0.65rem 0.95rem;
-    border-top: var(--hairline) solid var(--line);
+    border-top: var(--hairline) solid transparent;
     background: var(--bg);
     margin-top: auto;
   }

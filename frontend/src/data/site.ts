@@ -26,8 +26,8 @@ export const SITE_TAGLINE = 'Edición 2026 · Kuspide Xtreme Sports';
 export const BRAND_WORDMARK = 'COPA MACROSUR MTB';
 
 /**
- * Palabra del rótulo que va en el oro de la copa. En el póster oficial,
- * "MTB" es la única palabra en amarillo del lockup.
+ * Palabra que va en el amarillo de carrera. En los pósters, "MTB" es la
+ * única palabra en amarillo del lockup (cartel madre + Z Xtreme).
  */
 export const BRAND_ACCENT = 'MTB';
 

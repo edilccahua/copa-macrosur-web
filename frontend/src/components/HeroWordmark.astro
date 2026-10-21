@@ -3,9 +3,18 @@
  * HeroWordmark.astro — el rótulo del hero, letra por letra.
  *
  * Medido del original (`tools/probe-wordmark.mjs`):
- *   font-family Archivo · 95.4px · peso 750 · font-stretch 125%
+ *   font-family Archivo · 95.4px · peso 850 · font-stretch 125% · oblicuo
  *   color #000 · letras en `inline-block`, cada una con su ancho
  *   rect 672×95 centrado en un viewport de 1440
+ *
+ * La animación la aplica `src/scripts/showcase-motion.ts` con los tiempos del
+ * `introTuner` del original:
+ *   wordAt 0.35 · wordDur 0.85 · copyAt 1.05 · instrAt 0.70
+ *
+ * Tinta de carrera: el oblicuo y la sombra del acento salen de los pósters
+ * de `races/info/` (Z Xtreme / cartel madre): `MTB` en amarillo de carrera
+ * con borde y sombra dura negra, levemente rotado como una cinta.
+ * El `skew`/`rotate` van en la LÍNEA: GSAP anima cada `[data-letter]`.
  *
  * La animación la aplica `src/scripts/showcase-motion.ts` con los tiempos del
  * `introTuner` del original:
@@ -24,7 +33,7 @@
 interface Props {
   text?: string;
   /**
-   * Palabra que va en el oro de la copa. En el póster oficial "MTB" y
+   * Palabra que va en el amarillo de carrera. En los pósters oficiales "MTB" y
    * "EDICIÓN 2026" son las únicas palabras en amarillo: es el color que
    * distingue a la copa, y el que hace que el hero no sea un bloque
    * monocromo. Si la palabra no aparece en `text`, no se marca nada.
@@ -82,10 +91,15 @@ let letterIndex = 0;
     font-family: var(--font-display);
     /* El máximo es el valor medido; por debajo se adapta. */
     font-size: clamp(2.5rem, 12vw, 95.4px);
-    font-weight: 750;
+    /* Tinta de carrera (pósters `races/info/`): negro pesado y oblicuo.
+       El `italic` cae a oblicua sintética (solo se importa Archivo upright
+       para no pesar en `/en-vivo`); el `skew` va en la LÍNEA, no en la letra,
+       para no pelear con la intro de GSAP que anima `[data-letter]`. */
+    font-weight: 850;
+    font-style: italic;
     font-stretch: 125%;
-    letter-spacing: normal;
-    line-height: 1;
+    letter-spacing: -0.02em;
+    line-height: 0.94;
     color: var(--ink-strong);
     user-select: none;
   }
@@ -107,12 +121,23 @@ let letterIndex = 0;
     flex-wrap: wrap;
     justify-content: center;
     column-gap: 0.22em;
+    /* Oblicuo de velocidad del póster. En el contenedor: GSAP escribe
+       `transform` en cada `[data-letter]`, aquí no hay conflicto. */
+    transform: skewX(-6deg);
   }
 
-  /* La palabra de acento: el "MTB" del rótulo va en el oro de la copa, como
-     en el póster oficial. */
+  /* La palabra de acento: el "MTB" del rótulo va en el amarillo de carrera
+     de los pósters (`--copa-race`), con borde y sombra dura negra para que
+     se lea sobre la cordillera en claro y en oscuro. Ligera rotación de
+     cinta, como la de `Z Xtreme`. */
   .wordmark__line--accent {
-    color: var(--copa-gold);
+    color: var(--copa-race);
+    -webkit-text-stroke: 1.5px var(--copa-carbon);
+    paint-order: stroke fill;
+    text-shadow:
+      3px 3px 0 var(--copa-carbon),
+      -1px -1px 0 var(--copa-carbon);
+    transform: skewX(-6deg) rotate(-2deg);
   }
 
   .wordmark__letter {
