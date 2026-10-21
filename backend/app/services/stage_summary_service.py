@@ -68,6 +68,48 @@ E_BIKE_SHORT_CODE = "EBK"
 # Cuántos efforts de Strava se exponen por segmento (specs/03 §1.2 punto 5).
 _STRAVA_TOP_N = 10
 
+STAGE_DESIGNATED_MOUNTAIN_SEGMENTS = {
+    1: {"climb_strava_id": "25045985", "descent_strava_id": "31227003"},
+    2: {"climb_strava_id": "36718652", "descent_strava_id": "27868955"},
+    3: {"climb_strava_id": "25245306", "descent_strava_id": "27868955"},
+}
+
+STAGE_SEGMENT_TAGS: Dict[str, tuple[str, Optional[str], Optional[int]]] = {
+    # Fecha 1 · La Joya Extreme
+    "25045985": ("PUNCHER", "KOM_QOM", 15),
+    "31227003": ("KAMIKAZE", "KAMIKAZE", 15),
+    "30612243": ("KAMIKAZE", None, None),
+    "18378066": ("LLANERO", None, None),
+    "41279552": ("ESCALADOR", None, None),
+    # Fecha 2 · Z Xtreme 2026
+    "36718652": ("ESCALADOR", "KOM_QOM", 15),
+    "27868955": ("KAMIKAZE", "KAMIKAZE", 15),
+    "12875208": ("PUNCHER", None, None),
+    "36718907": ("ESCALADOR", None, None),
+    "40129265": ("PUNCHER", None, None),
+    # Fecha 3 · Vuelta a los Poblados
+    "25245306": ("ESCALADOR", "KOM_QOM", 15),
+    "27868955": ("KAMIKAZE", "KAMIKAZE", 15),
+    "30658106": ("PUNCHER", None, None),
+    "19713632": ("KAMIKAZE", None, None),
+    "21396382": ("LLANERO", None, None),
+}
+
+
+def classify_segment(
+    strava_id: str, kind: str, average_grade: float, distance_km: float
+) -> tuple[str, Optional[str], Optional[int]]:
+    if strava_id in STAGE_SEGMENT_TAGS:
+        return STAGE_SEGMENT_TAGS[strava_id]
+    if average_grade <= -2.5:
+        return ("KAMIKAZE", None, None)
+    elif average_grade >= 5.0 and distance_km < 1.5:
+        return ("PUNCHER", None, None)
+    elif average_grade >= 2.0:
+        return ("ESCALADOR", None, None)
+    else:
+        return ("LLANERO", None, None)
+
 
 def _points_for_position(position: int) -> int:
     """Puntos de un puesto según la escala de specs/01 §3.1."""
@@ -486,6 +528,13 @@ async def compute_stage_strava(
         # visible en `efforts`).
         kom = next((e for e in effort_reads if e.is_kom_qom), None)
 
+        badge_tag, award_target, award_amount_usd = classify_segment(
+            str(segment.strava_segment_id or ""),
+            segment.kind or "FLAT",
+            float(segment.average_grade or 0),
+            round(float(segment.distance_m or 0) / 1000, 2),
+        )
+
         summaries.append(
             StravaSegmentSummaryRead(
                 strava_segment_id=str(segment.strava_segment_id or ""),
@@ -496,6 +545,9 @@ async def compute_stage_strava(
                 efforts=effort_reads[:_STRAVA_TOP_N],
                 kom=kom,
                 kind=segment.kind or "FLAT",
+                badge_tag=badge_tag,
+                award_target=award_target,
+                award_amount_usd=award_amount_usd,
                 location=segment.location,
                 elevation_min_m=segment.elevation_min_m,
                 elevation_max_m=segment.elevation_max_m,
@@ -549,9 +601,14 @@ async def compute_stage_mountain_titles(
         "kamikaze_male": None,
         "kamikaze_female": None,
     }
+    # Integridad de datos: si la etapa no ha concluido, no se coronan ganadores ni se otorgan
+    # títulos de montaña antes de disputarse la prueba oficial.
+    if stage.status != StageStatusEnum.FINISHED:
+        return empty
+
     if segments is None or efforts is None or rider_ids is None:
         segments, efforts, rider_ids = await load_stage_strava_data(session, stage.id)
-    if not segments:
+    if not segments or not rider_ids:
         return empty
 
     stage_distance_km = float(stage.distance_km or 0) * max(1, stage.laps or 1)
@@ -611,12 +668,25 @@ async def compute_stage_mountain_titles(
             for effort in efforts
         )
 
-    # La subida y el descenso que definen la jornada: el más empinado y, a
-    # igualdad de pendiente, el más largo. Se prefiere un tramo que tenga
-    # intentos de la fecha: si el descenso más empinado solo guarda tiempos de
-    # hace años, el título sería de otra carrera.
+    # Identificar la subida reina (KOM/QOM) y la bajada reina (Kamikazes)
+    stage_num = stage.stage_number
+    designated = STAGE_DESIGNATED_MOUNTAIN_SEGMENTS.get(stage_num)
+
     climb_segment = None
-    if climbs:
+    descent_segment = None
+
+    if designated:
+        climb_segment = next(
+            (s for s in candidates if str(s.strava_segment_id) == designated["climb_strava_id"]),
+            None,
+        )
+        descent_segment = next(
+            (s for s in candidates if str(s.strava_segment_id) == designated["descent_strava_id"]),
+            None,
+        )
+
+    # Fallback por pendiente y longitud si no está en la configuración de la etapa
+    if climb_segment is None and climbs:
         climb_segment = max(
             climbs,
             key=lambda s: (
@@ -625,8 +695,7 @@ async def compute_stage_mountain_titles(
                 float(s.distance_m or 0),
             ),
         )
-    descent_segment = None
-    if descents:
+    if descent_segment is None and descents:
         descent_segment = max(
             descents,
             key=lambda s: (
@@ -639,13 +708,7 @@ async def compute_stage_mountain_titles(
     def _title(
         segment: Optional[StravaSegment], gender: str
     ) -> Optional[MountainTitleRead]:
-        """El título de un segmento para un género, con su corredor más rápido.
-
-        Se prefiere el intento **de la fecha de la carrera**. Si el tramo no
-        tiene ninguno de ese género (una bajada que ninguna dama cronometró ese
-        día), se recurre al mejor intento registrado del mismo género: el
-        título existe y el intento es real, aunque no sea de nuestra jornada.
-        """
+        """El título de un segmento para un género, con su corredor más rápido en la fecha."""
         if segment is None:
             return None
         efforts_of_segment = [
@@ -656,14 +719,16 @@ async def compute_stage_mountain_titles(
         if not efforts_of_segment:
             return None
 
+        # Integridad de datos: estrictamente el día de la carrera y corredor inscrito
         same_day = [
             effort
             for effort in efforts_of_segment
             if is_measured_on_stage(effort.measured_on, stage_date)
-            and (effort.rider_id is None or not rider_ids or effort.rider_id in rider_ids)
+            and (effort.rider_id is None or effort.rider_id in rider_ids)
         ]
-        pool = same_day or efforts_of_segment
-        best = min(pool, key=lambda e: e.elapsed_time_sec or 0)
+        if not same_day:
+            return None
+        best = min(same_day, key=lambda e: e.elapsed_time_sec or 0)
         return _read_title(segment, best)
 
     return {

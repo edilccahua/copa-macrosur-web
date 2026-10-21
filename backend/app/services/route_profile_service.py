@@ -33,15 +33,14 @@ from typing import Any, Dict, List, Optional, Tuple
 from backend.app.models.entities import RouteSummit
 
 # Pendiente (en %) a partir de la cual un tramo cuenta como subida.
-CLIMB_THRESHOLD_PCT = 3.0
+CLIMB_THRESHOLD_PCT = 2.5
 # Pendiente (en %) a partir de la cual un tramo cuenta como bajada.
-DESCENT_THRESHOLD_PCT = -3.0
-# Desnivel mínimo (m) para que una subida se registre como puerto.
-MIN_CLIMB_GAIN_M = 25
-# Ventana de suavizado (puntos) para el cálculo de pendientes: la geometría
-# viene simplificada a 500 puntos y el ruido de esa simplificación infla las
-# pendientes cortas (un tramo de 70 m marcaba 53% de pendiente).
-SMOOTHING_WINDOW = 3
+DESCENT_THRESHOLD_PCT = -2.5
+# Desnivel mínimo (m) para que una subida se registre como puerto de montaña.
+# Subidas menores de 80m de desnivel son repechos u ondulaciones, no puertos.
+MIN_CLIMB_GAIN_M = 80
+# Ventana de suavizado (puntos) para el cálculo de pendientes y cimas.
+SMOOTHING_WINDOW = 5
 
 _NOMINATIM = "https://nominatim.openstreetmap.org/reverse"
 _USER_AGENT = "kuspide-mtb/1.0 (https://kuspide.pe)"
@@ -49,11 +48,11 @@ _USER_AGENT = "kuspide-mtb/1.0 (https://kuspide.pe)"
 # Categorías de puerto, de la más dura a la más suave:
 # (etiqueta, desnivel mínimo en m, pendiente media mínima en %).
 _CATEGORY_RULES = [
-    ("HC", 1000, 8.0),
-    ("1", 700, 6.0),
-    ("2", 400, 4.0),
-    ("3", 200, 3.0),
-    ("4", 100, 2.0),
+    ("HC", 800, 7.0),
+    ("1", 500, 6.0),
+    ("2", 300, 5.0),
+    ("3", 180, 4.0),
+    ("4", 80, 2.5),
 ]
 
 
@@ -150,89 +149,96 @@ def extract_summits(
 ) -> List[Dict[str, Any]]:
     """Extrae las cimas de la ruta desde su geometría.
 
-    `geocode=True` consulta Nominatim para nombrar cada cima. Se usa **solo al
-    sembrar**: en cada request la red no debe estar en el camino.
+    Identifica puertos continuos (desnivel ≥ 80 m) tolerando pequeños descansos
+    para no fragmentar un puerto real en múltiples picos artificiales.
+    `geocode=True` consulta Nominatim para nombrar cada cima (solo al sembrar).
     """
     coords = _coords_from_geojson(route_geojson)
     if len(coords) < 2:
         return []
 
-    elevations = _smooth_elevations(coords)
+    elevations = _smooth_elevations(coords, window=SMOOTHING_WINDOW)
+    kms = [c[3] for c in coords]
 
-    # Tramos de subida contiguos.
     climbs: List[Dict[str, Any]] = []
-    current: Optional[Dict[str, Any]] = None
+    i = 0
+    while i < len(coords) - 1:
+        if elevations[i + 1] > elevations[i]:
+            start_i = i
+            peak_i = i + 1
+            max_ele = elevations[peak_i]
+            j = i + 1
+            while j < len(coords) - 1:
+                if elevations[j] > max_ele:
+                    max_ele = elevations[j]
+                    peak_i = j
+                drop = max_ele - elevations[j]
+                dist_from_peak = kms[j] - kms[peak_i]
+                # Si cae más de 15m o cae más de 8m durante más de 400m, concluye la subida
+                if drop > 15.0 or (drop > 8.0 and dist_from_peak > 0.4):
+                    break
+                j += 1
 
-    for index in range(len(coords) - 1):
-        d_km = coords[index + 1][3] - coords[index][3]
-        if d_km <= 0:
-            continue
-        grade = (elevations[index + 1] - elevations[index]) / (d_km * 1000.0) * 100.0
-        if grade >= CLIMB_THRESHOLD_PCT:
-            if current is None:
-                current = {
-                    "from_km": coords[index][3],
-                    "to_km": coords[index + 1][3],
-                    "gain_m": 0.0,
-                    "distance_km": 0.0,
-                    "grade_sum": 0.0,
-                    "segments": 0,
-                    "max_grade_pct": 0.0,
-                    "summit_ele": elevations[index],
-                    "summit_km": coords[index][3],
-                    "summit_lat": coords[index][1],
-                    "summit_lon": coords[index][0],
-                }
-            current["to_km"] = coords[index + 1][3]
-            current["gain_m"] += max(0.0, elevations[index + 1] - elevations[index])
-            current["distance_km"] += d_km
-            current["grade_sum"] += grade
-            current["segments"] += 1
-            current["max_grade_pct"] = max(current["max_grade_pct"], grade)
-            if elevations[index + 1] > current["summit_ele"]:
-                current["summit_ele"] = elevations[index + 1]
-                current["summit_km"] = coords[index + 1][3]
-                current["summit_lat"] = coords[index + 1][1]
-                current["summit_lon"] = coords[index + 1][0]
+            gain = max_ele - elevations[start_i]
+            dist = kms[peak_i] - kms[start_i]
+            avg_grade = (gain / (dist * 1000.0)) * 100.0 if dist > 0 else 0.0
+
+            # Califican ascensiones de montaña (≥75m) o puertos cortos notables (≥45m con ≥3% o ≥30m con ≥1km)
+            is_valid_climb = (
+                (gain >= 75.0 and dist > 0.4)
+                or (gain >= 45.0 and dist >= 0.8 and avg_grade >= 3.0)
+                or (gain >= 30.0 and dist >= 1.0 and avg_grade >= 2.0)
+            )
+
+            if is_valid_climb:
+                # Pendiente máxima en el puerto calculada sobre ventana móvil de 150m
+                climb_max_grade = avg_grade
+                for ci in range(start_i, peak_i):
+                    d_s = kms[ci] * 1000.0
+                    cj = ci
+                    while cj <= peak_i and (kms[cj] * 1000.0 - d_s) < 150.0:
+                        cj += 1
+                    if cj <= peak_i:
+                        d_sp = kms[cj] * 1000.0 - d_s
+                        if d_sp > 0:
+                            g = (elevations[cj] - elevations[ci]) / d_sp * 100.0
+                            if g > climb_max_grade:
+                                climb_max_grade = g
+
+                name = None
+                source = "geo"
+                if geocode:
+                    name, source = _reverse_geocode(coords[peak_i][1], coords[peak_i][0])
+                if not name:
+                    name = _fallback_name(coords, coords[peak_i][2])
+                    source = "geo"
+
+                gain_int = int(round(gain))
+                climbs.append(
+                    {
+                        "name": name,
+                        "name_source": source,
+                        "category": _classify(dist, avg_grade, gain_int),
+                        "start_km": round(kms[start_i], 2),
+                        "distance_km": round(kms[peak_i], 2),
+                        "elevation_m": int(round(coords[peak_i][2])),
+                        "climb_gain_m": gain_int,
+                        "climb_length_km": round(dist, 1),
+                        "avg_grade_pct": round(avg_grade, 1),
+                        "max_grade_pct": round(climb_max_grade, 1),
+                        "lat": coords[peak_i][1],
+                        "lon": coords[peak_i][0],
+                    }
+                )
+                i = peak_i
+            else:
+                i += 1
         else:
-            if current is not None:
-                climbs.append(current)
-            current = None
+            i += 1
 
-    if current is not None:
-        climbs.append(current)
-
-    summits: List[Dict[str, Any]] = []
-    for climb in climbs:
-        gain = int(round(climb["gain_m"]))
-        if gain < MIN_CLIMB_GAIN_M:
-            continue
-        avg_grade = climb["grade_sum"] / max(1, climb["segments"])
-        name: Optional[str] = None
-        source = "geo"
-        if geocode:
-            name, source = _reverse_geocode(climb["summit_lat"], climb["summit_lon"])
-        if not name:
-            name = _fallback_name(coords, climb["summit_ele"])
-            source = "geo"
-        summits.append(
-            {
-                "name": name,
-                "name_source": source,
-                "category": _classify(climb["distance_km"], avg_grade, gain),
-                "distance_km": round(climb["summit_km"], 3),
-                "elevation_m": int(round(climb["summit_ele"])),
-                "climb_gain_m": gain,
-                "avg_grade_pct": round(avg_grade, 2),
-                "max_grade_pct": round(climb["max_grade_pct"], 2),
-                "lat": climb["summit_lat"],
-                "lon": climb["summit_lon"],
-            }
-        )
-
-    # Las cimas más duro primero: es el orden en que se leen en un perfil.
-    summits.sort(key=lambda s: -s["climb_gain_m"])
-    return summits
+    # Ordenar por kilometraje en la carrera
+    climbs.sort(key=lambda s: s["distance_km"])
+    return climbs
 
 
 def build_route_profile(
@@ -264,18 +270,31 @@ def build_route_profile(
 
     gain = 0.0
     loss = 0.0
-    max_grade = 0.0
-    max_grade_at_km = 0.0
     for index in range(len(coords) - 1):
         delta = coords[index + 1][2] - coords[index][2]
         if delta > 0:
             gain += delta
         else:
             loss -= delta
-        grade = _slope_pct(coords[index], coords[index + 1])
-        if grade > max_grade:
-            max_grade = grade
-            max_grade_at_km = coords[index + 1][3]
+
+    # Pendiente máxima calculada sobre ventana móvil (150 m) para filtrar
+    # el ruido microscópico del GPS que inflaba pendientes absurdas de >50%.
+    max_grade = 0.0
+    max_grade_at_km = 0.0
+    WINDOW_M = 150.0
+    for i in range(len(coords)):
+        d_start_m = coords[i][3] * 1000.0
+        j = i
+        while j < len(coords) and (coords[j][3] * 1000.0 - d_start_m) < WINDOW_M:
+            j += 1
+        if j < len(coords):
+            d_span_m = coords[j][3] * 1000.0 - d_start_m
+            ele_span = coords[j][2] - coords[i][2]
+            if d_span_m > 0:
+                grade = (ele_span / d_span_m) * 100.0
+                if grade > max_grade:
+                    max_grade = grade
+                    max_grade_at_km = coords[j][3]
 
     # El desnivel que se muestra es el de la ruta oficial, no el de la traza
     # simplificada. El descenso no tiene cifra oficial: sale de la traza.
@@ -306,21 +325,27 @@ def build_route_profile(
 
 def summarize_summits(summits: List[RouteSummit]) -> List[Dict[str, Any]]:
     """Convierte las cimas de la BD en la forma que consume la página."""
-    return [
-        {
-            "name": s.name,
-            "category": s.category or "",
-            "distance_km": s.distance_km,
-            "elevation_m": s.elevation_m,
-            "climb_gain_m": s.climb_gain_m,
-            "avg_grade_pct": s.avg_grade_pct,
-            "max_grade_pct": s.max_grade_pct,
-            "lat": s.lat,
-            "lon": s.lon,
-            "name_source": s.name_source,
-        }
-        for s in summits
-    ]
+    res = []
+    for s in summits:
+        climb_len = round(s.climb_gain_m / (s.avg_grade_pct * 10), 1) if s.avg_grade_pct > 0 else 0.0
+        start_k = max(0.0, round(s.distance_km - climb_len, 2))
+        res.append(
+            {
+                "name": s.name,
+                "category": s.category or "",
+                "start_km": start_k,
+                "distance_km": s.distance_km,
+                "elevation_m": s.elevation_m,
+                "climb_gain_m": s.climb_gain_m,
+                "climb_length_km": climb_len,
+                "avg_grade_pct": s.avg_grade_pct,
+                "max_grade_pct": s.max_grade_pct,
+                "lat": s.lat,
+                "lon": s.lon,
+                "name_source": s.name_source,
+            }
+        )
+    return res
 
 
 __all__ = [
