@@ -228,7 +228,9 @@ const stages = await getStages();
 
         const voucher = safeUrl(p.voucher_url);
         if (voucher) {
-          const link = el('a', 'voucher-link font-mono', 'Ver Comprobante Adjunto ↗');
+          const link = document.createElement('a');
+          link.className = 'voucher-link font-mono';
+          link.textContent = 'Ver Comprobante Adjunto ↗';
           link.href = voucher;
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
