@@ -81,17 +81,11 @@ function standingsHref(category: CategoryPodium): string {
               <ol class="panel__podium">
                 {category.entries.map((entry) => (
                   <li class="panel__row" data-rank={entry.rank}>
-                    {/*
-                      Sólo el PRIMER puesto lleva medalla. Con tres
-                      medallas por categoría y once categorías, la página se
-                      llenaba de insignias: el color se reserva al que gana y
-                      el puesto se dice con el número.
-                    */}
-                    {entry.rank === 1 ? (
-                      <MedalIcon rank={1} size={18} class="panel__medal" />
-                    ) : (
-                      <span class="panel__rank font-mono">{entry.rank}º</span>
-                    )}
+                    <MedalIcon
+                      rank={entry.rank as 1 | 2 | 3}
+                      size={18}
+                      class="panel__medal"
+                    />
                     <a class="panel__rider" href={`/corredor/${entry.rider_slug}`}>
                       {entry.rider_name}
                     </a>
@@ -132,17 +126,11 @@ function standingsHref(category: CategoryPodium): string {
               <ol class="panel__podium">
                 {category.entries.map((entry) => (
                   <li class="panel__row" data-rank={entry.rank}>
-                    {/*
-                      Sólo el PRIMER puesto lleva medalla. Con tres
-                      medallas por categoría y once categorías, la página se
-                      llenaba de insignias: el color se reserva al que gana y
-                      el puesto se dice con el número.
-                    */}
-                    {entry.rank === 1 ? (
-                      <MedalIcon rank={1} size={18} class="panel__medal" />
-                    ) : (
-                      <span class="panel__rank font-mono">{entry.rank}º</span>
-                    )}
+                    <MedalIcon
+                      rank={entry.rank as 1 | 2 | 3}
+                      size={18}
+                      class="panel__medal"
+                    />
                     <a class="panel__rider" href={`/corredor/${entry.rider_slug}`}>
                       {entry.rider_name}
                     </a>
@@ -300,13 +288,6 @@ function standingsHref(category: CategoryPodium): string {
   }
 
   /* El puesto que no lleva medalla se dice con el número. */
-  .panel__rank {
-    grid-area: medal;
-    font-size: 0.6875rem;
-    letter-spacing: 0.06em;
-    color: var(--faint);
-  }
-
   .panel__rider {
     grid-area: rider;
     font-family: var(--font-body);

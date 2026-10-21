@@ -48,19 +48,6 @@ const cells: { label: string; value: string; icon: IconName }[] = [
   { label: 'CATEGORÍAS', value: undisclosed ? '—' : String(stats.categories_count), icon: 'bike' },
 ];
 
-/**
- * Lo que PUBLICA el PDF oficial frente a lo que recalcula el motor.
- *
- * Normalmente coinciden. En la Fecha 2 no: el PDF no imprime el 6º lugar de
- * OPEN DAMAS, así que publica 554 puntos y el motor, al rellenar el hueco,
- * reparte 555. Cuando difieren, la ficha enseña los dos números y explica por
- * qué: el del organizador y el del motor, sin que nadie tenga que fiarse de
- * una cifra que no aparece en el documento oficial.
- */
-const officialDiffers =
-  !undisclosed &&
-  stats.official_points != null &&
-  stats.official_points !== stats.points_total;
 ---
 
 {
@@ -83,21 +70,11 @@ const officialDiffers =
   )
 }
 
-{
-  officialDiffers && (
-    <p class="stats__note font-mono">
-      [ PUNTOS: {stats.official_points} EN EL PDF OFICIAL · {stats.points_total} TRAS EL
-      RECÁLCULO DEL MOTOR ] El PDF oficial no imprime el 6º lugar de Open Damas: al
-      rellenar el hueco, el motor reparte un punto más.
-    </p>
-  )
-}
-
 <style>
   .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    margin: 1.5rem 0 0;
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+    margin: 1rem 0 0;
     border-top: var(--hairline) solid var(--line);
     border-left: var(--hairline) solid var(--line);
   }
@@ -105,8 +82,8 @@ const officialDiffers =
   .stats__cell {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    padding: 1rem 1.125rem;
+    gap: 0.2rem;
+    padding: 0.625rem 0.75rem;
     border-right: var(--hairline) solid var(--line);
     border-bottom: var(--hairline) solid var(--line);
     background: var(--bg-raised);
@@ -115,10 +92,11 @@ const officialDiffers =
   .stats__label {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    font-size: 0.625rem;
+    gap: 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
     font-weight: var(--font-weight-medium, 500);
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--faint);
   }
@@ -132,9 +110,11 @@ const officialDiffers =
 
   .stats__value {
     margin: 0;
-    font-size: 1.375rem;
-    font-weight: 620;
+    font-family: var(--font-mono);
+    font-size: 1.0625rem;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
     color: var(--ink-strong);
     line-height: 1.1;
   }
@@ -146,20 +126,6 @@ const officialDiffers =
     background: var(--bg-raised);
     font-size: 0.6875rem;
     letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  /* La nota de los puntos: solo aparece cuando el PDF oficial y el motor no
-     coinciden. Va en el mismo tono que el resto de las etiquetas. */
-  .stats__note {
-    margin: 0.75rem 0 0;
-    padding: 0.75rem 1rem;
-    border: var(--hairline) solid var(--line);
-    background: var(--bg-raised);
-    font-size: 0.6875rem;
-    line-height: 1.6;
-    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
   }

@@ -4,9 +4,10 @@
  *
  * Adaptación de `copiaartcraft/src/components/AppCard.astro` (la tarjeta del
  * lineup de getartcraft.com/apps) y de `bento/BentoCard.astro`: se conserva
- * la nomenclatura de clases del original (`bento`, `bento__head`, `bento__label`,
- * `bento__index`, `bento__media`, `bento__title`, `bento__body`, `bento__tags`)
+ * la nomenclatura de clases del original (`bento`, `bento__head`,
+ * `bento__index`, `bento__title`, `bento__body`, `bento__tags`)
  * y el mecanismo de acento por tarjeta (`app-<slug>` → `--app` / `--app-ink`).
+ * Sin recuadro de iniciales: solo nombre y datos.
  *
  * Un club, una ficha. El acento lo da el lugar en el podio: oro, plata, bronce.
  */
@@ -51,12 +52,6 @@ function context(team: TeamPodium): string {
             class="bento__medal"
           />
         </header>
-
-        <div class="bento__media">
-          <span class="bento__initial" aria-hidden="true">
-            {team.team_name.slice(0, 2)}
-          </span>
-        </div>
 
         <h3 class="bento__title">
           <a href={`/equipos/${team.team_slug}`}>{team.team_name}</a>
@@ -134,32 +129,6 @@ function context(team: TeamPodium): string {
 
   .bento__medal {
     align-self: center;
-  }
-
-  .bento__media {
-    position: relative;
-    display: grid;
-    place-items: center;
-    /* 16/10, la proporción de la media del `AppCard` de la referencia. Con
-       16/6 la caja quedaba vacía y desproporcionada: dos iniciales y dos
-      cientos píxeles de nada. */
-    aspect-ratio: 16 / 10;
-    background: var(--bg-sunken);
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-
-  .bento__initial {
-    font-family: var(--font-display);
-    /* La referencia usa `--text-5xl` en tarjetas de dos columnas; las de club
-       van en tres, así que la inicial se escala un peldaño para no quedar
-       perdida en el hueco. */
-    font-size: var(--text-6xl);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: var(--tracking-tight);
-    color: var(--app);
-    opacity: 0.4;
   }
 
   .bento__title {

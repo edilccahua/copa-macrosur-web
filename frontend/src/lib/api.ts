@@ -332,6 +332,12 @@ export interface StravaSegmentSummary {
   kom: StravaEffort | null;
   /** Tipo del tramo: CLIMB | DESCENT | FLAT. */
   kind: 'CLIMB' | 'DESCENT' | 'FLAT';
+  /** Tag editorial: ESCALADOR | PUNCHER | KAMIKAZE | LLANERO. */
+  badge_tag?: 'ESCALADOR' | 'PUNCHER' | 'KAMIKAZE' | 'LLANERO';
+  /** Objetivo de premio oficial en la fecha: KOM_QOM | KAMIKAZE | null. */
+  award_target?: 'KOM_QOM' | 'KAMIKAZE' | null;
+  /** Monto en USD del premio en juego (15 si tiene premio oficial). */
+  award_amount_usd?: number | null;
   /** Lugar del segmento ("Uchumayo, Arequipa"), tal como lo reporta Strava. */
   location: string | null;
   elevation_min_m: number | null;

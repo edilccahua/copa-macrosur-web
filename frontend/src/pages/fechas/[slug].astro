@@ -380,6 +380,15 @@ function sectionNumber(key: string): string | null {
                       <span aria-hidden="true">→</span>
                     </Button>
                   )}
+                  {summary.route_profile && (
+                    <Button
+                      variant="ghost"
+                      href="#ruta"
+                      label="Ver Altimetría y GPX"
+                    >
+                      <span aria-hidden="true">↓</span>
+                    </Button>
+                  )}
                   {stage.strava_route_url && (
                     <Button
                       variant="ghost"
@@ -498,77 +507,105 @@ function sectionNumber(key: string): string | null {
               <SectionLabel number={sectionNumber('strava')!} label="SEGMENTOS OFICIALES STRAVA" />
 
               <div class="strava-grid">
-                {segments.map((seg) => (
-                  <article class="card strava-card" data-kind={seg.kind} data-reveal>
-                    <header class="card__head">
-                      <span class="strava-card__emblem">
-                        <Icon
-                          name={seg.kind === 'CLIMB' ? 'mountain' : seg.kind === 'DESCENT' ? 'descent' : 'ruler'}
-                          size={20}
-                        />
-                      </span>
-                      <span class="card__label font-mono">
-                        {seg.kind === 'CLIMB'
-                          ? 'SUBIDA'
-                          : seg.kind === 'DESCENT'
-                            ? 'BAJADA'
-                            : 'PLANO'}
-                      </span>
-                      <span class="card__meta font-mono">{seg.average_grade}% PEND. MEDIA</span>
-                    </header>
+                {segments.map((seg) => {
+                  const segIcon =
+                    seg.badge_tag === 'ESCALADOR'
+                      ? 'climber'
+                      : seg.badge_tag === 'PUNCHER'
+                        ? 'puncher'
+                        : seg.badge_tag === 'KAMIKAZE'
+                          ? 'kamikaze'
+                          : seg.badge_tag === 'LLANERO'
+                            ? 'roller'
+                            : seg.kind === 'CLIMB'
+                              ? 'mountain'
+                              : seg.kind === 'DESCENT'
+                                ? 'descent'
+                                : 'ruler';
+                  const segLabel =
+                    seg.badge_tag ??
+                    (seg.kind === 'CLIMB'
+                      ? 'SUBIDA'
+                      : seg.kind === 'DESCENT'
+                        ? 'BAJADA'
+                        : 'PLANO');
 
-                    <p class="card__name">{seg.name}</p>
+                  return (
+                    <article class="card strava-card" data-kind={seg.kind} data-reveal>
+                      <header class="card__head">
+                        <span class="strava-card__emblem">
+                          <Icon name={segIcon} size={20} />
+                        </span>
+                        <span class="card__label font-mono">{segLabel}</span>
+                        <span class="card__meta font-mono">{seg.average_grade}% PEND. MEDIA</span>
+                      </header>
 
-                    <p class="card__sub font-mono">
-                      {seg.distance_km} KM
-                      {seg.elevation_max_m != null && ` · ${seg.elevation_max_m} MSNM`}
-                      {seg.location && ` · ${seg.location}`}
-                    </p>
+                      {seg.award_target && (
+                        <div class="strava-card__award-row">
+                          <span class="strava-card__prize-sticker font-mono">
+                            {seg.award_target === 'KOM_QOM'
+                              ? `TÍTULO KOM / QOM · USD ${seg.award_amount_usd ?? 15}`
+                              : `TÍTULO KAMIKAZE · USD ${seg.award_amount_usd ?? 15}`}
+                          </span>
+                        </div>
+                      )}
 
-                    {/*
-                      El récord sólo se dice cuando APORTA algo: si su
-                      corredor ya está en la tabla de la fecha, la línea
-                      repetía el mismo nombre y el mismo tiempo.
-                    */}
-                    {seg.kom &&
-                      !seg.efforts
-                        .slice(0, 3)
-                        .some((e) => e.athlete_name === seg.kom!.athlete_name) && (
-                        <p class="card__record card__record--gold font-mono">
-                          RÉCORD · {seg.kom.athlete_name} · {seg.kom.formatted_time}
+                      <p class="card__name">{seg.name}</p>
+
+                      <p class="card__sub font-mono">
+                        {seg.distance_km} KM
+                        {seg.elevation_max_m != null && ` · ${seg.elevation_max_m} MSNM`}
+                        {seg.location && ` · ${seg.location}`}
+                      </p>
+
+                      {/*
+                        El récord sólo se dice cuando APORTA algo: si su
+                        corredor ya está en la tabla de la fecha, la línea
+                        repetía el mismo nombre y el mismo tiempo.
+                      */}
+                      {seg.kom &&
+                        !seg.efforts
+                          .slice(0, 3)
+                          .some((e) => e.athlete_name === seg.kom!.athlete_name) && (
+                          <p class="card__record card__record--gold font-mono">
+                            RÉCORD · {seg.kom.athlete_name} · {seg.kom.formatted_time}
+                          </p>
+                        )}
+
+                      {/*
+                        El tiempo del 1º va en ORO: es el dato que importa y
+                        da color a la sección. Si no hay tiempos (etapa futura o no corrida),
+                        se informa limpiamente sin inventar datos.
+                      */}
+                      {seg.efforts.length > 0 ? (
+                        <ol class="strava-board font-mono">
+                          {seg.efforts.slice(0, 3).map((e, i) => (
+                            <li class:list={['board-row', i === 0 && 'board-row--first']}>
+                              <span class="board-rank">{i + 1}º</span>
+                              <span class="board-name">{e.athlete_name}</span>
+                              <span class="board-time">{e.formatted_time}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p class="strava-card__pending font-mono">
+                          TIEMPOS OFICIALES EN VIVO EL DÍA DE LA CARRERA
                         </p>
                       )}
 
-                    {/*
-                      El tiempo del 1º va en ORO: es el dato que importa y
-                          da color a la sección. SIN medallas: la página ya
-                          tiene demasiadas (en el podio de cada categoría) y
-                          aquí el puesto lo dice la posición.
-                    */}
-                    {seg.efforts.length > 0 && (
-                      <ol class="strava-board font-mono">
-                        {seg.efforts.slice(0, 3).map((e, i) => (
-                          <li class:list={['board-row', i === 0 && 'board-row--first']}>
-                            <span class="board-rank">{i + 1}º</span>
-                            <span class="board-name">{e.athlete_name}</span>
-                            <span class="board-time">{e.formatted_time}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-
-                    {seg.strava_segment_id && (
-                      <a
-                        class="card__link font-mono"
-                        href={`https://www.strava.com/segments/${seg.strava_segment_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        VER EN STRAVA ↗
-                      </a>
-                    )}
-                  </article>
-                ))}
+                      {seg.strava_segment_id && (
+                        <a
+                          class="card__link font-mono"
+                          href={`https://www.strava.com/segments/${seg.strava_segment_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          VER EN STRAVA ↗
+                        </a>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -1215,6 +1252,32 @@ function sectionNumber(key: string): string | null {
   .board-time {
     color: var(--muted);
     font-variant-numeric: tabular-nums;
+  }
+
+  .strava-card__award-row {
+    margin: 0.25rem 0 0.5rem;
+  }
+
+  .strava-card__prize-sticker {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.06em;
+    color: var(--bg);
+    background: var(--copa-gold);
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+
+  .strava-card__pending {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0;
+    border-top: var(--hairline) solid var(--line);
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+    color: var(--faint);
+    text-transform: uppercase;
   }
 
   /* ── Premios ─────────────────────────────────────────────────────── */
