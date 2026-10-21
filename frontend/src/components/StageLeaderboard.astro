@@ -1,41 +1,34 @@
 ---
 /**
- * StageLeaderboard.astro — el leaderboard de podio por categoría.
+ * StageLeaderboard.astro — el podio por categoría como LINEUP.
  *
- * Una fila por categoría, compacta: el nombre de la categoría y los tres
- * ganadores con su club. Sin dorsal, sin tiempo y sin puntos: el detalle
- * completo está en el ranking, en modo FECHA
- * (`/ranking-general?modo=fecha&tabla=PRO&categoria=ELI&fecha=<n>`).
+ * Copia la estructura de `getartcraft.com/apps` (`copiaartcraft/src/pages/
+ * apps.astro` + `AppCard.astro`): una retícula continua de columnas con
+ * bordes compartidos, agrupada en tres bloques (PRO / NORMAL / E-BIKE).
  *
- * El puesto NO es un número: es una MEDALLA (oro, plata, bronce), la misma
- * pieza que usa Strava en sus clasificaciones. La geometría vive en
- * `src/assets/medals/medal-N.svg` y la dibuja `MedalIcon.astro`, que la
- * inserta en línea para que herede el color del token `--podium-N` y para
- * que el número calado deje ver el fondo real de la página.
- *
- * **AGRUPACIÓN POR GRUPO.** Antes las once categorías se listaban en una
- * grilla de tres columnas con el título de cada una teñido del color de su
- * grupo: once rótulos en tres colores a la vez, un arcoíris. Ahora las
- * categorías van agrupadas en bloques PRO / NORMAL / E-BIKE, y el color del
- * grupo aparece **una sola vez por bloque**, en la etiqueta del grupo. El
- * título de la categoría va en tinta: lo que dice la etiqueta es a qué
- * agrupación pertenece, no cómo se colorea.
+ * Cada celda:
+ *   · borde completo (1 px compartido con la vecina);
+ *   · franja superior en degradado, del color vivo del grupo a su versión
+ *     tenue;
+ *   · cabeza: **nombre largo de la categoría** en el color del grupo y el
+ *     grupo a la derecha, en mono versalitas;
+ *   · los tres del podio, con su medalla;
+ *   · pie `VER CLASIFICACIÓN ↗`, anclado abajo para que toda la fila termine
+ *     a la misma altura.
  */
 import type { CategoryPodium } from '../lib/api';
 import MedalIcon from './MedalIcon.astro';
 
 interface Props {
   podium: CategoryPodium[];
+  /** Número de la fecha: compone el enlace a la clasificación. */
+  stageNumber?: number;
   id?: string;
 }
 
-const { podium, id } = Astro.props;
+const { podium, stageNumber, id } = Astro.props;
 
-/**
- * El acento por grupo vive en `tokens.css` (`.scope-pro`, `.scope-normal`,
- * `.scope-ebike`), que define `--scope` (color vivo) y `--scope-ink` (su
- * variante legible). Aquí solo se consume.
- */
+/** El acento por grupo vive en `tokens.css` (`.scope-*` → `--scope`). */
 const SCOPE_CLASS: Record<string, string> = {
   PRO: 'scope-pro',
   NORMAL: 'scope-normal',
@@ -43,18 +36,27 @@ const SCOPE_CLASS: Record<string, string> = {
 };
 const groupClass = (group: string) => SCOPE_CLASS[group] ?? 'scope-pro';
 
-/** El orden de los bloques: primero los profesionales, luego el resto. */
+/** El orden de los bloques: PRO, NORMAL, E-BIKE y, al final, lo demás. */
 const GROUP_ORDER = ['PRO', 'NORMAL', 'E-BIKE'];
 
-/** Los bloques, con sus categorías, en el orden de arriba. */
 const groups = GROUP_ORDER.map((name) => ({
   name,
-  label: name === 'E-BIKE' ? 'E-BIKE' : name,
+  label: name,
   categories: podium.filter((c) => c.group === name),
 })).filter((g) => g.categories.length > 0);
 
-/** Los que no caen en ningún grupo conocido, al final y sin color. */
 const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
+
+/** Enlace a la clasificación de una categoría en esta fecha. */
+function standingsHref(category: CategoryPodium): string {
+  const params = new URLSearchParams({
+    modo: 'fecha',
+    tabla: category.group || 'PRO',
+    categoria: category.short_code,
+  });
+  if (stageNumber != null) params.set('fecha', String(stageNumber));
+  return `/ranking-general?${params.toString()}`;
+}
 ---
 
 <div class="leaderboard" id={id}>
@@ -63,24 +65,37 @@ const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
       <section class={`group ${groupClass(group.name)}`}>
         <header class="group__head">
           <span class="group__name">{group.label}</span>
-          <span class="group__meta font-mono">
+          <span class="group__meta">
             {group.categories.length} {group.categories.length === 1 ? 'CATEGORÍA' : 'CATEGORÍAS'}
           </span>
         </header>
 
-        <div class="group__cats">
+        <ol class="lineup">
           {group.categories.map((category) => (
-            <section class="cat">
-              <h3 class="cat__name">{category.category_name}</h3>
+            <li class="panel">
+              <header class="panel__head">
+                <h3 class="panel__name">{category.category_name}</h3>
+                <span class="panel__scope">{group.label}</span>
+              </header>
 
-              <ol class="cat__podium">
+              <ol class="panel__podium">
                 {category.entries.map((entry) => (
-                  <li class="cat__row" data-rank={entry.rank}>
-                    <MedalIcon rank={entry.rank as 1 | 2 | 3} size={18} class="cat__medal" />
-                    <a class="cat__rider" href={`/corredor/${entry.rider_slug}`}>
+                  <li class="panel__row" data-rank={entry.rank}>
+                    {/*
+                      Sólo el PRIMER puesto lleva medalla. Con tres
+                      medallas por categoría y once categorías, la página se
+                      llenaba de insignias: el color se reserva al que gana y
+                      el puesto se dice con el número.
+                    */}
+                    {entry.rank === 1 ? (
+                      <MedalIcon rank={1} size={18} class="panel__medal" />
+                    ) : (
+                      <span class="panel__rank font-mono">{entry.rank}º</span>
+                    )}
+                    <a class="panel__rider" href={`/corredor/${entry.rider_slug}`}>
                       {entry.rider_name}
                     </a>
-                    <span class="cat__team">
+                    <span class="panel__team">
                       {entry.team_slug ? (
                         <a href={`/equipos/${entry.team_slug}`}>{entry.team_name}</a>
                       ) : (
@@ -90,9 +105,13 @@ const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
                   </li>
                 ))}
               </ol>
-            </section>
+
+              <a class="panel__link" href={standingsHref(category)}>
+                Ver clasificación <span aria-hidden="true">↗</span>
+              </a>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
     ))
   }
@@ -102,26 +121,41 @@ const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
       <section class="group">
         <header class="group__head">
           <span class="group__name">OTRAS CATEGORÍAS</span>
-          <span class="group__meta font-mono">{leftovers.length}</span>
+          <span class="group__meta">{leftovers.length}</span>
         </header>
-        <div class="group__cats">
+        <ol class="lineup">
           {leftovers.map((category) => (
-            <section class="cat">
-              <h3 class="cat__name">{category.category_name}</h3>
-              <ol class="cat__podium">
+            <li class="panel">
+              <header class="panel__head">
+                <h3 class="panel__name">{category.category_name}</h3>
+              </header>
+              <ol class="panel__podium">
                 {category.entries.map((entry) => (
-                  <li class="cat__row" data-rank={entry.rank}>
-                    <MedalIcon rank={entry.rank as 1 | 2 | 3} size={18} class="cat__medal" />
-                    <a class="cat__rider" href={`/corredor/${entry.rider_slug}`}>
+                  <li class="panel__row" data-rank={entry.rank}>
+                    {/*
+                      Sólo el PRIMER puesto lleva medalla. Con tres
+                      medallas por categoría y once categorías, la página se
+                      llenaba de insignias: el color se reserva al que gana y
+                      el puesto se dice con el número.
+                    */}
+                    {entry.rank === 1 ? (
+                      <MedalIcon rank={1} size={18} class="panel__medal" />
+                    ) : (
+                      <span class="panel__rank font-mono">{entry.rank}º</span>
+                    )}
+                    <a class="panel__rider" href={`/corredor/${entry.rider_slug}`}>
                       {entry.rider_name}
                     </a>
-                    <span class="cat__team">{entry.team_name}</span>
+                    <span class="panel__team">{entry.team_name}</span>
                   </li>
                 ))}
               </ol>
-            </section>
+              <a class="panel__link" href={standingsHref(category)}>
+                Ver clasificación <span aria-hidden="true">↗</span>
+              </a>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
     )
   }
@@ -129,13 +163,13 @@ const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
 
 <style>
   .leaderboard {
-    margin-top: 1.5rem;
-    margin-bottom: 3.5rem;
+    margin-top: 1.25rem;
+    margin-bottom: 3rem;
   }
 
-  /* ── Bloque de grupo ────────────────────────────────────────────────── */
+  /* ── Bloques de grupo: aquí SÍ hay separación entre PRO y NORMAL ─────── */
   .group {
-    margin-top: 2.25rem;
+    margin-top: 2.5rem;
   }
 
   .group:first-child {
@@ -146,12 +180,9 @@ const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
     display: flex;
     align-items: baseline;
     gap: 0.75rem;
-    padding-bottom: 0.625rem;
-    border-bottom: var(--hairline) solid var(--line);
+    padding-bottom: 0.5rem;
   }
 
-  /* El color del grupo aparece AQUÍ, una vez por bloque, y no en los once
-     títulos de categoría. */
   .group__name {
     font-family: var(--font-mono);
     font-size: 0.6875rem;
@@ -163,70 +194,125 @@ const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
 
   .group__meta {
     margin-left: auto;
-    font-size: 0.6875rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--faint);
     white-space: nowrap;
   }
 
-  /* ── Categorías ─────────────────────────────────────────────────────── */
-  .group__cats {
+  /* ── Retícula: cada celda con sus CUATRO bordes ───────────────────────
+     `margin: -1px 0 0 -1px` superpone el borde superior/izquierdo con el
+     inferior/derecho de la vecina: las líneas compartidas quedan de 1 px,
+     sin duplicarse. El padding de 1 px del contenedor evita que la primera
+     celda se salga de la caja. Las celdas vacías de la última fila no
+     dibujan nada. */
+  .lineup {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-    gap: 0 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0;
+    padding: 1px 0 0 1px;
+    list-style: none;
   }
 
-  .cat {
-    padding: 0.875rem 0;
-    border-bottom: var(--hairline) solid var(--line);
+  .panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin: -1px 0 0 -1px;
+    padding: 1rem 1.125rem 1.125rem;
+    background: var(--bg-raised);
+    border: var(--hairline) solid var(--line);
     min-width: 0;
   }
 
-  /* El título de la categoría va en tinta: el grupo ya está dicho arriba. */
-  .cat__name {
-    margin: 0 0 0.5rem;
-    font-family: var(--font-display);
-    font-size: var(--text-base);
-    font-weight: 620;
-    font-stretch: 118%;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
+  /* Franja superior: degradado del color VIVO del grupo a su versión tenue. */
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      var(--scope, var(--line-strong)) 0%,
+      color-mix(in srgb, var(--scope, var(--line)) 10%, transparent) 100%
+    );
+  }
+
+  /* ── Cabeza: el NOMBRE de la categoría, en el color del grupo ────────── */
+  .panel__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .panel__name {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.35;
     text-transform: uppercase;
-    color: var(--ink-strong);
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--scope-ink, var(--ink-strong));
+    /* Dos líneas reservadas: los podios de una fila arrancan a la misma
+       altura aunque un nombre de categoría ocupe dos renglones. */
+    min-height: 2.7em;
+  }
+
+  .panel__scope {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
     white-space: nowrap;
   }
 
-  .cat__podium {
-    list-style: none;
+  /* ── Podio ───────────────────────────────────────────────────────────── */
+  .panel__podium {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     margin: 0;
     padding: 0;
+    list-style: none;
   }
 
-  .cat__row {
+  .panel__row {
     display: grid;
     grid-template-columns: 1.25rem minmax(0, 1fr);
     grid-template-areas:
       'medal rider'
       'medal team';
-    align-items: baseline;
+    align-items: center;
     column-gap: 0.5rem;
-    padding: 0.2rem 0;
   }
 
-  /* La medalla va arriba, alineada con el nombre del corredor. */
-  .cat__medal {
+  .panel__medal {
     grid-area: medal;
     align-self: start;
     margin-top: 0.0625rem;
   }
 
-  .cat__rider {
+  /* El puesto que no lleva medalla se dice con el número. */
+  .panel__rank {
+    grid-area: medal;
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--faint);
+  }
+
+  .panel__rider {
     grid-area: rider;
+    font-family: var(--font-body);
     font-size: 0.8125rem;
     font-weight: 600;
+    line-height: 1.3;
     color: var(--ink);
     text-decoration: none;
     overflow: hidden;
@@ -236,33 +322,67 @@ const leftovers = podium.filter((c) => !GROUP_ORDER.includes(c.group));
       var(--default-transition-timing-function);
   }
 
-  .cat__row[data-rank='1'] .cat__rider {
+  .panel__row[data-rank='1'] .panel__rider {
     color: var(--ink-strong);
   }
 
-  .cat__rider:hover {
+  .panel__rider:hover {
     color: var(--ink-strong);
     text-decoration: underline;
     text-underline-offset: 0.15rem;
   }
 
-  .cat__team {
+  .panel__team {
     grid-area: team;
-    font-size: 0.6875rem;
-    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 0.65625rem;
+    line-height: 1.35;
+    color: var(--faint);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .cat__team a {
+  .panel__team a {
     color: inherit;
     text-decoration: none;
   }
 
-  .cat__team a:hover {
+  .panel__team a:hover {
     color: var(--ink);
     text-decoration: underline;
     text-underline-offset: 0.15rem;
+  }
+
+  /* ── Pie ─────────────────────────────────────────────────────────────── */
+  .panel__link {
+    margin-top: auto;
+    padding-top: 0.625rem;
+    border-top: var(--hairline) solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-medium, 500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color var(--default-transition-duration)
+      var(--default-transition-timing-function);
+  }
+
+  .panel__link:hover {
+    color: var(--scope-ink, var(--ink-strong));
+  }
+
+  @media (min-width: 40em) {
+    .lineup {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64em) {
+    .lineup {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 </style>
