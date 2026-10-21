@@ -91,6 +91,9 @@ export const TEAM_PRIZES: PrizeStep[] = [
   { position: 3, amountUsd: 300 },
 ];
 
+/** El emblema del premio de equipos: la bandera del club. */
+export const TEAM_PRIZE_ICON: IconName = 'flag';
+
 /**
  * Las 11 categorías oficiales. El premio por fecha se reparte en CADA una:
  * no hay una bolsa común para el grupo NORMAL.

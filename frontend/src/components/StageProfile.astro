@@ -1,14 +1,12 @@
 ---
 /**
- * StageProfile.astro — el perfil de etapa de una carrera.
+ * StageProfile.astro — Perfil técnico y altimetría de la etapa.
  *
- * La silueta, los puertos, los checkpoints y la escala de msnm los dibuja
- * `backend/scripts/build_stage_profile.py`, que genera un SVG con la
- * tipografía del sistema. Aquí solo se presenta la imagen con los datos de
- * la jornada al lado: desnivel, altitud, pendiente y los tramos relevantes.
- *
- * El SVG se sirve desde `/profiles/{slug}.svg` (generado al sembrar o tras
- * cambiar la geometría).
+ * Estructura de la sección:
+ *   1. Imagen de altimetría a ANCHO COMPLETO (100% full-width).
+ *   2. Filas inferiores con estilo unificado de celdas con borde hairline:
+ *      - Fila 1: 4 estadísticas técnicas clave (DESNIVEL, ALTITUD MÁX, PENDIENTE MEDIA, PENDIENTE MÁX).
+ *      - Fila 2: Puertos registrados de la etapa y botón de descarga del track GPX oficial.
  */
 import type { RouteProfile, Summit } from '../lib/api';
 
@@ -22,292 +20,323 @@ interface Props {
 
 const { slug, stageName, profile, summits, gpxUrl } = Astro.props;
 
-/** Los puertos con categoría, ordenados por dificultad. */
+/** Puertos con categoría o puertos con desnivel notable de la etapa */
 const ports = summits
-  .filter((s) => s.category)
+  .filter((s) => s.category || s.climb_gain_m >= 30)
   .sort((a, b) => a.distance_km - b.distance_km);
 
-/** Las cimas sin categoría, que también son hitos del recorrido. */
-const summitsWithoutCategory = summits.filter((s) => !s.category);
-
-/** La exageración vertical del perfil, declarada. */
-const exaggeration = (() => {
-  const span = profile.elevation_max_m - profile.elevation_min_m;
-  if (span <= 0) return 1;
-  const metresPerPixelY = span / 436;
-  const metresPerPixelX = (profile.distance_km * 1000) / 1482;
-  const factor = metresPerPixelX / metresPerPixelY;
-  return factor >= 10 ? Math.round(factor) : Math.max(1, Math.round(factor));
-})();
-
 const stats = [
-  { label: 'DISTANCIA', value: `${profile.distance_km} KM` },
-  { label: 'DESNIVEL +', value: `${profile.elevation_gain_m} M` },
-  { label: 'DESNIVEL −', value: `${profile.elevation_loss_m} M` },
-  { label: 'ALTITUD', value: `${profile.elevation_min_m}–${profile.elevation_max_m} MSNM` },
+  { label: 'DESNIVEL', value: `+${profile.elevation_gain_m} M` },
+  { label: 'ALTITUD MÁX', value: `${profile.elevation_max_m} MSNM` },
   { label: 'PENDIENTE MEDIA', value: `${profile.mean_grade_pct}%` },
   { label: 'PENDIENTE MÁX', value: `${profile.max_grade_pct}%` },
 ];
 ---
 
-<div class="profile">
-  <div class="profile__main">
+<div class="profile-section">
+  {/* ── 1. Altimetría a ANCHO COMPLETO ─────────────────────────────────── */}
+  <div class="profile__canvas-box">
     <img
       class="profile__img"
       src={`/profiles/${slug}.svg`}
       alt={`Perfil de altimetría de ${stageName}: ${profile.distance_km} km, ${profile.elevation_gain_m} m de desnivel`}
+      loading="eager"
       decoding="async"
     />
-    <p class="profile__scale font-mono">
-      ESCALA VERTICAL ×{exaggeration} — la silueta ESTIRA la vertical para que
-      las subidas se lean; el desnivel + es el de la ruta oficial y el − sale de
-      la traza
-    </p>
   </div>
 
-  <aside class="profile__side">
-    <dl class="profile__stats">
+  {/* ── Botón solo para móvil: Compartir / Descargar altimetría ──────── */}
+  <div class="profile__mobile-bar">
+    <button
+      type="button"
+      class="profile__mobile-btn font-mono"
+      data-profile-url={`/profiles/${slug}.svg`}
+      data-stage-name={stageName}
+      data-slug={slug}
+      aria-label="Compartir o descargar imagen de altimetría"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+        <polyline points="16 6 12 2 8 6" />
+        <line x1="12" y1="2" x2="12" y2="15" />
+      </svg>
+      <span>COMPARTIR / DESCARGAR</span>
+    </button>
+  </div>
+
+  {/* ── 2. Celdas técnicas inferiores con estilo unificado ──────────────── */}
+  <div class="profile__details">
+    {/* Fila 1: Estadísticas de altimetría */}
+    <dl class="profile__stats-grid">
       {
         stats.map((stat) => (
-          <div class="profile__stat">
-            <dt class="font-mono">{stat.label}</dt>
-            <dd class="font-mono">{stat.value}</dd>
+          <div class="profile__cell">
+            <dt class="profile__cell-label font-mono">{stat.label}</dt>
+            <dd class="profile__cell-value font-mono">{stat.value}</dd>
           </div>
         ))
       }
     </dl>
 
+    {/* Fila 2: Puertos de la ruta y descarga del track GPX */}
     {
-      ports.length > 0 && (
-        <section class="ports">
-          <h3 class="ports__title font-mono">[ PUERTOS DE LA RUTA ]</h3>
-          <ul class="ports__list">
-            {ports.map((port) => (
-              <li class="port">
-                <span class="port__cat" data-cat={port.category}>
-                  {port.category}
+      (ports.length > 0 || gpxUrl) && (
+        <div class="profile__sub-grid">
+          {ports.map((port) => (
+            <div class="profile__cell profile__cell--port">
+              <div class="profile__port-top">
+                <span class="profile__cell-label font-mono">
+                  {port.category ? `PUERTO · CAT ${port.category}` : 'PUERTO DE MONTAÑA'}
                 </span>
-                <span class="port__name">{port.name}</span>
-                <span class="port__meta font-mono">
-                  KM {port.distance_km.toFixed(1)} · {port.elevation_m} M · {port.avg_grade_pct}%
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )
-    }
+                <span class="profile__port-km font-mono">KM {port.distance_km.toFixed(1)}</span>
+              </div>
+              <div class="profile__port-name">{port.name}</div>
+              <div class="profile__port-specs font-mono">
+                {port.elevation_m} MSNM · +{port.climb_gain_m} M · {port.avg_grade_pct}% MEDIA
+              </div>
+            </div>
+          ))}
 
-    {
-      summitsWithoutCategory.length > 0 && (
-        <section class="ports">
-          <h3 class="ports__title font-mono">[ HITOS ]</h3>
-          <ul class="ports__list">
-            {summitsWithoutCategory.map((summit) => (
-              <li class="port">
-                <span class="port__cat port__cat--soft" data-cat="">
-                  ·
-                </span>
-                <span class="port__name">{summit.name}</span>
-                <span class="port__meta font-mono">
-                  KM {summit.distance_km.toFixed(1)} · {summit.elevation_m} M
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+          {gpxUrl && (
+            <div class="profile__cell profile__cell--gpx">
+              <span class="profile__cell-label font-mono">TRACK GPX OFICIAL</span>
+              <a href={gpxUrl} download class="profile__gpx-btn font-mono">
+                DESCARGAR TRACK GPX ↓
+              </a>
+            </div>
+          )}
+        </div>
       )
     }
-
-    {
-      gpxUrl && (
-        <a href={gpxUrl} download class="profile__gpx font-mono">
-          DESCARGAR TRACK GPX ↓
-        </a>
-      )
-    }
-  </aside>
+  </div>
 </div>
 
 <style>
-  .profile {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+  .profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
     margin-block: 1.5rem 3.5rem;
+    width: 100%;
   }
 
-  .profile__main {
+  /* ── 1. Contenedor de altimetría a ancho completo ───────────────────── */
+  .profile__canvas-box {
+    width: 100%;
     min-width: 0;
+    border: var(--hairline) solid var(--line);
+    background: var(--bg-sunken);
+    overflow: hidden;
   }
 
   .profile__img {
     display: block;
     width: 100%;
-    /* El SVG trae su viewBox: sin altura fija, la imagen escala con su
-       proporción (2400 × 900). */
     height: auto;
-    aspect-ratio: 2400 / 900;
-    border: var(--hairline) solid var(--line);
-    background: var(--bg-sunken);
+    aspect-ratio: 1100 / 440;
   }
 
-  .profile__scale {
-    margin: 0.625rem 0 0;
-    padding: 0.5rem 0.75rem;
-    border: var(--hairline) solid var(--line);
+  /* ── Botón solo para móvil: Compartir / Descargar ───────────────────── */
+  .profile__mobile-bar {
+    display: flex;
+    width: 100%;
+  }
+
+  @media (min-width: 48em) {
+    .profile__mobile-bar {
+      display: none;
+    }
+  }
+
+  .profile__mobile-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
     background: var(--bg-raised);
-    font-size: 0.625rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--faint);
+    color: var(--ink-strong);
+    border: var(--hairline) solid var(--line-strong, var(--line));
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
 
-  .profile__side {
+  .profile__mobile-btn:active,
+  .profile__mobile-btn:hover {
+    background: var(--bg-sunken);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── 2. Bloque de celdas unificadas ─────────────────────────────────── */
+  .profile__details {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    min-width: 0;
+    width: 100%;
   }
 
-  .profile__stats {
+  /* Fila 1: Estadísticas */
+  .profile__stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     margin: 0;
     border-top: var(--hairline) solid var(--line);
     border-left: var(--hairline) solid var(--line);
-  }
-
-  .profile__stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.75rem 0.875rem;
-    border-right: var(--hairline) solid var(--line);
-    border-bottom: var(--hairline) solid var(--line);
     background: var(--bg-raised);
   }
 
-  .profile__stat dt {
-    font-size: 0.5625rem;
+  @media (min-width: 48em) {
+    .profile__stats-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* Fila 2: Puertos y GPX */
+  .profile__sub-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    border-top: var(--hairline) solid var(--line);
+    border-left: var(--hairline) solid var(--line);
+    background: var(--bg-raised);
+  }
+
+  @media (min-width: 44em) {
+    .profile__sub-grid {
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    }
+  }
+
+  /* Celda base unificada */
+  .profile__cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 1rem 1.25rem;
+    border-right: var(--hairline) solid var(--line);
+    border-bottom: var(--hairline) solid var(--line);
+  }
+
+  .profile__cell-label {
+    font-size: 0.625rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--faint);
   }
 
-  .profile__stat dd {
+  .profile__cell-value {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 1.125rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: var(--ink-strong);
   }
 
-  .ports__title {
-    margin: 0 0 0.5rem;
-    font-size: 0.625rem;
-    font-weight: 400;
-    letter-spacing: 0.14em;
-    color: var(--faint);
+  /* Celdas de puertos */
+  .profile__cell--port {
+    gap: 0.25rem;
   }
 
-  .ports__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    border-top: var(--hairline) solid var(--line);
-  }
-
-  .port {
-    display: grid;
-    grid-template-columns: 1.75rem minmax(0, 1fr);
-    grid-template-areas:
-      'cat name'
-      'cat meta';
+  .profile__port-top {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    column-gap: 0.625rem;
-    padding: 0.5rem 0;
-    border-bottom: var(--hairline) solid var(--line);
   }
 
-  .port__cat {
-    grid-area: cat;
-    display: grid;
-    place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    background: var(--bg-sunken);
-    border: var(--hairline) solid var(--line);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+  .profile__port-km {
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
     font-weight: 700;
-    color: var(--muted);
   }
 
-  .port__cat[data-cat='HC'],
-  .port__cat[data-cat='1'] {
-    background: #e0368f;
-    border-color: #e0368f;
-    color: #fff;
-  }
-
-  .port__cat[data-cat='2'] {
-    background: #f26b1d;
-    border-color: #f26b1d;
-    color: #fff;
-  }
-
-  .port__cat[data-cat='3'] {
-    background: #2f7bf5;
-    border-color: #2f7bf5;
-    color: #fff;
-  }
-
-  .port__cat[data-cat='4'] {
-    background: #7bb51c;
-    border-color: #7bb51c;
-    color: #fff;
-  }
-
-  .port__name {
-    grid-area: name;
-    font-size: 0.8125rem;
+  .profile__port-name {
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--ink-strong);
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
-  .port__meta {
-    grid-area: meta;
+  .profile__port-specs {
     font-size: 0.6875rem;
     color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
 
-  .profile__gpx {
-    display: inline-block;
-    align-self: flex-start;
+  /* Celda de descarga GPX */
+  .profile__cell--gpx {
+    gap: 0.625rem;
+    align-items: stretch;
+  }
+
+  .profile__gpx-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     padding: 0.625rem 1rem;
     background: var(--invert-bg);
     color: var(--invert-fg);
     font-size: 0.6875rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-decoration: none;
-    transition: background 0.15s ease;
+    border: var(--hairline) solid var(--line);
+    transition: background 0.15s ease, color 0.15s ease;
   }
 
-  .profile__gpx:hover {
+  .profile__gpx-btn:hover {
     background: var(--accent);
-    color: #fff;
-  }
-
-  @media (min-width: 64em) {
-    .profile {
-      grid-template-columns: minmax(0, 1fr) 18rem;
-      align-items: start;
-    }
+    color: #ffffff;
   }
 </style>
+
+<script>
+  function setupMobileProfileShare() {
+    const buttons = document.querySelectorAll<HTMLButtonElement>('.profile__mobile-btn');
+    buttons.forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = 'true';
+
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-profile-url') || '';
+        const stageName = btn.getAttribute('data-stage-name') || 'Altimetría';
+        const slug = btn.getAttribute('data-slug') || 'etapa';
+        const absoluteUrl = new URL(url, window.location.origin).href;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `Altimetría · ${stageName}`,
+              text: `Perfil técnico y altimetría de la carrera ${stageName}`,
+              url: absoluteUrl,
+            });
+            return;
+          } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') return;
+          }
+        }
+
+        // Fallback: abrir en nueva pestaña o descargar
+        const link = document.createElement('a');
+        link.href = absoluteUrl;
+        link.download = `altimetria-${slug}.svg`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    });
+  }
+
+  setupMobileProfileShare();
+  document.addEventListener('astro:page-load', setupMobileProfileShare);
+</script>
