@@ -402,7 +402,11 @@
     const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
     gsap.registerPlugin(ScrollTrigger);
-    gsap.set(orbs, { xPercent: -50 });
+    // El centrado de los orbes lo hace CSS (propiedad `translate`); GSAP solo
+    // mueve x/y. Antes era `gsap.set(orbs, {xPercent:-50})`, que solo se
+    // aplicaba en la primera carga: al volver a INICIO con el router, el
+    // astro se quedaba sin centrar.
+    gsap.set(orbs, { x: 0, y: 0 });
 
     if (!reduce) {
       // 1. Animación de entrada inicial: revelación suave y señorial
@@ -627,6 +631,12 @@
     position: absolute;
     top: clamp(1.5rem, 4vh, 2.75rem);
     left: clamp(75%, 80vw, 84%);
+    /* El centrado va en la PROPIEDAD `translate` de CSS, no en `transform`:
+       GSAP escribe `transform` en línea y, al navegar por cliente, el astro
+       se re-renderiza sin el `xPercent` que lo centraba (y quedaba corrido
+       a la derecha). `translate` es una propiedad aparte y se compone con
+       `transform`, así que las dos conviven. */
+    translate: -50% 0;
     width: clamp(3.75rem, 5.5vw, 5.5rem);
     aspect-ratio: 1;
     will-change: transform;

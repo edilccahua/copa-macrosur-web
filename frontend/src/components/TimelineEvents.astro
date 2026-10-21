@@ -25,6 +25,7 @@ const ALL_EVENTS = [
     statusKey: 'finished' as const,
     distance: '40.85 KM',
     elevation: '+384 M',
+    participants: '198 EN META',
     description: '',
     poster: '/images/posters/f1-la-joya-extreme-card.webp',
     pageHref: '/fechas/la-joya-extreme',
@@ -51,6 +52,7 @@ const ALL_EVENTS = [
     statusKey: 'special' as const,
     distance: '63 KM / 43 KM',
     elevation: 'Asfalto Ondulado',
+    participants: '—',
     description: '',
     poster: '/images/posters/extra-vuelta-talamolle-card.webp',
     pageHref: '/eventos-especiales#vuelta-a-talamolle-2026',
@@ -77,6 +79,7 @@ const ALL_EVENTS = [
     statusKey: 'finished' as const,
     distance: '11.8 KM × 3 VUELTAS',
     elevation: '+840 M',
+    participants: '112 EN META',
     description: '',
     poster: '/images/posters/f2-z-xtreme-card.webp',
     pageHref: '/fechas/z-xtreme-2026',
@@ -103,6 +106,7 @@ const ALL_EVENTS = [
     statusKey: 'open' as const,
     distance: '47.2 KM',
     elevation: '+761 M',
+    participants: 'CUPOS ABIERTOS',
     description: '',
     poster: '/images/posters/f3-retorno-poblados-card.webp',
     pageHref: '/fechas/vuelta-a-los-poblados',
@@ -129,6 +133,7 @@ const ALL_EVENTS = [
     statusKey: 'upcoming' as const,
     distance: '2 Etapas en Ruta',
     elevation: 'Sierra hacia Costa',
+    participants: '—',
     description: '',
     poster: '/images/posters/extra-clasica-mollendo-card.webp',
     pageHref: '/eventos-especiales#clasica-arequipa-mollendo-72',
@@ -158,6 +163,7 @@ const ALL_EVENTS = [
     // que no se ponen.
     distance: 'Por confirmar',
     elevation: 'Por confirmar',
+    participants: '—',
     description: '',
     poster: '/images/posters/f4-quequena-xtreme-card.webp',
     pageHref: '/fechas/quequena-xtreme',
@@ -303,32 +309,37 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     z-index: 1;
   }
 
-  /* Estela luminosa que crece con el scroll */
+  /* Estela luminosa que dibuja con el color de cada tarjeta: alto fijo al
+     100% con el degradado anclado al contenedor y revelado por `clip-path`.
+     El JS construye el degradado con las posiciones reales de los nodos y
+     avanza el recorte al hacer scroll. */
   .timeline__trail {
     position: absolute;
     top: 0;
     width: 2px;
-    height: 0;
+    height: 100%;
     background: linear-gradient(180deg, #f59e0b 0%, #06b6d4 20%, #f97316 40%, #10b981 60%, #2563eb 80%, #d946ef 100%);
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
     pointer-events: none;
     z-index: 2;
-    transition: height 0.05s linear;
+    clip-path: inset(0 0 100% 0);
+    will-change: clip-path;
   }
 
-  /* Marcador viajero con scroll */
+  /* Marcador viajero con scroll. Arranca en el ámbar de La Joya (fecha 01);
+     el JS lo tiñe con el color del último hito superado. */
   .timeline__marker {
     position: absolute;
     top: 0;
     width: 12px;
     height: 12px;
     background: #fff;
-    border: 2px solid #10b981;
+    border: 2px solid #f59e0b;
     border-radius: 0;
     transform: translate(-50%, 0) rotate(45deg);
     box-shadow:
-      0 0 14px rgba(16, 185, 129, 0.9),
-      0 0 0 3px rgba(16, 185, 129, 0.25);
+      0 0 14px rgba(245, 158, 11, 0.9),
+      0 0 0 3px rgba(245, 158, 11, 0.25);
     pointer-events: none;
     z-index: 6;
     will-change: transform;
@@ -630,6 +641,37 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     }
   }
 
+  /**
+   * Tiñe el diamante viajero con el color del último hito superado: arranca
+   * ámbar (La Joya) y cambia a medida que el scroll pasa cada fecha.
+   */
+  function paintMarker(marker: HTMLElement, ref: HTMLElement | null): void {
+    if (!ref) return;
+    const color = ref.style.getPropertyValue('--node-color')?.trim();
+    if (!color) return;
+    const glow = ref.style.getPropertyValue('--node-glow')?.trim() || color;
+    marker.style.borderColor = color;
+    marker.style.boxShadow = `0 0 14px ${glow}, 0 0 0 3px ${glow}`;
+  }
+
+  /**
+   * Degradado de la estela con parada en cada hito: cada tramo lleva el color
+   * de su tarjeta, así la línea dibuja de ámbar (La Joya) a morado (Quequeña)
+   * a medida que se avanza. `pctOf` devuelve la posición del hito en % del
+   * contenedor.
+   */
+  function buildTrailGradient(refs: HTMLElement[], pctOf: (ref: HTMLElement) => number): string {
+    const pts = refs.map((ref) => ({
+      pct: Math.max(0, Math.min(100, pctOf(ref))),
+      color: ref.style.getPropertyValue('--node-color')?.trim() || '#fff',
+    }));
+    if (pts.length === 0) return '';
+    const parts = [`${pts[0].color} 0%`];
+    for (const p of pts) parts.push(`${p.color} ${p.pct.toFixed(2)}%`);
+    parts.push(`${pts[pts.length - 1].color} 100%`);
+    return `linear-gradient(180deg, ${parts.join(', ')})`;
+  }
+
   function initDesktopTimeline(reduceMotion: boolean, signal: AbortSignal) {
     const desktopContainer = document.getElementById('timelineDesktop');
     const spine = document.getElementById('timelineSpine');
@@ -659,6 +701,13 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
         const relTop = cardRect.top - spineRect.top + 20;
         node.style.top = `${relTop.toFixed(1)}px`;
       });
+      // El degradado usa las posiciones reales: se reconstruye al alinear.
+      const H = spine!.getBoundingClientRect().height || 1;
+      const bg = buildTrailGradient(
+        spineNodes,
+        (n) => (parseFloat(n.style.top || '0') / H) * 100
+      );
+      if (bg) trail!.style.background = bg;
     }
 
     let ticking = false;
@@ -676,20 +725,23 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
 
       const pos = inset + p * total;
       marker!.style.transform = `translate(-50%, ${pos.toFixed(1)}px) rotate(45deg)`;
-      trail!.style.height = `${Math.max(0, pos - inset).toFixed(1)}px`;
+      trail!.style.clipPath = `inset(0 0 ${((1 - p) * 100).toFixed(2)}% 0)`;
 
+      let current: HTMLElement | null = spineNodes[0] ?? null;
       spineNodes.forEach((node, i) => {
         const card = cards[i];
         const nodeY = parseFloat(node.style.top || '0');
         const passed = pos >= nodeY - 6;
         node.classList.toggle('passed', passed);
         card?.classList.toggle('passed', passed);
+        if (passed) current = node;
       });
+      paintMarker(marker!, current);
     }
 
     if (reduceMotion) {
       alignSpineNodes();
-      trail.style.height = '100%';
+      trail.style.clipPath = 'inset(0 0 0% 0)';
       marker.style.display = 'none';
       spineNodes.forEach((n) => n.classList.add('passed'));
       cards.forEach((c) => c.classList.add('passed'));
@@ -733,8 +785,21 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     const items = Array.from(mobileContainer.querySelectorAll<HTMLElement>('.timeline-mobile-item'));
     let ticking = false;
 
+    // Degradado con parada en cada tarjeta (color de cada fecha).
+    function paintMobileTrail() {
+      const rect = mobileContainer!.getBoundingClientRect();
+      const H = rect.height || 1;
+      const bg = buildTrailGradient(items, (it) => {
+        const node = it.querySelector<HTMLElement>('.timeline-mobile-node');
+        if (!node) return 0;
+        return ((node.getBoundingClientRect().top - rect.top) / H) * 100;
+      });
+      if (bg) trail!.style.background = bg;
+    }
+
     if (reduceMotion) {
-      trail.style.height = '100%';
+      paintMobileTrail();
+      trail.style.clipPath = 'inset(0 0 0% 0)';
       marker.style.display = 'none';
       items.forEach((it) => it.classList.add('passed'));
       return;
@@ -753,14 +818,18 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
 
       const pos = inset + p * total;
       marker!.style.transform = `translate(-50%, ${pos.toFixed(1)}px) rotate(45deg)`;
-      trail!.style.height = `${Math.max(0, pos - inset).toFixed(1)}px`;
+      trail!.style.clipPath = `inset(0 0 ${((1 - p) * 100).toFixed(2)}% 0)`;
 
+      let current: HTMLElement | null = items[0] ?? null;
       items.forEach((it) => {
         const node = it.querySelector<HTMLElement>('.timeline-mobile-node');
         if (!node) return;
         const nodeY = node.getBoundingClientRect().top - rect.top;
-        it.classList.toggle('passed', pos >= nodeY - 6);
+        const passed = pos >= nodeY - 6;
+        it.classList.toggle('passed', passed);
+        if (passed) current = it;
       });
+      paintMarker(marker!, current);
     }
 
     function onScroll() {
@@ -771,8 +840,12 @@ const RIGHT_EVENTS = [ALL_EVENTS[1], ALL_EVENTS[3], ALL_EVENTS[5]]; // Fechas 2,
     }
 
     update();
+    paintMobileTrail();
     window.addEventListener('scroll', onScroll, { passive: true, signal });
-    window.addEventListener('resize', onScroll, { signal });
+    window.addEventListener('resize', () => {
+      paintMobileTrail();
+      onScroll();
+    }, { signal });
   }
 
   if (document.readyState === 'loading') {
