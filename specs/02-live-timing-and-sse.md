@@ -179,6 +179,21 @@ Dada la cantidad de participantes (cientos de ciclistas), la interfaz móvil ofr
 - **Una sola fuente:** `GET /api/v1/public/live-status` devuelve
   `{active, state, stage, next_stage, opens_at, closed_at}`. Lo consumen la
   portada (sección `04 · Transmisión`), `/en-vivo` y la consola del admin.
+- **Caché del estado: TTL de 15 s.** El estado se cachea en memoria bajo la
+  clave `public:live_status` con **15 segundos** de vida (el resto de las
+  lecturas públicas cachean 120 s). Es corto a propósito: el estado cambia
+  de verdad el día de la carrera, y 15 s es un delay aceptable para la
+  portada sin que el enlace "en vivo" se quede pegado. El `live_status`
+  embebido en el agregado de la portada (`GET /api/v1/public/home`, TTL de
+  60 s) **no** se congela dentro del agregado: se resuelve con la MISMA
+  clave y el MISMO TTL de 15 s, para que la portada y `/public/live-status`
+  no puedan discrepar. Ver `specs/03` §1.9.1.
+- **Cada mutación invalida la caché pública del backend.** Una marcación, una
+  largada, la apertura o el cierre de la transmisión, la ingesta de Excel y
+  la pre-inscripción llaman a `cache.invalidate_public()`, que vacía las
+  lecturas públicas (`public:`, `stages:`, `stage:summary:`). Sin esto, el
+  público vería datos viejos hasta dos minutos después de una marcación.
+  Ver `specs/03` §1.9.2.
 - **Cierre/reapertura:** `POST /api/v1/admin/stages/{stage_id}/live` con
   `{"active": false}` marca `live_closed_at`; `{"active": true}` lo limpia.
   Requiere `X-Admin-Key`. **Solo se puede cerrar el día de la carrera**:
