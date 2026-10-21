@@ -16,6 +16,8 @@ node_modules/
 dist/
 .astro/
 .output/
+.wrangler/
+**/.wrangler/
 
 # Environment files
 .env
