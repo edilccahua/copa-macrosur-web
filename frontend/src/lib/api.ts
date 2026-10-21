@@ -625,14 +625,103 @@ export interface HomeBundle {
 }
 
 /**
+ * Fallback retrocompatible para construir el agregado de portada cuando el backend
+ * en producción aún no ha terminado de desplegar el endpoint agrupado `/public/home`.
+ */
+async function getHomeBundleFallback(): Promise<HomeBundle> {
+  const [stagesRes, proRes, normalRes, teamsRes, liveRes, remontadaRes, titlesRes] =
+    await Promise.allSettled([
+      fetch(`${API_V1}/stages`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_V1}/public/standings?scope=PRO`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_V1}/public/standings?scope=NORMAL`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_V1}/public/standings/teams`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_V1}/public/live-status`, { cache: 'no-store' }).then((r) =>
+        r.ok ? r.json() : null
+      ),
+      fetch(`${API_V1}/public/remontada`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_V1}/stages/la-joya-extreme/summary`).then((r) => (r.ok ? r.json() : null)),
+    ]);
+
+  const stages: StageOption[] =
+    stagesRes.status === 'fulfilled' && Array.isArray(stagesRes.value) ? stagesRes.value : [];
+
+  const extractPodium = (res: PromiseSettledResult<any>): HomePodiumRow[] => {
+    if (res.status !== 'fulfilled' || !res.value) return [];
+    const rows = Array.isArray(res.value.rows)
+      ? res.value.rows
+      : Array.isArray(res.value)
+        ? res.value
+        : [];
+    return rows.slice(0, 3).map((r: any) => ({
+      rider_name: r.rider_name,
+      total_points: r.total_points,
+      rider_slug: r.rider_slug ?? null,
+    }));
+  };
+
+  const extractTeams = (res: PromiseSettledResult<any>): HomeTeamRow[] => {
+    if (res.status !== 'fulfilled' || !Array.isArray(res.value)) return [];
+    return res.value.slice(0, 3).map((t: any) => ({
+      team_name: t.team_name,
+      total_points: t.total_points,
+      team_slug: t.team_slug ?? null,
+    }));
+  };
+
+  const proPodium = extractPodium(proRes);
+  const normalPodium = extractPodium(normalRes);
+  const teamsPodium = extractTeams(teamsRes);
+
+  const liveStatus: LiveStatus =
+    liveRes.status === 'fulfilled' && liveRes.value
+      ? liveRes.value
+      : {
+          active: false,
+          state: 'no_race_today',
+          stage: null,
+          next_stage: null,
+          opens_at: null,
+          closed_at: null,
+        };
+
+  const remontada = remontadaRes.status === 'fulfilled' ? remontadaRes.value : null;
+
+  const summaryData = titlesRes.status === 'fulfilled' && titlesRes.value ? titlesRes.value : null;
+  const mountainTitles: HomeMountainTitles = {
+    kom: summaryData?.kom ?? null,
+    qom: summaryData?.qom ?? null,
+    kamikaze_male: summaryData?.kamikaze_male ?? null,
+    kamikaze_female: summaryData?.kamikaze_female ?? null,
+  };
+
+  return {
+    stages,
+    live_status: liveStatus,
+    pro_podium: proPodium,
+    normal_podium: normalPodium,
+    teams_podium: teamsPodium,
+    remontada,
+    mountain_titles: mountainTitles,
+  };
+}
+
+/**
  * El agregado de la portada.
  *
- * Lanza si el backend no responde: la página degrada a secciones vacías
- * (nunca inventa datos, specs/03 §0.2).
+ * Consulta el endpoint unificado `/public/home` y, si el backend aún no lo expone
+ * (ej. despliegue en progreso en Render), recurre con resiliencia a los endpoints
+ * individuales para no romper la visualización de la portada en Cloudflare Pages.
  */
 export async function getHomeBundle(): Promise<HomeBundle> {
-  const res = await fetch(`${API_V1}/public/home`);
-  if (!res.ok) throw new Error(`home HTTP ${res.status}`);
-  return res.json();
+  try {
+    const res = await fetch(`${API_V1}/public/home`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Si falla la red al endpoint agrupado, intenta el fallback
+  }
+
+  return getHomeBundleFallback();
 }
 
