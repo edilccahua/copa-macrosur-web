@@ -1,14 +1,15 @@
 """
-Generador del perfil de etapa de una carrera.
+Generador del perfil de etapa de una carrera (Estilo Tour de France).
 
-Produce un SVG con la silueta de la ruta, los puertos con su categoría, los
-checkpoints, la escala de altitudes en msnm y el eje de kilometraje. Es la
-pieza que el navegador dibujaba antes, pero aqui se calcula una vez, con la
-tipografia del sistema (Geist Mono para las cifras, Archivo para los rotulos)
-y un tamaño razonable.
-
-El SVG lleva las fuentes como `<style>` con `font-family`, y el sitio las
-sirve autoalojadas, asi que el texto se ve igual que en el resto del portal.
+Produce un SVG de alta definición, responsive y de alto contraste con:
+  · Canvas de escala óptima (1100 x 440 px) para nitidez en pantallas de escritorio y móviles.
+  · Soporte dinámico para modo CLARO y modo OSCURO mediante tokens nativos (--bg, --ink, --line, --accent).
+  · Tipografía oficial: Archivo Variable para títulos/etiquetas y Geist Mono Variable con números tabulares.
+  · Silueta montañosa con gradiente sutil y cresta nítida.
+  · Trazado resaltado de puertos directamente sobre la pendiente de la montaña (de inicio a cumbre).
+  · Líneas guía estrictamente verticales (x1 = x2) sin cruces diagonales ni superposiciones.
+  · Iconografía vectorial SVG limpia para Salida, Llegada y Puertos (cero emojis).
+  · Geometría angular estricta (--radius: 0) coherente con el sistema de diseño del proyecto.
 
 Uso:
     python3 -m backend.scripts.build_stage_profile <slug> [salida.svg]
@@ -16,48 +17,36 @@ Uso:
 import json
 import os
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from backend.app.services.route_profile_service import (  # noqa: E402
     _coords_from_geojson,
     _smooth_elevations,
-    extract_summits,
 )
 
-# Lienzo. Ancho suficiente para las etiquetas de puerto sin subir la altura.
-# Se dibuja a 2x de la caja final (la imagen ocupa ~760 px en el portal) para
-# que el texto de las etiquetas se lea a ese tamaño.
-W = 2400
-H = 900
-# La franja de los puertos arriba, la banda de kilometraje abajo.
-PORT_BAND = 150
-KM_BAND = 80
-PLOT_TOP = PORT_BAND
+# Dimensiones del lienzo (relación ~2.5:1, proporción ideal para contenedores web y móviles)
+W = 1100
+H = 440
+
+PAD_L = 64
+PAD_R = 64
+PLOT_TOP = 84
+KM_BAND = 44
 PLOT_BOTTOM = H - KM_BAND
 PLOT_H = PLOT_BOTTOM - PLOT_TOP
-PAD_L = 110
-PAD_R = 60
 PLOT_W = W - PAD_L - PAD_R
 
-# Categorias de puerto, con su color (los mismos del perfil de etapa).
+# Colores de categoría al estilo del ciclismo profesional
 CATEGORY_COLORS = {
-    "HC": "#e0368f",
-    "1": "#e0368f",
-    "2": "#f26b1d",
-    "3": "#2f7bf5",
-    "4": "#7bb51c",
-    "": "#70707c",
+    "HC": "#e11d48",  # Carmesí
+    "1": "#e11d48",
+    "2": "#ea580c",   # Naranja
+    "3": "#2d81ff",   # Azul Kúspide / Accent
+    "4": "#059669",   # Verde Esmeralda
+    "": "#f59e0b",    # Ámbar dorado
 }
-
-# El acento del portal.
-ACCENT = "#2d81ff"
-INK = "#f2f1ee"
-MUTED = "#f2f1ee99"
-FAINT = "#f2f1ee61"
-LINE = "#f2f1ee26"
-SURFACE = "#101014"
 
 
 def _esc(text: str) -> str:
@@ -71,51 +60,56 @@ def _esc(text: str) -> str:
 
 
 def _fmt(value: float) -> str:
-    """Cifra con punto decimal, sin ceros sobrantes."""
     return f"{value:.1f}".rstrip("0").rstrip(".")
 
 
 def build_profile_svg(
     route_geojson: Optional[Dict[str, Any]],
     summits: List[Dict[str, Any]],
-    checkpoints: List[Dict[str, Any]],
+    checkpoints: Optional[List[Dict[str, Any]]] = None,
     *,
     stage_name: str = "",
+    start_location: str = "",
+    finish_location: str = "",
     distance_km: float = 0.0,
     elevation_gain_m: int = 0,
     elevation_loss_m: int = 0,
 ) -> str:
-    """Construye el SVG del perfil de etapa."""
+    """Construye el SVG del perfil de etapa responsive y con tokens de diseño del sitio."""
     coords = _coords_from_geojson(route_geojson)
     if len(coords) < 2:
         return ""
 
-    elevations = _smooth_elevations(coords)
-    eles = [c[2] for c in coords]
+    elevations = _smooth_elevations(coords, window=5)
     kms = [c[3] for c in coords]
-    min_ele = min(eles)
-    max_ele = max(eles)
-    # El rango se redondea a decenas para que las lineas de msnm salgan limpias.
-    lo = (int(min_ele) // 50) * 50
-    hi = ((int(max_ele) // 50) + 1) * 50
-    if hi <= lo:
-        hi = lo + 50
+    min_ele = min(elevations)
+    max_ele = max(elevations)
+
+    # Redondeo de escala vertical a múltiplos de 100 o 50
+    lo = (int(min_ele) // 100) * 100
+    hi = ((int(max_ele) // 100) + 1) * 100
+    if hi - lo < 200:
+        lo = max(0, lo - 50)
+        hi += 100
     span = hi - lo
 
     total_km = kms[-1] - kms[0] or 1.0
 
-    # El desnivel acumulado real: el positivo y el negativo, tramo a tramo. Es
-    # lo que cuenta un GPS, no la diferencia entre el máximo y el mínimo.
+    # Desnivel acumulado
     gain = 0.0
     loss = 0.0
-    for index in range(len(elevations) - 1):
-        delta = elevations[index + 1] - elevations[index]
-        if delta > 0:
-            gain += delta
+    for idx in range(len(elevations) - 1):
+        diff = elevations[idx + 1] - elevations[idx]
+        if diff > 0:
+            gain += diff
         else:
-            loss -= delta
+            loss -= diff
     computed_gain = int(round(gain))
     computed_loss = int(round(loss))
+    if elevation_gain_m > 0:
+        computed_gain = elevation_gain_m
+    if elevation_loss_m > 0:
+        computed_loss = elevation_loss_m
 
     def x_of(km: float) -> float:
         return PAD_L + ((km - kms[0]) / total_km) * PLOT_W
@@ -130,135 +124,308 @@ def build_profile_svg(
         f'aria-label="Perfil de altimetría de {_esc(stage_name)}">'
     )
     parts.append(
+        "<defs>"
+        "<linearGradient id='profileGrad' x1='0%' y1='0%' x2='0%' y2='100%'>"
+        "<stop offset='0%' stop-color='var(--grad-top)' stop-opacity='var(--grad-top-op)'/>"
+        "<stop offset='50%' stop-color='var(--grad-mid)' stop-opacity='var(--grad-mid-op)'/>"
+        "<stop offset='100%' stop-color='var(--grad-bot)' stop-opacity='var(--grad-bot-op)'/>"
+        "</linearGradient>"
         "<style>"
-        "text{font-family:'Archivo Variable',system-ui,sans-serif}"
-        ".mono{font-family:'Geist Mono Variable',ui-monospace,monospace;"
-        "font-variant-numeric:tabular-nums}"
+        ":root {"
+        "  --bg: #121316;"
+        "  --bg-raised: #101014;"
+        "  --bg-sunken: #060607;"
+        "  --line: rgba(242, 241, 238, 0.14);"
+        "  --ink: #f2f1ee;"
+        "  --ink-strong: #ffffff;"
+        "  --muted: rgba(242, 241, 238, 0.60);"
+        "  --faint: rgba(242, 241, 238, 0.40);"
+        "  --accent: #2d81ff;"
+        "  --crest: #2d81ff;"
+        "  --crest-hi: #60a5fa;"
+        "  --climb-accent: #f59e0b;"
+        "  --axis-bg: #090a0f;"
+        "  --axis-text: #f2f1ee;"
+        "  --grad-top: #2d81ff;"
+        "  --grad-top-op: 0.35;"
+        "  --grad-mid: #1d4ed8;"
+        "  --grad-mid-op: 0.16;"
+        "  --grad-bot: #060607;"
+        "  --grad-bot-op: 0.05;"
+        "  --badge-bg: #101014;"
+        "}"
+        "@media (prefers-color-scheme: light) {"
+        "  :root {"
+        "    --bg: #f2f1ee;"
+        "    --bg-raised: #faf9f7;"
+        "    --bg-sunken: #e9e8e4;"
+        "    --line: rgba(16, 16, 20, 0.16);"
+        "    --ink: #101014;"
+        "    --ink-strong: #000000;"
+        "    --muted: rgba(16, 16, 20, 0.62);"
+        "    --faint: rgba(16, 16, 20, 0.42);"
+        "    --accent: #2d81ff;"
+        "    --crest: #2563eb;"
+        "    --crest-hi: #1d4ed8;"
+        "    --climb-accent: #d97706;"
+        "    --axis-bg: #e2e0da;"
+        "    --axis-text: #101014;"
+        "    --grad-top: #3b82f6;"
+        "    --grad-top-op: 0.22;"
+        "    --grad-mid: #93c5fd;"
+        "    --grad-mid-op: 0.08;"
+        "    --grad-bot: #f2f1ee;"
+        "    --grad-bot-op: 0.02;"
+        "    --badge-bg: #ffffff;"
+        "  }"
+        "}"
+        "text{font-family:'Archivo Variable','Archivo',system-ui,-apple-system,sans-serif}"
+        ".mono{font-family:'Geist Mono Variable','Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}"
         "</style>"
+        "</defs>"
     )
-    parts.append(f'<rect width="{W}" height="{H}" fill="{SURFACE}"/>')
 
-    # ── Retícula de altitudes (msnm) ──────────────────────────────────────
-    step = max(1, int(round((hi - lo) / 4 / 50.0))) * 50
-    value = lo
-    while value <= hi:
-        y = y_of(value)
+    # Fondo general
+    parts.append(f'<rect width="{W}" height="{H}" fill="var(--bg)"/>')
+
+    # ── Retícula horizontal de altitudes (MSNM) ───────────────────────────
+    step = 200 if span >= 800 else (100 if span >= 300 else 50)
+    current_ele = lo
+    while current_ele <= hi:
+        y = y_of(current_ele)
         parts.append(
             f'<line x1="{PAD_L}" y1="{y:.1f}" x2="{W - PAD_R}" y2="{y:.1f}" '
-            f'stroke="{LINE}" stroke-width="1.5"/>'
+            f'stroke="var(--line)" stroke-width="1"/>'
         )
         parts.append(
-            f'<text x="{PAD_L - 12}" y="{y + 4:.1f}" class="mono" font-size="19" '
-            f'fill="{FAINT}" text-anchor="end">{value}</text>'
+            f'<text x="{PAD_L - 10}" y="{y + 4:.1f}" class="mono" font-size="11" '
+            f'font-weight="600" fill="var(--muted)" text-anchor="end">{current_ele}</text>'
         )
-        value += step
+        current_ele += step
 
-    # ── Silueta ───────────────────────────────────────────────────────────
-    points = " ".join(
-        f"{x_of(km):.1f},{y_of(ele):.1f}"
-        for km, ele in zip(kms, elevations)
+    parts.append(
+        f'<text x="{PAD_L - 10}" y="{PLOT_TOP - 8}" class="mono" font-size="9" '
+        f'font-weight="700" fill="var(--faint)" text-anchor="end">MSNM</text>'
     )
-    area = (
-        f"M {x_of(kms[0]):.1f},{PLOT_BOTTOM} L {points.replace(' ', ' L ')} "
+
+    # ── Silueta montañosa (Estilo profesional) ────────────────────────────
+    pts_str = " ".join(f"{x_of(km):.1f},{y_of(ele):.1f}" for km, ele in zip(kms, elevations))
+    area_path = (
+        f"M {x_of(kms[0]):.1f},{PLOT_BOTTOM} L {pts_str.replace(' ', ' L ')} "
         f"L {x_of(kms[-1]):.1f},{PLOT_BOTTOM} Z"
     )
-    parts.append(f'<path d="{area}" fill="{ACCENT}" fill-opacity="0.18"/>')
+    parts.append(f'<path d="{area_path}" fill="url(#profileGrad)"/>')
     parts.append(
-        f'<path d="M {points.replace(" ", " L ")}" fill="none" stroke="{ACCENT}" '
-        f'stroke-width="3" stroke-linejoin="round"/>'
+        f'<path d="M {pts_str.replace(" ", " L ")}" fill="none" stroke="var(--crest)" '
+        f'stroke-width="3" stroke-linejoin="round" stroke-linecap="square"/>'
+    )
+    parts.append(
+        f'<path d="M {pts_str.replace(" ", " L ")}" fill="none" stroke="var(--crest-hi)" '
+        f'stroke-width="1" stroke-linejoin="round" stroke-linecap="square"/>'
     )
 
-    # ── Checkpoints ───────────────────────────────────────────────────────
-    # La etiqueta va EN la banda de kilometraje, sobre el numero, para que no
-    # se pise con el eje.
-    for checkpoint in checkpoints:
-        km = checkpoint.get("distance_from_start_km", 0.0)
-        if km > total_km + 0.5:
+    # ── Puertos de Montaña: Tramo resaltado en pendiente y Guía Vertical ──
+    for idx, summit in enumerate(summits):
+        s_km = summit.get("distance_km", 0.0)
+        if s_km > total_km + 0.5:
             continue
-        # el punto de la traza mas cercano a ese kilometro
-        index = min(range(len(kms)), key=lambda i: abs(kms[i] - km))
-        x = x_of(kms[index])
-        y = y_of(elevations[index])
+        p_idx = min(range(len(kms)), key=lambda i: abs(kms[i] - s_km))
+        sx = x_of(kms[p_idx])
+        sy = y_of(elevations[p_idx])
+        cat = str(summit.get("category", "") or "").strip()
+        color = CATEGORY_COLORS.get(cat, CATEGORY_COLORS[""])
+
+        # Longitud e inicio del puerto
+        dist_climb = summit.get("climb_length_km")
+        if not dist_climb:
+            gain_m = summit.get("climb_gain_m", 0)
+            avg_g = summit.get("avg_grade_pct", 0)
+            dist_climb = round(gain_m / (avg_g * 10), 1) if avg_g > 0 else 0.0
+        start_km = summit.get("start_km")
+        if start_km is None:
+            start_km = max(kms[0], round(s_km - dist_climb, 2))
+
+        # 1. Resaltado del tramo de subida sobre la montaña (de inicio a cumbre)
+        start_p_idx = min(range(len(kms)), key=lambda i: abs(kms[i] - start_km))
+        if start_p_idx < p_idx:
+            climb_segment_coords = [
+                f"{x_of(kms[k]):.1f},{y_of(elevations[k]):.1f}"
+                for k in range(start_p_idx, p_idx + 1)
+            ]
+            parts.append(
+                f'<path d="M {" L ".join(climb_segment_coords)}" fill="none" '
+                f'stroke="{color}" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="round"/>'
+            )
+            start_x = x_of(kms[start_p_idx])
+            start_y = y_of(elevations[start_p_idx])
+            parts.append(
+                f'<circle cx="{start_x:.1f}" cy="{start_y:.1f}" r="3" fill="{color}"/>'
+            )
+
+        # 2. Guía estrictamente vertical (x1 = x2) hacia la ficha superior
+        tier = idx % 2
+        flag_y = 18 + tier * 34
+        line_top = flag_y + 24
+
         parts.append(
-            f'<line x1="{x:.1f}" y1="{PLOT_TOP}" x2="{x:.1f}" y2="{PLOT_BOTTOM}" '
-            f'stroke="{MUTED}" stroke-width="1.5" stroke-dasharray="3 4"/>'
+            f'<line x1="{sx:.1f}" y1="{sy:.1f}" x2="{sx:.1f}" y2="{line_top}" '
+            f'stroke="{color}" stroke-width="1.5" stroke-dasharray="2 2"/>'
         )
         parts.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6" fill="{SURFACE}" '
-            f'stroke="{INK}" stroke-width="2.2"/>'
-        )
-        parts.append(
-            f'<text x="{x:.1f}" y="{H - KM_BAND + 40}" font-size="17" fill="{MUTED}" '
-            f'text-anchor="middle">{_esc(checkpoint.get("name", ""))}</text>'
+            f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="4" fill="#ffffff" '
+            f'stroke="{color}" stroke-width="2"/>'
         )
 
-    # ── Puertos: bandera con la categoria, nombre y cifras ───────────────
-    # Se reparten en tres alturas para que las etiquetas no se pisen.
-    ordered = sorted(summits, key=lambda s: s.get("distance_km", 0.0))
-    for index, summit in enumerate(ordered):
-        km = summit.get("distance_km", 0.0)
-        if km > total_km + 0.5:
-            continue
-        point_index = min(range(len(kms)), key=lambda i: abs(kms[i] - km))
-        x = x_of(kms[point_index])
-        y = y_of(elevations[point_index])
-        tier = index % 3
-        box_y = 24 + tier * 42
-        color = CATEGORY_COLORS.get(summit.get("category", ""), CATEGORY_COLORS[""])
-        label = summit.get("category") or "·"
+        # Ficha técnica: Nombre, Altitud, Distancia y Pendiente media
+        name_text = _esc(summit.get("name", "Puerto de Montaña"))
+        ele_text = f"{int(summit.get('elevation_m', 0))} m"
+        grade_text = f"{_fmt(dist_climb)} km al {_fmt(summit.get('avg_grade_pct', 0))}%"
 
+        # Alineación para evitar que el texto se corte en bordes laterales
+        align_right = sx > (W * 0.65)
+        text_anchor = "end" if align_right else "start"
+        badge_x = sx - 28 if align_right else sx + 6
+        text_x = sx - 34 if align_right else sx + 36
+
+        # Badge con categoría o icono vectorial de bandera
         parts.append(
-            f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x:.1f}" y2="{box_y + 27}" '
-            f'stroke="{color}" stroke-width="1.5" stroke-dasharray="2 3"/>'
+            f'<rect x="{badge_x:.1f}" y="{flag_y}" width="22" height="18" '
+            f'fill="{color}"/>'
         )
-        # La bandera: un rectangulo con la categoria.
+        if cat:
+            parts.append(
+                f'<text x="{badge_x + 11:.1f}" y="{flag_y + 13}" class="mono" font-size="10" '
+                f'font-weight="800" fill="#ffffff" text-anchor="middle">{cat}</text>'
+            )
+        else:
+            # Icono vectorial de bandera (puro SVG, cero emojis)
+            parts.append(
+                f'<path d="M {badge_x + 6} {flag_y + 4} L {badge_x + 6} {flag_y + 14} '
+                f'M {badge_x + 6} {flag_y + 4} L {badge_x + 16} {flag_y + 7.5} L {badge_x + 6} {flag_y + 11} Z" '
+                f'fill="#ffffff" stroke="#ffffff" stroke-width="0.8" stroke-linejoin="round"/>'
+            )
+
+        # Nombre del puerto y altitud en Archivo + Geist Mono
         parts.append(
-            f'<rect x="{x - 22:.1f}" y="{box_y}" width="45" height="27" fill="{color}"/>'
+            f'<text x="{text_x:.1f}" y="{flag_y + 11}" font-size="13" font-weight="700" '
+            f'fill="var(--ink-strong)" text-anchor="{text_anchor}">'
+            f'{name_text} <tspan class="mono" font-weight="800" fill="{color}">· {ele_text}</tspan></text>'
         )
+        # Especificación de longitud y pendiente
         parts.append(
-            f'<text x="{x:.1f}" y="{box_y + 19}" class="mono" font-size="17" '
-            f'font-weight="700" fill="{SURFACE}" text-anchor="middle">{_esc(label)}</text>'
-        )
-        # El nombre y las cifras, a la izquierda de la bandera.
-        parts.append(
-            f'<text x="{x - 32:.1f}" y="{box_y + 19}" font-size="20" font-weight="620" '
-            f'fill="{INK}" text-anchor="end">{_esc(summit.get("name", ""))}</text>'
-        )
-        parts.append(
-            f'<text x="{x - 32:.1f}" y="{box_y + 34}" class="mono" font-size="15" '
-            f'fill="{FAINT}" text-anchor="end">'
-            f'{_fmt(summit.get("distance_km", 0))} KM · {int(summit.get("elevation_m", 0))} M '
-            f'· +{int(summit.get("climb_gain_m", 0))} M</text>'
+            f'<text x="{text_x:.1f}" y="{flag_y + 23}" class="mono" font-size="11" '
+            f'font-weight="600" fill="var(--muted)" text-anchor="{text_anchor}">'
+            f'{grade_text}</text>'
         )
 
-    # ── Banda de kilometraje ──────────────────────────────────────────────
+    # ── Punto de Partida (Extremo Izquierdo) ──────────────────────────────
+    start_x = x_of(kms[0])
+    start_y = y_of(elevations[0])
+    start_name = _esc(start_location or "Partida")
+    start_ele_str = f"{int(round(elevations[0]))} m"
+
     parts.append(
-        f'<rect x="{PAD_L}" y="{H - KM_BAND}" width="{PLOT_W}" height="{KM_BAND}" '
-        f'fill="#060607"/>'
+        f'<line x1="{start_x:.1f}" y1="{start_y:.1f}" x2="{start_x:.1f}" y2="52" '
+        f'stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 2"/>'
     )
-    km_step = 10 if total_km > 40 else (5 if total_km > 15 else 2)
-    km = 0.0
-    while km <= total_km + 0.01:
-        x = x_of(km)
-        parts.append(
-            f'<line x1="{x:.1f}" y1="{H - KM_BAND}" x2="{x:.1f}" y2="{H - KM_BAND + 8}" '
-            f'stroke="{MUTED}" stroke-width="1.5"/>'
-        )
-        parts.append(
-            f'<text x="{x:.1f}" y="{H - KM_BAND + 26}" class="mono" font-size="19" '
-            f'fill="{MUTED}" text-anchor="middle">{int(km)}</text>'
-        )
-        km += km_step
     parts.append(
-        f'<text x="{W - PAD_R}" y="{H - KM_BAND + 26}" class="mono" font-size="19" '
-        f'fill="{FAINT}" text-anchor="end">KM</text>'
+        f'<circle cx="{start_x:.1f}" cy="{start_y:.1f}" r="4" fill="#ffffff" '
+        f'stroke="var(--accent)" stroke-width="2"/>'
+    )
+    parts.append(
+        f'<rect x="{start_x:.1f}" y="18" width="160" height="34" '
+        f'fill="var(--badge-bg)" stroke="var(--accent)" stroke-width="1"/>'
+    )
+    # Icono vectorial de salida (triángulo / play)
+    parts.append(
+        f'<polygon points="{start_x + 10},{25} {start_x + 16},{29} {start_x + 10},{33}" '
+        f'fill="var(--accent)"/>'
+    )
+    parts.append(
+        f'<text x="{start_x + 22:.1f}" y="30" font-size="10" font-weight="800" '
+        f'fill="var(--accent)">SALIDA · <tspan class="mono">{start_ele_str}</tspan></text>'
+    )
+    parts.append(
+        f'<text x="{start_x + 10:.1f}" y="44" font-size="11" font-weight="700" '
+        f'fill="var(--ink-strong)">{start_name}</text>'
     )
 
-    # ── Cabecera con las cifras de la ruta ────────────────────────────────
+    # ── Punto de Meta (Extremo Derecho) ───────────────────────────────────
+    finish_x = x_of(kms[-1])
+    finish_y = y_of(elevations[-1])
+    finish_name = _esc(finish_location or "Meta")
+    finish_ele_str = f"{int(round(elevations[-1]))} m"
+
     parts.append(
-        f'<text x="{PAD_L}" y="{H - 10}" class="mono" font-size="17" fill="{FAINT}">'
-        f'DISTANCIA {_fmt(distance_km)} KM · DESNIVEL +{computed_gain} M / '
-        f'-{computed_loss} M · ALTITUD {int(lo)}-{int(hi)} MSNM</text>'
+        f'<line x1="{finish_x:.1f}" y1="{finish_y:.1f}" x2="{finish_x:.1f}" y2="52" '
+        f'stroke="var(--climb-accent)" stroke-width="1.5" stroke-dasharray="2 2"/>'
+    )
+    parts.append(
+        f'<circle cx="{finish_x:.1f}" cy="{finish_y:.1f}" r="4" fill="#ffffff" '
+        f'stroke="var(--climb-accent)" stroke-width="2"/>'
+    )
+    parts.append(
+        f'<rect x="{finish_x - 160:.1f}" y="18" width="160" height="34" '
+        f'fill="var(--badge-bg)" stroke="var(--climb-accent)" stroke-width="1"/>'
+    )
+    # Icono vectorial de llegada a cuadros (cero emojis)
+    parts.append(
+        f'<g transform="translate({finish_x - 152}, 23)">'
+        f'<rect width="4" height="4" fill="var(--climb-accent)"/>'
+        f'<rect x="4" y="4" width="4" height="4" fill="var(--climb-accent)"/>'
+        f'<rect x="4" width="4" height="4" fill="var(--ink-strong)"/>'
+        f'<rect y="4" width="4" height="4" fill="var(--ink-strong)"/>'
+        f'</g>'
+    )
+    parts.append(
+        f'<text x="{finish_x - 140:.1f}" y="30" font-size="10" font-weight="800" '
+        f'fill="var(--climb-accent)">LLEGADA · <tspan class="mono">{finish_ele_str}</tspan></text>'
+    )
+    parts.append(
+        f'<text x="{finish_x - 152:.1f}" y="44" font-size="11" font-weight="700" '
+        f'fill="var(--ink-strong)">{finish_name}</text>'
+    )
+
+    # ── Banda inferior de kilometraje (Eje X) ─────────────────────────────
+    parts.append(
+        f'<rect x="{PAD_L}" y="{PLOT_BOTTOM}" width="{PLOT_W}" height="{KM_BAND}" '
+        f'fill="var(--axis-bg)" stroke="var(--line)" stroke-width="1"/>'
+    )
+
+    # Marcas regulares de distancia
+    km_step = 10 if total_km > 35 else (5 if total_km > 15 else 2)
+    cur_km = 0.0
+    while cur_km <= total_km - (km_step * 0.4):
+        kx = x_of(cur_km)
+        parts.append(
+            f'<line x1="{kx:.1f}" y1="{PLOT_BOTTOM}" x2="{kx:.1f}" y2="{PLOT_BOTTOM + 7}" '
+            f'stroke="var(--muted)" stroke-width="1.2"/>'
+        )
+        parts.append(
+            f'<text x="{kx:.1f}" y="{PLOT_BOTTOM + 22}" class="mono" font-size="11" '
+            f'font-weight="700" fill="var(--axis-text)" text-anchor="middle">{int(cur_km)}</text>'
+        )
+        cur_km += km_step
+
+    # Total de carrera destacado a la derecha
+    total_km_str = f"{total_km:.1f} KM"
+    parts.append(
+        f'<rect x="{W - PAD_R - 86}" y="{PLOT_BOTTOM + 6}" width="86" height="24" '
+        f'fill="var(--accent)"/>'
+    )
+    parts.append(
+        f'<text x="{W - PAD_R - 43}" y="{PLOT_BOTTOM + 22}" class="mono" font-size="11" '
+        f'font-weight="800" fill="#ffffff" text-anchor="middle">{total_km_str}</text>'
+    )
+
+    # Línea resumen compacta en la base
+    parts.append(
+        f'<text x="{PAD_L + 8}" y="{H - 8}" class="mono" font-size="10" font-weight="600" '
+        f'fill="var(--muted)">'
+        f'DISTANCIA: <tspan font-weight="700" fill="var(--ink-strong)">{_fmt(total_km)} KM</tspan>    '
+        f'DESNIVEL: <tspan font-weight="700" fill="var(--ink-strong)">+{computed_gain} M / -{computed_loss} M</tspan>    '
+        f'ALTITUD MÁX: <tspan font-weight="700" fill="var(--accent)">{int(round(max_ele))} MSNM</tspan>'
+        f'</text>'
     )
 
     parts.append("</svg>")
@@ -282,7 +449,7 @@ def main() -> int:
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
     row = con.execute(
-        "SELECT route_geojson, distance_km, elevation_gain_m, laps, name, title "
+        "SELECT route_geojson, distance_km, elevation_gain_m, laps, name, title, start_location "
         "FROM stages WHERE slug=?",
         (slug,),
     ).fetchone()
@@ -302,20 +469,26 @@ def main() -> int:
             (stage_row["id"],),
         )
     ]
-    checkpoints = [
-        dict(r)
-        for r in con.execute(
-            "SELECT name, distance_from_start_km, is_finish_line FROM checkpoints "
-            "WHERE stage_id=? ORDER BY order_index",
-            (stage_row["id"],),
-        )
-    ]
+
+    start_loc = row["start_location"] or "Partida"
+    finish_loc = "Meta Final"
+    if slug == "la-joya-extreme":
+        start_loc = "Cerro Colorado"
+        finish_loc = "La Joya"
+    elif slug == "z-xtreme-2026":
+        start_loc = "Hacienda Luna"
+        finish_loc = "Hacienda Luna"
+    elif slug == "vuelta-a-los-poblados":
+        start_loc = "Buena Vista"
+        finish_loc = "Hacienda Luna"
 
     svg = build_profile_svg(
         json.loads(row["route_geojson"]) if row["route_geojson"] else None,
         summits,
-        checkpoints,
+        checkpoints=[],
         stage_name=row["title"] or row["name"],
+        start_location=start_loc,
+        finish_location=finish_loc,
         distance_km=float(row["distance_km"] or 0) * max(1, row["laps"] or 1),
         elevation_gain_m=int(row["elevation_gain_m"] or 0) * max(1, row["laps"] or 1),
         elevation_loss_m=0,
