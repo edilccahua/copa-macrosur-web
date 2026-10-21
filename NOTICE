@@ -1,0 +1,40 @@
+NOTICE
+======
+
+Copa MacroSur MTB 2026
+Copyright (c) 2026 Copa MacroSur MTB organizers and contributors.
+
+This product includes design and code derived from ArtCraft.
+
+ArtCraft
+Copyright (c) 2026 ArtCraft Team and the ArtCraft contributors.
+Licensed under the MIT License or the Apache License, Version 2.0, at your option
+(LICENSE-MIT, LICENSE-APACHE).
+
+The ArtCraft name, wordmark and logos are trademarks of the ArtCraft Team. They are not covered
+by the license above. This project is not affiliated with, endorsed by, or sponsored by the
+ArtCraft Team.
+
+Source: https://github.com/storytold/artcraft
+
+Derived material
+----------------
+
+The editorial design system of this project — the CSS token layer, the bento grid
+primitives, the typographic scale, the scroll regulator, the page index and the
+showcase motion module — is adapted from the ArtCraft web experience, with
+substantial changes: the components, the content, the data, the colour palette and
+the motion parameters are specific to this championship.
+
+    frontend/src/styles/tokens.css          adapted from the ArtCraft token layer
+    frontend/src/styles/display.css         adapted from the ArtCraft type scale
+    frontend/src/components/bento/          adapted from the ArtCraft bento primitives
+    frontend/src/components/PageRuler.astro  adapted from the ArtCraft scroll regulator
+    frontend/src/components/PageIndex.astro  adapted from the ArtCraft page index
+    frontend/src/scripts/showcase-motion.ts  adapted from the ArtCraft motion module
+
+Third-party material
+--------------------
+
+Inter, Archivo, Geist Mono and Instrument Serif are redistributed under the SIL Open Font
+License 1.1 via @fontsource. Their licenses accompany the font files.
