@@ -289,10 +289,23 @@
       flex-direction: column;
       align-items: stretch;
       gap: 0.2rem;
+      width: 100%;
     }
 
     .sc__trigger {
-      justify-content: flex-start;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding-bottom: 0.25rem;
+    }
+
+    .sc__value {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      text-align: left;
     }
 
     /* El dato secundario ya está en la línea de metadatos de la cabecera */
@@ -305,6 +318,7 @@
       right: 0;
       min-width: 0;
       max-height: 60vh;
+      width: 100%;
     }
   }
 </style>

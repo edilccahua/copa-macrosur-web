@@ -453,7 +453,8 @@
   {/if}
 
   <!-- Pestañas de modo: FECHA (una carrera) | ACUMULADO (hasta el corte) -->
-  <nav class="modes" role="tablist" aria-label="Modo de clasificación">
+  <nav class="modes" data-mode={mode} role="tablist" aria-label="Modo de clasificación">
+    <span class="modes__pill" aria-hidden="true"></span>
     <button
       type="button"
       role="tab"
@@ -762,9 +763,14 @@
      barra de pestañas: rótulo grande y negrita, el activo con una raya de
      color del grupo que empata con el borde superior de la caja. */
   .modes {
+    position: relative;
     display: flex;
     align-items: flex-end;
     gap: 2rem;
+  }
+
+  .modes__pill {
+    display: none;
   }
 
   .mode {
@@ -1453,29 +1459,199 @@
     display: none;
   }
 
-  /* --- Móvil: celda apilada de 3 columnas --- */
+  /* --- Móvil: celda apilada de 3 columnas y compactación integral --- */
   @media (max-width: 47.99em) {
-    /* En móvil la descripcion de la carrera ocupa varias lineas (con los
-       enlaces): las flechas se alinean con la primera. */
+    .standings {
+      margin-block: 0.5rem 2rem;
+    }
+
+    /* Cabecera compacta: menor espacio muerto superior */
+    .standhead {
+      gap: 0.35rem;
+      padding-bottom: 0.5rem;
+    }
+
+    .standhead__crumb {
+      font-size: 0.5625rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.2rem;
+    }
+
+    .standhead__h1 {
+      font-size: 1.5rem;
+      line-height: 1.05;
+    }
+
+    /* Cifras de cabecera en tarjeta corta ultra compacta de 1 sola fila */
+    .figures {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      background: var(--bg-sunken);
+      border: var(--hairline) solid var(--line);
+      margin-top: 0.35rem;
+      gap: 0.25rem;
+    }
+
+    .figure {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.1rem;
+      flex: 1;
+      text-align: center;
+      border-right: var(--hairline) solid var(--line);
+    }
+
+    .figure:last-child {
+      border-right: none;
+    }
+
+    .figure__label {
+      font-size: 0.5rem;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .figure__num {
+      font-size: 0.6875rem;
+      font-weight: 800;
+      color: var(--ink-strong);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Pestañas de modo FECHA / ACUMULADO con animación deslizante idéntica a PRO/NORMAL */
+    .modes {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      width: 100%;
+      background: var(--bg-sunken);
+      border: var(--hairline) solid var(--line);
+      border-bottom: none;
+      padding: 2px;
+      margin-top: 0.4rem;
+    }
+
+    .modes__pill {
+      display: block;
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      left: 2px;
+      width: calc(50% - 2px);
+      z-index: 2;
+      background: #fff;
+      mix-blend-mode: difference;
+      pointer-events: none;
+      transform: translateX(0);
+      transition: transform 300ms var(--ease-out);
+    }
+
+    .modes[data-mode='acumulado'] .modes__pill {
+      transform: translateX(100%);
+    }
+
+    .mode {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.55rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-radius: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      transition: color 150ms ease;
+    }
+
+    .mode.is-active {
+      color: var(--ink);
+      font-weight: 800;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .mode.is-active::after {
+      display: none;
+    }
+
+    /* Navegación de fechas: centrada, simétrica y limpia en móvil */
     .stagehead {
-      align-items: flex-start;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.25rem 0.25rem;
     }
 
     .stagehead__nav {
-      margin-top: -0.45rem;
+      margin-top: 0;
+      width: 2.25rem;
+      height: 2.25rem;
+      flex: 0 0 2.25rem;
     }
 
+    .stagehead__id {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      flex: 1;
+      min-width: 0;
+      gap: 2px;
+    }
+
+    .stagehead__num {
+      font-size: 1.0625rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      line-height: 1.1;
+      color: var(--ink-strong);
+      margin: 0;
+    }
+
+    .stagehead__meta {
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      line-height: 1.1;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .stagehead__name {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      line-height: 1.1;
+      color: var(--scope-ink, var(--muted));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      margin: 0;
+    }
+
+    /* En móvil se elimina la cinta redundante entre FECHA/ACUMULADO y PRO/NORMAL/EQUIPO */
     .ribbon {
-      padding: 0.6rem 0.9rem;
-      gap: 0.35rem;
-    }
-
-    .ribbon__meta {
-      font-size: 0.625rem;
+      display: none;
     }
 
     .rank__controls {
+      display: flex;
+      flex-direction: column;
       gap: 0;
+      width: 100%;
     }
 
     .tabs {
@@ -1504,39 +1680,78 @@
       white-space: nowrap;
     }
 
-    /* Selectores en dos columnas y el buscador debajo: menos alto, más filas. */
+    /* Filtros en móvil: Selector de categoría a ancho completo (1 sola línea) y buscador debajo */
     .rank__filters {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-areas:
-        'stage stage'
-        'search search';
-      gap: 0.75rem;
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
       width: 100%;
       padding: 0.75rem 0.9rem;
       border-top: var(--hairline) solid var(--line);
     }
 
-    .rank__filters:has(.ctl--cat) {
-      grid-template-areas:
-        'cat stage'
-        'search search';
-    }
-
     .ctl--cat {
-      grid-area: cat;
+      width: 100%;
     }
 
-    .ctl--stage {
-      grid-area: stage;
+    .ctl--cat :global(.sc) {
+      display: block;
+      width: 100%;
+    }
+
+    .ctl--cat :global(.sc__head) {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.25rem;
+      width: 100%;
+    }
+
+    .ctl--cat :global(.sc__trigger) {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding-bottom: 0.25rem;
+    }
+
+    .ctl--cat :global(.sc__value) {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      text-align: left;
+    }
+
+    .ctl--cat :global(.sc__panel) {
+      left: 0;
+      right: 0;
+      width: 100%;
+      min-width: 0;
     }
 
     .search {
-      grid-area: search;
+      flex: 0 0 auto;
+      width: 100%;
       max-width: none;
     }
 
+    .rank__body {
+      display: block;
+      width: 100%;
+    }
+
+    .table-scroll {
+      display: block;
+      width: 100%;
+      overflow: visible;
+    }
+
     .dt {
+      display: block;
+      width: 100%;
+      border-collapse: separate;
       font-size: 0.8125rem;
     }
 
@@ -1544,15 +1759,20 @@
       display: none;
     }
 
+    .dt tbody {
+      display: block;
+      width: 100%;
+    }
+
     .dt tbody tr {
       display: grid;
-      grid-template-columns: 44px minmax(0, 1fr) auto;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
       grid-template-areas:
         'rank name pts'
         'delta name time';
       align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
+      gap: 8px;
+      padding: 8px 10px;
       border-bottom: var(--hairline) solid var(--line);
     }
 
@@ -1564,7 +1784,7 @@
 
     .col-rank {
       grid-area: rank;
-      width: auto;
+      width: 34px;
       text-align: left;
     }
 
@@ -1572,7 +1792,7 @@
       grid-area: delta;
       width: auto;
       text-align: left;
-      font-size: 0.6875rem;
+      font-size: 0.65625rem;
     }
 
     .col-name {
@@ -1584,7 +1804,7 @@
     .col-pts {
       grid-area: pts;
       width: auto;
-      min-width: 76px;
+      min-width: 48px;
       text-align: right;
     }
 
@@ -1592,7 +1812,7 @@
       grid-area: time;
       width: auto;
       text-align: right;
-      font-size: 0.6875rem;
+      font-size: 0.65625rem;
       color: var(--muted);
     }
 
@@ -1614,7 +1834,8 @@
     .name-wrap .rider-link {
       display: block;
       font-weight: 700;
-      font-size: 0.8125rem;
+      font-size: 0.84375rem;
+      line-height: 1.25;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1622,10 +1843,10 @@
 
     .cell-sub {
       display: flex;
-      align-items: baseline;
-      gap: 0.4rem;
+      align-items: center;
+      gap: 0.35rem;
       margin-top: 0.15rem;
-      font-size: 0.6875rem;
+      font-size: 0.65625rem;
       color: var(--muted);
       min-width: 0;
       max-width: 100%;
@@ -1634,9 +1855,9 @@
 
     .cell-cat {
       flex: 0 0 auto;
-      padding: 0 0.3rem;
+      padding: 1px 4px;
       font-size: 0.5625rem;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       color: var(--muted);
       border: var(--hairline) solid var(--line);
       white-space: nowrap;
@@ -1647,6 +1868,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-size: 0.65625rem;
     }
 
     .cell-team a {
