@@ -23,10 +23,8 @@ import io
 
 import openpyxl
 import pytest
-from sqlmodel import Session, SQLModel, select
 
 from backend.app.core.config import settings
-from backend.app.main import app
 from backend.app.models.entities import Stage, StageStatusEnum
 
 # Clave de administrator de las pruebas: NUNCA es la real (ésta vive en el
@@ -57,10 +55,18 @@ async def test_stages_no_expone_judge_pin(client, async_session):
 
 
 async def test_stage_detalle_no_expone_judge_pin(client, async_session):
+    """La ficha de la fecha no lleva el PIN ni tan siquiera el nombre del campo.
+
+    Se comprueban las DOS cosas: el valor del PIN (que es lo que de verdad
+    importa: con él se mandan marcaciones falsas) y el LITERAL
+    `"judge_pin"` (que delata que el campo sigue viajando en el sobre, aunque
+    su valor venga vacío o recortado).
+    """
     stage = await _seed_stage(async_session)
     res = await client.get(f"/api/v1/stages/{stage.slug}")
     assert res.status_code == 200
     assert "PIN-SECRETO-DE-PRUEBA" not in res.text
+    assert "judge_pin" not in res.text
 
 
 async def test_stage_summary_no_expone_judge_pin_ni_geometria(client, async_session):
@@ -74,10 +80,12 @@ async def test_stage_summary_no_expone_judge_pin_ni_geometria(client, async_sess
 
 
 async def test_stage_results_no_expone_judge_pin(client, async_session):
+    """Los resultados tampoco: ni el valor del PIN ni el nombre del campo."""
     stage = await _seed_stage(async_session)
     res = await client.get(f"/api/v1/stages/{stage.slug}/results")
     assert res.status_code == 200
     assert "PIN-SECRETO-DE-PRUEBA" not in res.text
+    assert "judge_pin" not in res.text
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -320,6 +328,69 @@ async def test_rate_limit_public_write(client, cuota_publica_limpia):
     res = await client.post("/api/v1/public/feedback", json=_feedback_de_prueba())
     assert res.status_code == 429
     assert "retry-after" in res.headers
+
+
+async def test_la_cuota_se_apaga_con_el_flag(client, monkeypatch, cuota_publica_limpia):
+    """`RATE_LIMIT_ENABLED=False` apaga la CUOTA (y sólo la cuota).
+
+    El interruptor existe para depurar: con él apagado, las escrituras
+    públicas dejan de contar.
+    """
+    from backend.app.core.limits import rate_limiter_registry
+
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", False)
+    rate_limiter_registry["public_write"].reset()
+
+    for _ in range(11):
+        res = await client.post("/api/v1/public/feedback", json=_feedback_de_prueba())
+        assert res.status_code == 200, res.text
+
+
+async def test_el_tope_del_cuerpo_sigue_vigente_sin_cuota(
+    client, monkeypatch, cuota_publica_limpia
+):
+    """Apagar la cuota NO abre la puerta a un cuerpo gigante.
+
+    La cuota por IP y el tope de tamaño del cuerpo son dos límites distintos:
+    el tope protege la RAM del servidor (Render Free: 512 MB) y una petición
+    enorme se leería ENTERA en memoria. Apagar el flag de la cuota no puede
+    dejarlo desactivado.
+    """
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", False)
+    monkeypatch.setattr(settings, "MAX_JSON_BYTES", 64)
+
+    res = await client.post("/api/v1/public/feedback", json=_feedback_de_prueba())
+    assert res.status_code == 413
+
+
+def test_el_limitador_usa_la_tabla_de_reglas_que_le_pasan():
+    """La tabla de reglas manda sobre lo que quedara registrado.
+
+    Antes, `default_limiter_factory` devolvía SIEMPRE el limitador ya
+    registrado e ignoraba la tabla que le pasaban: un middleware montado con
+    otra tabla de reglas limitaba con los topes de la de por defecto.
+    """
+    from backend.app.core.limits import (
+        RateRule,
+        default_limiter_factory,
+        rate_limiter_registry,
+    )
+
+    reglas = [RateRule(prefix="/api/v1/prueba", bucket="prueba", limit=3)]
+    limitador = default_limiter_factory(reglas[0], reglas)
+    assert limitador.limit == 3
+    assert rate_limiter_registry["prueba"] is limitador
+
+    # Otra tabla para el MISMO bucket: el limitador se rehace con el tope
+    # nuevo (la tabla manda), no se devuelve el viejo.
+    otras = [RateRule(prefix="/api/v1/prueba", bucket="prueba", limit=7)]
+    limitador_nuevo = default_limiter_factory(otras[0], otras)
+    assert limitador_nuevo.limit == 7
+    assert rate_limiter_registry["prueba"] is limitador_nuevo
+
+    # Y con la misma tabla, el limitador se REUTILIZA (no se pierde la
+    # ventana ya abierta).
+    assert default_limiter_factory(otras[0], otras) is limitador_nuevo
 
 
 async def test_preregistro_nombre_demasiado_largo(client, cuota_publica_limpia):

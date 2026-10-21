@@ -99,13 +99,16 @@ async def get_stage_by_slug(slug: str, session: AsyncSession = Depends(get_sessi
             ]
         })
 
-    # Extremos de la jornada: el más rápido y el más lento, con corredor,
-    # categoría y equipo. Una sola consulta con `JOIN` en vez de dos
-    # búsquedas y un `refresh` por extremo.
+    # Extremos de la jornada: el más rápido y el más lento, con corredor y
+    # equipo. Una sola consulta con `JOIN` en vez de dos búsquedas y un
+    # `refresh` por extremo.
+    #
+    # La categoría NO se une: el extremo se identifica por el dorsal, el
+    # tiempo y el puesto en SU categoría, y el nombre de la categoría no sale
+    # en la respuesta. Era SQL y memoria de más.
     stmt_extremos = (
-        select(StageEntry, Rider, Category, Team)
+        select(StageEntry, Rider, Team)
         .outerjoin(Rider, StageEntry.rider_id == Rider.id)
-        .outerjoin(Category, StageEntry.category_id == Category.id)
         .outerjoin(Team, StageEntry.team_id == Team.id)
         .where(
             StageEntry.stage_id == stage.id,
@@ -119,7 +122,7 @@ async def get_stage_by_slug(slug: str, session: AsyncSession = Depends(get_sessi
     def _a_extremo(fila) -> Optional[PodiumEntryRead]:
         if fila is None:
             return None
-        entry, rider, _category, team = fila
+        entry, rider, team = fila
         return PodiumEntryRead(
             rank=entry.category_rank or 0,
             bib_number=entry.bib_number,

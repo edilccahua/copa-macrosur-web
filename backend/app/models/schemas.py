@@ -87,27 +87,12 @@ class CategoryRead(BaseModel):
 
 
 # Stage Schemas
-class StageRead(BaseModel):
-    id: int
-    stage_number: int
-    name: str
-    short_name: Optional[str] = None
-    title: Optional[str] = None
-    slug: str
-    date: str
-    status: StageStatusEnum
-    start_location: Optional[str] = None
-    start_time: Optional[str] = None
-    poster_url: Optional[str] = None
-    gpx_file_url: Optional[str] = None
-    distance_km: float
-    elevation_gain_m: int
-    route_geojson: Optional[Dict[str, Any]] = None
-    laps: int = 1
-    strava_route_url: Optional[str] = None
-    live_closed_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
+#
+# NOTA: aquí ya NO vive un `StageRead` "completo". El único modelo de lectura
+# de una fecha es `StagePublicRead` (abajo): el anterior obligaba a que
+# `distance_km` y `elevation_gain_m` tuvieran valor (una fecha sin ruta
+# publicada no puede afirmar cifras) y arrastraba `route_geojson` (~58 KB) y
+# el PIN del juez. Ninguna ruta, esquema ni test lo usaba.
 
 
 class StagePublicRead(BaseModel):

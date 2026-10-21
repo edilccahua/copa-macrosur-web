@@ -21,6 +21,7 @@ La caché en memoria es GLOBAL al proceso, así que el fixture `client` la
 vacía antes de cada prueba: si no, una clasificación cacheada por un test
 se vería en el siguiente sin tocar la base de datos.
 """
+import re
 import uuid
 from datetime import date as date_cls, timedelta
 from typing import Any, Dict
@@ -50,6 +51,11 @@ from backend.app.models.entities import (
 # PIN de juez de la fecha sembrada. No es una credencial real: es la de la
 # fecha de prueba, y sirve para exercised el camino del juez.
 PIN_JUEZ = "1234"
+
+# Clave de administrador de las pruebas: NUNCA es la real (ésta vive en el
+# entorno del servidor, nunca en el repositorio). Se fija con `monkeypatch`
+# para que la suite pase igual en un clon limpio, sin `.env`.
+CLAVE_DE_PRUEBA = "clave-de-prueba-kuspide"
 
 # Prefijos que ``invalidate_public`` tiene que vaciar: todo lo que el
 # público puede leer por la API.
@@ -299,15 +305,53 @@ async def test_una_marcacion_del_juez_invalida_la_cache_publica(
     assert _claves_publicas() == [], "la marcación del juez no invalidó la caché"
 
 
-async def test_abrir_la_transmision_invalida_la_cache_publica(
+async def test_una_pre_inscripcion_invalida_la_cache_publica(
     client, async_session: AsyncSession
+):
+    """Una pre-inscripción invalida lo que el público tiene cacheado.
+
+    La inscripción cambia el número de inscritos que muestra la ficha de la
+    fecha (y las clasificaciones): sin esta invalidación, el contador
+    quedaría caducado hasta que expirara el TTL (120 s).
+    """
+    stage = await _sembrar_campeonato(async_session)
+    categoria = (await async_session.exec(select(Category))).first()
+
+    # El público lee: la clasificación y el calendario entran en la caché.
+    await client.get("/api/v1/public/standings?scope=PRO")
+    await client.get("/api/v1/stages")
+    assert _claves_publicas(), "la caché pública debería estar llena"
+
+    res = await client.post(
+        "/api/v1/public/pre-register",
+        json={
+            "stage_id": stage.id,
+            "dni": "87654321",
+            "full_name": "PRE INSCRITO DE PRUEBA",
+            "gender": "M",
+            "category_id": categoria.id,
+            "team_name_or_libre": "LIBRE",
+        },
+    )
+    assert res.status_code == 200, res.text
+
+    assert _claves_publicas() == [], "la pre-inscripción no invalidó la caché"
+
+
+async def test_abrir_la_transmision_invalida_la_cache_publica(
+    client, async_session: AsyncSession, monkeypatch
 ):
     """Abrir o cerrar la transmisión invalida la caché del público.
 
     El estado de la transmisión es lo que la portada anuncia: si se
     cacheara, el enlace "en vivo" seguiría apareciendo (o desaparecería)
     hasta dos minutos después de la orden del organizador.
+
+    La clave de administrador se fija en la prueba: en un clon limpio (sin
+    `.env`) la del entorno no existe y el endpoint respondería 503 en vez de
+    dar su mensaje.
     """
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", CLAVE_DE_PRUEBA)
     stage = await _sembrar_campeonato(async_session)
 
     await client.get("/api/v1/public/live-status")
@@ -316,7 +360,7 @@ async def test_abrir_la_transmision_invalida_la_cache_publica(
     res = await client.post(
         f"/api/v1/stages/{stage.id}/live",
         json={"active": True},
-        headers={"X-Admin-Key": settings.ADMIN_API_KEY},
+        headers={"X-Admin-Key": CLAVE_DE_PRUEBA},
     )
     assert res.status_code == 200, res.text
 
@@ -489,6 +533,42 @@ async def test_home_se_cachea_y_se_invalida_al_mutar(
     assert cache.get("public:home") is None, "la mutación no invalidó el agregado"
 
 
+async def test_el_live_status_del_agregado_no_se_congela(
+    client, async_session: AsyncSession
+):
+    """El `live_status` de la portada va con SU propio TTL (15 s).
+
+    El agregado de la portada dura 60 s: si el estado de la transmisión
+    quedara congelado dentro de él, el enlace "en vivo" aparecería (o
+    desaparecería) con hasta un minuto de retraso. Por eso la clave
+    `public:home` NO lleva el `live_status` dentro: se resuelve aparte, bajo
+    su propia clave `public:live_status`, con el TTL del endpoint
+    `/public/live-status`.
+    """
+    await _sembrar_campeonato(async_session)
+
+    res = await client.get("/api/v1/public/home")
+    assert res.status_code == 200, res.text
+
+    agregado = cache.get("public:home")
+    assert agregado is not None, "el agregado no se cacheó"
+    assert "live_status" not in agregado, (
+        "el live_status no puede quedar congelado dentro del agregado de 60 s"
+    )
+    assert cache.ttl_restante("public:home") is not None
+
+    restante = cache.ttl_restante("public:live_status")
+    assert restante is not None, "el live_status no se cacheó con su propia clave"
+    assert restante <= 15, (
+        f"el live_status se cacheó con {restante:.1f} s: su TTL es de 15 s"
+    )
+
+    # Los dos leen el MISMO valor: el agregado y el endpoint no pueden
+    # discrepar sobre si hay carrera.
+    directo = (await client.get("/api/v1/public/live-status")).json()
+    assert res.json()["live_status"] == directo
+
+
 # --------------------------------------------------------------------------
 # Tarea 7 — la API comprime sus respuestas grandes
 # --------------------------------------------------------------------------
@@ -625,8 +705,15 @@ def _reiniciar_contador(counter: Dict[str, Any]) -> None:
 
 
 def _consultas_sobre(counter: Dict[str, Any], tabla: str) -> int:
-    """Cuántas consultas han tocado una tabla concreta."""
-    return len([sql for sql in counter["sql"] if tabla in sql.lower()])
+    """Cuántas consultas han CARGADO una tabla concreta.
+
+    Cuenta las consultas que la toman como tabla principal (`FROM tabla`) y
+    no las que sólo la unen con un `JOIN`: un `JOIN strava_segments` no
+    carga los segmentos, los filtra, y contarlo como una carga de segmentos
+    haría creer que hay una consulta de más (o de menos) de la que hay.
+    """
+    patron = re.compile(rf"\bfrom\s+\"?{re.escape(tabla)}\"?\b", re.IGNORECASE)
+    return len([sql for sql in counter["sql"] if patron.search(sql)])
 
 
 async def _sembrar_campeonato_para_n_plus_1(
@@ -948,9 +1035,13 @@ async def test_live_summary_no_hace_n_plus_1(
 
 
 async def test_pagos_pendientes_no_hacen_n_plus_1(
-    client, async_session: AsyncSession, query_counter
+    client, async_session: AsyncSession, query_counter, monkeypatch
 ):
     """La lista de pagos pendientes no hace una consulta por cada inscripción."""
+    # La clave de administrador se fija en la prueba: la del entorno puede
+    # no existir (clon limpio sin `.env`) y el endpoint respondería 503.
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", CLAVE_DE_PRUEBA)
+
     datos = await _sembrar_campeonato_para_n_plus_1(
         async_session,
         fechas=1,
@@ -964,7 +1055,7 @@ async def test_pagos_pendientes_no_hacen_n_plus_1(
     _reiniciar_contador(query_counter)
     res = await client.get(
         "/api/v1/admin/pending-payments",
-        headers={"X-Admin-Key": settings.ADMIN_API_KEY},
+        headers={"X-Admin-Key": CLAVE_DE_PRUEBA},
     )
     assert res.status_code == 200, res.text
     assert len(res.json()) == 20

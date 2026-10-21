@@ -434,6 +434,11 @@ async def compute_stage_strava(
     `segments`, `efforts` y `rider_ids` se pueden pasar ya cargados (ver
     `load_stage_strava_data`): la ficha de la fecha los usa dos veces y no
     tiene que leerlos dos veces.
+
+    OJO: los tres parámetros son **todo o nada**. Si falta UNO solo, se
+    recargan los tres desde la base de datos (lo que hace el `if` de abajo):
+    pasar sólo `segments=` no ahorra nada, desperdicia una consulta y
+    además invalida lo que el llamante ya había cargado.
     """
     if segments is None or efforts is None or rider_ids is None:
         segments, efforts, rider_ids = await load_stage_strava_data(session, stage.id)
@@ -532,6 +537,11 @@ async def compute_stage_mountain_titles(
     `segments`, `efforts` y `rider_ids` se pueden pasar ya cargados (ver
     `load_stage_strava_data`): son los mismos datos que necesita
     `compute_stage_strava`, y la ficha de la fecha los usa de las dos formas.
+
+    OJO: los tres parámetros son **todo o nada**. Si falta UNO solo, se
+    recargan los tres desde la base de datos: pasar sólo `segments=` no
+    ahorra nada, desperdicia una consulta y además invalida lo que el
+    llamante ya había cargado.
     """
     empty = {
         "kom": None,
