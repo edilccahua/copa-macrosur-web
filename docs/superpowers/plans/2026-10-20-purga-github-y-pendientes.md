@@ -31,11 +31,11 @@ Todo lo de esta tabla está **medido contra producción**, no supuesto.
 | Visibilidad del repo | **Público**, creado hoy, **0 forks, 0 stars, 0 watchers, 0 issues** |
 | Force-push ya ejecutado | Sí: `master` se republicó con historia reescrita |
 | ¿Quedan secretos en las ramas? | **No** — clon limpio: 0 apariciones de los 9 valores |
-| ¿Se recuperan los secretos por SHA? | **SÍ** — `api.github.com/.../contents/backend/app/core/config.py?ref=b69f929` devuelve `ADMIN_API_KEY: str = "kuspide_admin_secret_key_2026"` y `seed.py` devuelve los 4 PIN |
-| ¿La clave admin antigua sirve? | **SÍ** — `X-Admin-Key: kuspide_admin_secret_key_2026` → **HTTP 200** en `/api/v1/admin/pending-payments` |
+| ¿Se recuperan los secretos por SHA? | **SÍ** — `api.github.com/.../contents/backend/app/core/config.py?ref=b69f929` devuelve `ADMIN_API_KEY: str = "<CLAVE_ADMIN_LEGACY>"` y `seed.py` devuelve los 4 PIN |
+| ¿La clave admin antigua sirve? | **SÍ** — `X-Admin-Key: <CLAVE_ADMIN_LEGACY>` → **HTTP 200** en `/api/v1/admin/pending-payments` |
 | ¿La clave nueva sirve? | **NO** — HTTP 403 (Render no la tiene) |
 | ¿Los PIN antiguos siguen vivos? | **SÍ** — están en la BD de Neon |
-| ¿La API expone los PIN ahora mismo? | **SÍ** — `GET /api/v1/stages` → `"judge_pin":"KUS-F1-JOY"` |
+| ¿La API expone los PIN ahora mismo? | **SÍ** — `GET /api/v1/stages` → `"judge_pin":"<PIN_ANTIGUO>"` |
 | ¿CORS abierto a terceros? | **SÍ** — `Origin: https://attacker.pages.dev` recibe `Access-Control-Allow-Origin` |
 | ¿Backend de Render actualizado? | **NO** — corre el código anterior a las tareas 1-10 |
 | ¿Frontend de Cloudflare actualizado? | **Parcialmente** — se redesployó solo (trae la puerta admin nueva), pero sin el middleware de caché de borde |
@@ -95,7 +95,7 @@ SHA**. Las dos mitades son necesarias, y el orden importa: primero rotación
   ```bash
   # la clave vieja ya no sirve
   curl -s -o /dev/null -w "%{http_code}\n" \
-    -H "X-Admin-Key: kuspide_admin_secret_key_2026" \
+    -H "X-Admin-Key: <CLAVE_ADMIN_LEGACY>" \
     https://kuspide-api.onrender.com/api/v1/admin/pending-payments   # -> 403
 
   # la clave nueva sí sirve
@@ -164,8 +164,8 @@ SHA**. Las dos mitades son necesarias, y el orden importa: primero rotación
 
   # por contenido (debe dar 404 en los 9 valores)
   git clone --quiet <repo-nuevo> /tmp/verificacion && cd /tmp/verificacion
-  for s in kuspide_admin_secret_key_2026 KUS-F1-JOY KUS-F2-ZET KUS-F3-POB \
-           KUS-F4-QUE KUS-2026 npg_HETLdl6P0awu; do
+  for s in "<SECRET_VAL_1>" "<SECRET_VAL_2>" "<SECRET_VAL_3>" "<SECRET_VAL_4>" \
+           "<SECRET_VAL_5>" "<SECRET_VAL_6>" "<SECRET_VAL_7>"; do
     git log --all --oneline -S"$s" | wc -l
   done
   ```
