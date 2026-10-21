@@ -67,18 +67,23 @@ async def get_team_profile(slug: str, session: AsyncSession = Depends(get_sessio
         .where(Rider.team_id == team.id)
         .order_by(Rider.id, StageEntry.id)
     )
-    plantilla = (await session.exec(stmt_plantilla)).all()
+    filas = (await session.exec(stmt_plantilla)).all()
 
     # Se agrupa en Python: una fila por corredor, con la suma de sus puntos y
     # el conjunto de sus categorías.
-    roster = []
+    #
+    # `corredores` son los OBJETOS de la base de datos (aún sin agrupar) y
+    # `plantilla` es la lista final que se devuelve. Antes los dos se llamaban
+    # `roster` y `plantilla_final`: dos nombres para la misma plantilla, y el
+    # primero no decía qué era.
+    corredores = []
     puntos_por_corredor: dict[int, int] = {}
     categorias_por_corredor: dict[int, List[str]] = {}
-    for rider, entry, cat in plantilla:
+    for rider, entry, cat in filas:
         if rider.id not in puntos_por_corredor:
             puntos_por_corredor[rider.id] = 0
             categorias_por_corredor[rider.id] = []
-            roster.append(rider)
+            corredores.append(rider)
         # Una inscripción sin categoría no computa: es lo que hacía el JOIN
         # interior de antes (y evita que un dato roto altere los puntos).
         if entry is not None and cat is not None:
@@ -86,9 +91,9 @@ async def get_team_profile(slug: str, session: AsyncSession = Depends(get_sessio
             if cat.name not in categorias_por_corredor[rider.id]:
                 categorias_por_corredor[rider.id].append(cat.name)
 
-    plantilla_final = []
-    for rider in roster:
-        plantilla_final.append({
+    plantilla = []
+    for rider in corredores:
+        plantilla.append({
             "rider_id": rider.id,
             "full_name": rider.full_name,
             "slug": rider.slug,
@@ -120,5 +125,8 @@ async def get_team_profile(slug: str, session: AsyncSession = Depends(get_sessio
             "total_elapsed_ms": stand.total_elapsed_ms if stand else 0,
             "formatted_total_time": format_ms_to_time(stand.total_elapsed_ms) if stand else "-"
         },
-        "roster": plantilla_final
+        # La clave de la respuesta sigue siendo `roster`: es el contrato que
+        # consume la ficha `/equipos/[slug]` del portal. Lo que cambia es el
+        # nombre de la variable de Python, que ahora sí dice lo que es.
+        "roster": plantilla
     }

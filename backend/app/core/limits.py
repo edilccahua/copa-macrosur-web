@@ -4,11 +4,17 @@ Tres fronteras, todas en el BORDE de la API (antes de tocar la base de
 datos):
 
   · **cuota**: cuántas peticiones admite una IP y una ruta en una ventana
-    (ventana deslizante, en memoria);
+    (ventana deslizante, en memoria). Es la única que se puede apagar con
+    `RATE_LIMIT_ENABLED` (para depurar);
   · **tope del cuerpo**: un JSON gigante se rechaza por su `Content-Length`
     SIN leerlo;
   · **tope del archivo**: las subidas (`.xlsx`, `.gpx`) tienen su propio
     límite, más generoso que el de los JSON.
+
+El interruptor `RATE_LIMIT_ENABLED` apaga SÓLO la cuota. Los topes de tamaño
+son otra cosa: protegen la memoria del servidor (Render Free: 512 MB) y
+apagarlos con el flag de la cuota dejaría la puerta abierta a un cuerpo de
+gigabytes.
 """
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
@@ -104,16 +110,28 @@ def default_limiter_factory(
 ) -> SlidingWindowLimiter:
     """Un limitador por bucket, guardado en el registro.
 
-    Si dos reglas comparten bucket (las dos de `admin`), manda la más
-    APRETA: un bucket es un bucket, y ensancharlo por una regla regalaría
-    cuota a la otra.
+    El límite sale de la TABLA que se le pasa: si dos reglas comparten bucket
+    (las dos de `admin`), manda la más APRETA: un bucket es un bucket, y
+    ensancharlo por una regla regalaría cuota a la otra.
+
+    El limitador ya registrado se reutiliza mientras su límite y su ventana
+    coincidan con los que dicta la tabla. Si NO coinciden (otra tabla de
+    reglas, con otros topes) se crea uno nuevo y sustituye al anterior: la
+    tabla es la que manda, y devolver siempre el limitador viejo haría que
+    el middleware mintiera sobre lo que deja pasar.
     """
-    existente = rate_limiter_registry.get(rule.bucket)
-    if existente is not None:
-        return existente
     del_mismo_bucket = [r for r in rules if r.bucket == rule.bucket] or [rule]
     limite = min(r.limit for r in del_mismo_bucket)
     ventana = min(r.window_seconds for r in del_mismo_bucket)
+
+    existente = rate_limiter_registry.get(rule.bucket)
+    if (
+        existente is not None
+        and existente.limit == limite
+        and existente.window_seconds == ventana
+    ):
+        return existente
+
     limitador = SlidingWindowLimiter(limit=limite, window_seconds=ventana)
     rate_limiter_registry[rule.bucket] = limitador
     return limitador
@@ -234,12 +252,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     # ── Dispatch ────────────────────────────────────────────────────────────
     async def dispatch(self, request: Request, call_next):
-        if not settings.RATE_LIMIT_ENABLED:
-            return await call_next(request)
-
         # 1. Tope del cuerpo. Se mira el `Content-Length` y NO se lee el
         #    cuerpo: un atacante puede mandar 2 GB y el servidor los
         #    descarta sin leerlos.
+        #
+        #    Este límite NO depende de `RATE_LIMIT_ENABLED`: son dos cosas
+        #    distintas. La cuota es un autocontrol (se apaga para depurar);
+        #    el tope de tamaño protege la RAM del servidor (Render Free: 512
+        #    MB) y apagarlo con el flag de la cuota abriría la puerta a un
+        #    cuerpo gigante.
         limite = (
             settings.MAX_UPLOAD_BYTES
             if es_ruta_de_subida(request.url.path)
@@ -248,9 +269,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if await self._excede_largo(request, limite):
             return self._respuesta_413(request, limite)
 
-        # 2. Cuota por IP y bucket. Los preflight (OPTIONS) no gastan cuota:
+        # 2. Cuota por IP y bucket. Es la única parte que se apaga con
+        #    `RATE_LIMIT_ENABLED`. Los preflight (OPTIONS) no gastan cuota:
         #    son la negociación de CORS y no consumen nada del servidor.
-        if request.method != "OPTIONS":
+        if settings.RATE_LIMIT_ENABLED and request.method != "OPTIONS":
             rule = self._regla_para(request)
             if rule is not None:
                 limitador = self.limiter_factory(rule, self.rules)

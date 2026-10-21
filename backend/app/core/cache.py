@@ -43,6 +43,24 @@ class MemoryCache:
         for key in [k for k in self._store if k.startswith(prefix)]:
             del self._store[key]
 
+    def ttl_restante(self, key: str) -> Optional[float]:
+        """Los segundos que le quedan a una clave, o `None` si no existe.
+
+        Es la inspección que usan las pruebas para comprobar CON QUÉ TTL se
+        cacheó una lectura (la caché no expone los plazos por otro lado).
+        Una clave ya caducada cuenta como inexistente: no se devuelve un
+        TTL negativo que haya que interpretar.
+        """
+        item = self._store.get(key)
+        if item is None:
+            return None
+        expires_at, _value = item
+        restante = expires_at - time.time()
+        if restante <= 0:
+            del self._store[key]
+            return None
+        return restante
+
     def invalidate_public(self) -> None:
         """Invalida TODO lo que el público puede leer.
 
@@ -51,7 +69,9 @@ class MemoryCache:
         con la caché de 120 s sin invalidar, el público veía datos viejos
         hasta dos minutos.
 
-        Los prefijos son los REALES de cada lectura: `stages:` cubre
+        Los prefijos son los REALES de cada lectura: `public:` cubre el
+        agregado de la portada (`public:home`), el estado de la transmisión
+        (`public:live_status`) y las clasificaciones; `stages:` cubre
         `stages:list` y `stage:summary:` cubre el resumen de cada fecha.
         """
         for prefix in ("public:", "stages:", "stage:summary:"):
