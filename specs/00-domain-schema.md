@@ -50,7 +50,7 @@ Representa a la persona física a lo largo de todo el campeonato (sin login obli
 - `laps`: Integer (Default `1`). Vueltas del circuito. En circuitos por vueltas (ej. *Z Xtreme*) `distance_km` y `elevation_gain_m` son **POR VUELTA** y `laps` es el máximo (ej. 11.83 km/vuelta × 3 vueltas). En fechas de trayecto lineal `laps = 1`.
 - `strava_route_url`: String (Nullable — enlace público a la ruta de Strava de la fecha)
 - `gallery_r2_prefix`: String (Carpeta de fotos de la fecha en R2)
-- `judge_pin`: String (Código o token de acceso rápido para los jueces de la fecha, ej. `KUS-F1-8421`)
+- `judge_pin`: String (Código o token de acceso rápido para los jueces de la fecha, ej. `KUS-F1-8421`). **Es una credencial interna y NUNCA se serializa en ninguna respuesta**: los endpoints de lectura devuelven `StagePublicRead`, que no declara este campo, y la garantía es el `response_model` de cada ruta (no un filtro a mano). Los PIN se siembran en la base de datos desde el entorno (`JUDGE_PIN_F1`…`JUDGE_PIN_F4`), **nunca desde el repositorio**. Ver `specs/03` §1.9.5.
 - `live_closed_at`: DateTime (Nullable — cierre MANUAL de la transmisión de llegadas; `NULL` = abierta o nunca cerrada. La apertura es automática a las 08:00 de Lima el día de la carrera, ver `specs/02` §6)
 
 ### 1.5 `StartWave` (Mangas de Largada por Fecha)

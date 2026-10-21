@@ -912,7 +912,7 @@ agregado, sin acceso a disco ni a la red) + `backend/app/routers/stages.py`.
 | `compute_stage_strava(session, stage_id)` | `List[StravaSegmentSummaryRead]`: segmentos con distancia, pendiente, **top 10** de efforts, el `kom` y su `kind` (CLIMB / DESCENT / FLAT), su lugar y sus altitudes. El `kom` es `null` si ningún effort está marcado como tal: no se inventa un récord oficial. Los esfuerzos de todos los segmentos se cargan en una sola consulta. |
 | `compute_stage_checkpoints(session, stage_id)` | `List[CheckpointRead]`: Partida, intermedios y Meta, en orden. |
 | `compute_stage_awards(session, stage_id)` | `List[AwardSummaryRead]`: premios con patrocinador, descripción y ganador resuelto. |
-| `compute_stage_route_profile(session, stage)` | `RouteProfileRead`: el perfil de altimetría con su traza punto a punto, el desnivel **acumulado** real, la pendiente media y máxima, y si la geometría cubre la etapa entera o solo una vuelta. `null` si la fecha no tiene geometría. |
+| `compute_stage_route_profile(session, stage)` | `RouteProfileRead`: el perfil de altimetría con su traza punto a punto, el desnivel **acumulado** real, la pendiente media y máxima, y si la geometría cubre la etapa entera o solo una vuelta. `null` si la fecha no tiene geometría. El servicio calcula el perfil completo, pero la **respuesta** lo publica en `RouteProfileSummaryRead`, sin la traza (ver §1.9.5). |
 | `compute_stage_summits(session, stage_id)` | `List[SummitRead]`: las cimas de la ruta (los "puertos" del perfil) con su nombre real, su categoría de puerto y sus cifras. |
 | `compute_stage_mountain_titles(session, stage_id)` | Los cuatro **títulos de montaña** de la fecha. **KOM**: el varón más rápido en la subida más empinada; **QOM**: la dama más rápida en esa misma subida; **El Kamikaze** y **La Kamikaze**: el varón y la dama más rápidos en el descenso más pronunciado. El género sale de `StravaEffort.athlete_gender` y, si falta, del `Rider.gender` enlazado: el QOM nunca puede ser un varón. Se prefiere un tramo con intentos de la fecha. `null` si la fecha no tiene segmentos o si no hay intentos de ese género. |
 
@@ -921,6 +921,11 @@ agregado, sin acceso a disco ni a la red) + `backend/app/routers/stages.py`.
 `route_profile` y `kom`/`qom` pueden ser `null` (fecha sin geometría o sin segmentos).
 `navigation` trae `prev_slug`/`prev_name` y `next_slug`/`next_name`.
 Si la fecha no existe: `404` con `{"detail": "Etapa no encontrada."}`.
+
+El `response_model` de la ruta es `StageSummaryRead`: la `stage` sale en su
+versión **pública** (`StagePublicRead`: sin PIN de juez y sin geometría) y el
+`route_profile` en `RouteProfileSummaryRead`, **sin la traza punto a punto**
+(el perfil se dibuja con el SVG estático de `/profiles/{slug}.svg`). Ver §1.9.5.
 
 **Datos de mapa y de puertos:**
 - `StravaSegment` lleva `location`, `elevation_min_m`, `elevation_max_m`, `kind` y `category`. Los segmentos son los de la **ruta oficial** de Strava de cada fecha (25 en total entre las tres fechas) y se sincronizan con `backend/scripts/sync_all_strava_segments.py` (CDP sobre la sesión Strava del administrador; nunca en la nube).
@@ -1185,12 +1190,26 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 **1.9.2 La caché en memoria se invalida cuando algo cambia de verdad**
 
 - `backend/app/core/cache.py` expone `delete_prefix(prefix)`,
-  `invalidate_public()` y `keys()`.
-- `invalidate_public()` vacía `public:`, `stages:`, `stage:summary:` y
-  `stage:list:`. Se llama **después de cada mutación**:
+  `invalidate_public()`, `ttl_restante(key)` y `keys()`.
+- `invalidate_public()` vacía los tres prefijos que son las **claves reales**
+  de las lecturas públicas:
+
+  | Prefijo | Lecturas que cubre |
+  | :--- | :--- |
+  | `public:` | `public:home` (el agregado de la portada), `public:live_status`, `public:standings:*`, `public:standings:teams`, `public:remontada` |
+  | `stages:` | `stages:list` (el calendario) |
+  | `stage:summary:` | `stage:summary:{slug}` (el resumen de cada fecha) |
+
+  > No existe una clave `stage:list:`: la del calendario es `stages:list` y
+  > ya la cubre el prefijo `stages:`.
+
+- Se llama **después de cada mutación**:
   - `timing.py`: `record_timing_event`, `start_wave`, `start_entry`.
   - `admin.py`: `set_stage_live`, `upload_gpx_file`, `sync_strava_efforts`.
   - `excel.py`: `import_excel_endpoint`.
+  - `public.py`: `submit_pre_registration` — una pre-inscripción cambia el
+    número de inscritos que muestra la ficha de la fecha, así que también
+    es un dato público cacheado.
 - Sin esto, con el TTL de 120 s el público veía datos viejos hasta dos
   minutos después de una marcación del juez.
 - La caché **funciona también en los tests** (antes estaba desactivada por un
@@ -1211,13 +1230,43 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
 - El middleware de Astro guarda el HTML renderizado en `caches.default` (la
   Cache API del edge) y lo devuelve en las visitas siguientes. Si no hay
   caché (adaptador Node, `astro dev`), se aparta y el sitio funciona igual.
-- **Sólo se cachea lo público y lo que no cambia en cada visita.** `/en-vivo`
-  (transmisión) y `/admin/*` (paneles) **nunca** se cachean.
+- **Rutas que se cachean:**
+  - exactas: `/`, `/ranking-general`, `/premios`, `/eventos-especiales`,
+    `/inscripciones`;
+  - por prefijo: `/fechas/`, `/corredor/`, `/equipos/`.
+- **Rutas que NUNCA se cachean:** `/en-vivo` (la transmisión: su HTML sería
+  un marcador congelado) y `/admin/*` (los paneles del organizador y del
+  juez). Se comprueban **antes** que la lista de cacheables, así que ganan
+  aunque su prefijo pareciera cacheable.
+- Sólo se cachean respuestas `GET` con estado 200 y **sin `set-cookie`**: una
+  respuesta con cookies es de una persona concreta.
 - La clave de la caché es la URL **completa, con su query string**: así
   `/ranking-general?fecha=2` y `/ranking-general?fecha=3` son dos páginas
   distintas y jamás comparten el mismo HTML.
 - La copia se guarda en segundo plano (`waitUntil`): el visitante no espera a
   que termine de escribirse en el edge.
+- El TTL del edge es de **60 s** (`s-maxage`), con `max-age=15` para el
+  navegador y `stale-while-revalidate=300`. La entrada se marca con
+  `X-Kuspide-Cache: HIT | MISS` para poder medirlo desde las cabeceras.
+
+**1.9.5 El contrato de lectura pública**
+
+Lo que la API devuelve al público está cerrado por los `response_model` de
+cada ruta, no por un filtro a mano:
+
+- Los endpoints de etapa (`GET /api/v1/stages`,
+  `GET /api/v1/stages/{slug}`, `/summary` y `/results`) responden con
+  **`StagePublicRead`**, que **no** declara `judge_pin` (es una credencial:
+  con él se mandan marcaciones falsas) ni `route_geojson` (pesa ~58 KB y
+  ninguna página la consume). El mismo modelo vale para las `stages` del
+  agregado de la portada. Ver `specs/00` §1.4.
+- `GET /api/v1/stages/{slug}/summary` responde con `StageSummaryRead`, cuyo
+  `route_profile` es **`RouteProfileSummaryRead`**: las cifras del perfil
+  (desnivel, pendiente, punto de máxima pendiente) sin la **traza punto a
+  punto** (~500 puntos). El perfil se dibuja con el SVG estático de
+  `/profiles/{slug}.svg`.
+- El único modelo de lectura de una fecha es `StagePublicRead`: no existe un
+  "modelo completo" que incluya el PIN o la geometría.
 
 ---
 
