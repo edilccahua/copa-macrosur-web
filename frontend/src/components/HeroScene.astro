@@ -536,29 +536,29 @@
 
   /* ── Tema Oscuro: Mantiene estética lunar con sutil matiz azul noche ── */
   :global(:root[data-theme='dark']) .scene {
-    --scene-sky-glow: rgba(70, 105, 160, 0.08);
-    --scene-far: rgba(130, 155, 190, 0.08);
-    --scene-mid: rgba(110, 138, 175, 0.14);
+    --scene-sky-glow: rgba(70, 105, 160, 0.12);
+    --scene-far: rgba(130, 155, 190, 0.12);
+    --scene-mid: rgba(110, 138, 175, 0.20);
     --scene-foreground: rgba(18, 26, 36, 0.88);
 
-    --scene-chachani-light: rgba(110, 138, 175, 0.28);
-    --scene-chachani-dark: rgba(20, 30, 44, 0.42);
+    --scene-chachani-light: rgba(135, 170, 215, 0.46);
+    --scene-chachani-dark: rgba(22, 34, 50, 0.52);
 
-    --scene-misti-light: rgba(120, 150, 190, 0.32);
-    --scene-misti-mid: rgba(80, 105, 140, 0.24);
-    --scene-misti-low: rgba(50, 70, 96, 0.26);
-    --scene-misti-dark: rgba(18, 26, 38, 0.48);
-    --scene-misti-deep: rgba(12, 18, 28, 0.65);
+    --scene-misti-light: rgba(145, 180, 230, 0.50);
+    --scene-misti-mid: rgba(90, 120, 160, 0.36);
+    --scene-misti-low: rgba(55, 80, 110, 0.36);
+    --scene-misti-dark: rgba(22, 34, 50, 0.58);
+    --scene-misti-deep: rgba(14, 22, 34, 0.72);
 
-    --scene-pichu-light: rgba(105, 132, 168, 0.26);
-    --scene-pichu-dark: rgba(20, 30, 44, 0.40);
+    --scene-pichu-light: rgba(130, 165, 210, 0.44);
+    --scene-pichu-dark: rgba(22, 34, 50, 0.52);
 
-    --scene-snow: rgba(235, 245, 255, 0.78);
-    --scene-snow-soft: rgba(200, 225, 255, 0.35);
+    --scene-snow: rgba(255, 255, 255, 0.95);
+    --scene-snow-soft: rgba(220, 240, 255, 0.55);
 
-    --scene-line: rgba(155, 180, 215, 0.26);
-    --scene-line-strong: rgba(195, 215, 245, 0.52);
-    --scene-trail: rgba(175, 200, 230, 0.38);
+    --scene-line: rgba(165, 195, 235, 0.38);
+    --scene-line-strong: rgba(210, 230, 255, 0.70);
+    --scene-trail: rgba(195, 220, 250, 0.55);
 
     --orb-core: #eae6da;
     --orb-glow: rgba(234, 230, 218, 0.28);
@@ -568,29 +568,29 @@
 
   @media (prefers-color-scheme: dark) {
     :global(:root:not([data-theme='light'])) .scene {
-      --scene-sky-glow: rgba(70, 105, 160, 0.08);
-      --scene-far: rgba(130, 155, 190, 0.08);
-      --scene-mid: rgba(110, 138, 175, 0.14);
+      --scene-sky-glow: rgba(70, 105, 160, 0.12);
+      --scene-far: rgba(130, 155, 190, 0.12);
+      --scene-mid: rgba(110, 138, 175, 0.20);
       --scene-foreground: rgba(18, 26, 36, 0.88);
 
-      --scene-chachani-light: rgba(110, 138, 175, 0.28);
-      --scene-chachani-dark: rgba(20, 30, 44, 0.42);
+      --scene-chachani-light: rgba(135, 170, 215, 0.46);
+      --scene-chachani-dark: rgba(22, 34, 50, 0.52);
 
-      --scene-misti-light: rgba(120, 150, 190, 0.32);
-      --scene-misti-mid: rgba(80, 105, 140, 0.24);
-      --scene-misti-low: rgba(50, 70, 96, 0.26);
-      --scene-misti-dark: rgba(18, 26, 38, 0.48);
-      --scene-misti-deep: rgba(12, 18, 28, 0.65);
+      --scene-misti-light: rgba(145, 180, 230, 0.50);
+      --scene-misti-mid: rgba(90, 120, 160, 0.36);
+      --scene-misti-low: rgba(55, 80, 110, 0.36);
+      --scene-misti-dark: rgba(22, 34, 50, 0.58);
+      --scene-misti-deep: rgba(14, 22, 34, 0.72);
 
-      --scene-pichu-light: rgba(105, 132, 168, 0.26);
-      --scene-pichu-dark: rgba(20, 30, 44, 0.40);
+      --scene-pichu-light: rgba(130, 165, 210, 0.44);
+      --scene-pichu-dark: rgba(22, 34, 50, 0.52);
 
-      --scene-snow: rgba(235, 245, 255, 0.78);
-      --scene-snow-soft: rgba(200, 225, 255, 0.35);
+      --scene-snow: rgba(255, 255, 255, 0.95);
+      --scene-snow-soft: rgba(220, 240, 255, 0.55);
 
-      --scene-line: rgba(155, 180, 215, 0.26);
-      --scene-line-strong: rgba(195, 215, 245, 0.52);
-      --scene-trail: rgba(175, 200, 230, 0.38);
+      --scene-line: rgba(165, 195, 235, 0.38);
+      --scene-line-strong: rgba(210, 230, 255, 0.70);
+      --scene-trail: rgba(195, 220, 250, 0.55);
 
       --orb-core: #eae6da;
       --orb-glow: rgba(234, 230, 218, 0.28);
@@ -933,13 +933,19 @@
   /* ── Responsive Viewports ─────────────────────────────────────────── */
   @media (max-width: 68.75em) {
     .scene__mountain-wrap {
-      width: 160%;
+      width: 140%;
     }
   }
 
   @media (max-width: 48em) {
+    /* En móvil se da porte y altura natural a la cordillera:
+       El Misti se erige imponente al centro, y las cumbres y laderas nevadas
+       de Chachani (izquierda) y Pichu Pichu (derecha) enmarcan los laterales. */
     .scene__mountain-wrap {
-      width: 220%;
+      width: 175%;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
     }
   }
 
@@ -952,7 +958,10 @@
     }
 
     .scene__mountain-wrap {
-      width: 260%;
+      width: 180%;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
     }
   }
 

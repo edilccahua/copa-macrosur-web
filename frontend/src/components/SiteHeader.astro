@@ -630,21 +630,10 @@ const current = NAV_GROUPS.flatMap((g) => g.items).find((item) => isActivePath(p
   }
 
   /* "Dónde estoy": la misma pastilla invertida que en la barra (el mismo
-     lenguaje visual) + una barra de acento a la izquierda, que se lee de un
-     vistazo en pantalla pequeña. */
+     lenguaje visual). */
   .hdr__drawer-link.is-active .hdr__label {
     background: var(--invert-bg);
     color: var(--invert-fg);
-  }
-
-  .hdr__drawer-link.is-active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--accent);
   }
 
   /* ── Escritorio ───────────────────────────────────────────────────────── */

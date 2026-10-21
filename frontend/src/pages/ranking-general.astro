@@ -195,9 +195,10 @@ Astro.response.headers.set(
 
   @media (max-width: 47.99em) {
     .page-content {
-      /* La cabecera sticky: la cinta nunca queda debajo. */
-      padding-top: calc(1.5rem + env(safe-area-inset-top));
-      scroll-margin-top: calc(var(--header-offset-mobile, 4rem) + 0.75rem);
+      /* Móvil: reducción del padding para pegar el contenido a la barra de menú y ganar espacio útil */
+      padding-top: 0.35rem;
+      padding-inline: 0.65rem;
+      scroll-margin-top: calc(var(--header-offset-mobile, 3.25rem) + 0.35rem);
     }
   }
 
