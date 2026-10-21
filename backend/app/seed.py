@@ -57,15 +57,15 @@ RACE_CONFIG: List[Dict[str, Any]] = [
         "slug": "la-joya-extreme",
         "date": datetime.date(2026, 5, 17),
         "status": StageStatusEnum.FINISHED,
-        "start_location": "Vía de Evitamiento, La Joya",
+        "start_location": "Cerro Colorado / Río Seco",
         "start_time": "08:00 AM",
         "poster_url": "/images/posters/f1-la-joya-extreme-card.webp",
         "laps": 1,
-        "distance_km": 40.85,
-        "elevation_gain_m": 384,
+        "distance_km": 39.28,
+        "elevation_gain_m": 336,
         "excel": ["races/1. LA JOYA EXTREME 2026 N f.xlsx", "races/LA JOYA EXTREME 2026 N f.xlsx"],
         "pdf": ["races/1. LA JOYA EXTREME 2026  RESULTADOS.pdf", "races/LA JOYA EXTREME 2026  RESULTADOS.pdf"],
-        "gpx": ["races/La Joya Extreme 2026 - Ruta oficial.gpx"],
+        "gpx": ["races/CARRERA_La_Joya_Xtreme_actualizado.gpx"],
         "gpx_public": "la-joya-extreme.gpx",
         "strava_route_url": "https://www.strava.com/routes/3486799154256647166",
     },
@@ -248,16 +248,29 @@ async def seed_checkpoints_and_waves(
     stmt_cp = select(Checkpoint).where(Checkpoint.stage_id == stage.id)
     existing_cp = (await session.exec(stmt_cp)).all()
     if not distance_km:
-        # Sin ruta no hay checkpoints: los que hubiera (inventados con una
-        # distancia que no existe) se borran.
         for cp in existing_cp:
             await session.delete(cp)
-    elif not existing_cp:
-        session.add_all([
-            Checkpoint(stage_id=stage.id, name="Partida", order_index=0, distance_from_start_km=0.0, is_finish_line=False),
-            Checkpoint(stage_id=stage.id, name="Control Intermedio Cumbre", order_index=1, distance_from_start_km=distance_km / 2, is_finish_line=False),
-            Checkpoint(stage_id=stage.id, name="Meta Final", order_index=99, distance_from_start_km=distance_km, is_finish_line=True),
-        ])
+    else:
+        for cp in existing_cp:
+            await session.delete(cp)
+        if stage.stage_number == 1:
+            session.add_all([
+                Checkpoint(stage_id=stage.id, name="Partida — Cerro Colorado", order_index=0, distance_from_start_km=0.0, is_finish_line=False),
+                Checkpoint(stage_id=stage.id, name="Control Pampa Socosani", order_index=1, distance_from_start_km=19.5, is_finish_line=False),
+                Checkpoint(stage_id=stage.id, name="Meta — La Joya", order_index=99, distance_from_start_km=distance_km, is_finish_line=True),
+            ])
+        elif stage.stage_number == 2:
+            session.add_all([
+                Checkpoint(stage_id=stage.id, name="Partida — Hacienda Luna", order_index=0, distance_from_start_km=0.0, is_finish_line=False),
+                Checkpoint(stage_id=stage.id, name="Alto de la Z", order_index=1, distance_from_start_km=4.07, is_finish_line=False),
+                Checkpoint(stage_id=stage.id, name="Meta — Hacienda Luna", order_index=99, distance_from_start_km=distance_km, is_finish_line=True),
+            ])
+        elif stage.stage_number == 3:
+            session.add_all([
+                Checkpoint(stage_id=stage.id, name="Partida — Buena Vista", order_index=0, distance_from_start_km=0.0, is_finish_line=False),
+                Checkpoint(stage_id=stage.id, name="Cumbre Murucancha", order_index=1, distance_from_start_km=12.79, is_finish_line=False),
+                Checkpoint(stage_id=stage.id, name="Meta — Hacienda Luna", order_index=99, distance_from_start_km=distance_km, is_finish_line=True),
+            ])
 
     stmt_sw = select(StartWave).where(StartWave.stage_id == stage.id)
     if not (await session.exec(stmt_sw)).first():
@@ -848,37 +861,36 @@ async def seed_strava(
     distancia, su desnivel y su pendiente media.
     """
     segments = [
-        # --- Fecha 1 · La Joya Extreme (13 segmentos) ---
-        (stage_1_id, "31121203", "Por el asfalto", 960.0, -0.2, "Cerro Colorado, Arequipa", 2259, 2263),
-        (stage_1_id, "25044168", "Cañon del perro rabioso", 1800.0, 1.0, "Uchumayo, Arequipa", 2159, 2189),
+        # --- Fecha 1 · La Joya Extreme (5 segmentos seleccionados) ---
         (stage_1_id, "25045985", "Perro rabioso - trepada", 1000.0, 4.5, "Uchumayo, Arequipa", 2111, 2158),
-        (stage_1_id, "30866373", "Recta final a carretera", 1970.0, -1.0, "Uchumayo, Arequipa", 2168, 2190),
-        (stage_1_id, "26837710", "Subida canteras hacia La Joya", 1030.0, 1.2, "Uchumayo, Arequipa", None, None),
-        (stage_1_id, "31227003", "La encalaminadora Quishuarani", 2840.0, -3.9, "Uchumayo, Arequipa", 1872, 1981),
-        (stage_1_id, "31226989", "Desenfreno Quishuarani", 1690.0, -3.0, "Uchumayo, Arequipa", 1820, 1871),
-        (stage_1_id, "30566980", "QUISHUARANI a la linea del TREN", 6980.0, 0.7, "Uchumayo, Arequipa", None, None),
-        (stage_1_id, "18378066", "Pte. Quishuarani / Antes bajada a La Joya", 6920.0, 0.7, "Uchumayo, Arequipa", 1799, 1913),
-        (stage_1_id, "31121169", "Cenicero", 1370.0, 2.5, "Uchumayo, Arequipa", 1826, 1862),
-        (stage_1_id, "41279552", "Arena, calamina, piedras y trepada", 2960.0, 1.8, "Uchumayo, Arequipa", None, None),
         (stage_1_id, "30612243", "A la Joya", 5510.0, -3.9, "Uchumayo, Arequipa", 1656, 1873),
-        (stage_1_id, "41448847", "La Joya Xtreme 26", 38800.0, -1.6, "Cerro Colorado, Arequipa", 1679, 2284),
-        # --- Fecha 2 · Z Xtreme 2026 (3 segmentos) ---
-        (stage_2_id, "12875208", "Corte_Mollebaya", 710.0, 8.1, "Giriguaya, Arequipa", None, None),
-        (stage_2_id, "41681206", "Circuito La Z Extreme 2026", 11230.0, 0.0, "Uchumayo, Arequipa", 2488, 2747),
-        (stage_2_id, "27868955", "Z de desenfreno", 5720.0, -4.2, "Uchumayo, Arequipa", None, None),
-        # --- Fecha 3 · Vuelta a los Poblados (10 segmentos) ---
-        (stage_3_id, "25245306", "Trepada Carretera 602 - Hasta Iglesia Cacayaco", 5400.0, 6.2, "Cacayaco, Arequipa", None, None),
-        (stage_3_id, "21396382", "Cruce Chiguata - Mosopuquio", 8730.0, 3.7, "Mosopuquio, Arequipa", None, None),
-        (stage_3_id, "26168484", "Chiguata a Tuctumpaya", 15840.0, 2.5, "Tuctumpaya, Arequipa", None, None),
-        (stage_3_id, "30658106", "Santa Maria a Cacayaco", 4330.0, 6.9, "Cacayaco, Arequipa", None, None),
-        (stage_3_id, "26420480", "Desvio-Mosopuquio", 6970.0, 4.2, "Mosopuquio, Arequipa", None, None),
-        (stage_3_id, "21396392", "Mosopuquio - Tuctumpaya", 6850.0, 0.7, "Tuctumpaya, Arequipa", None, None),
-        (stage_3_id, "32049640", "Piaca, el regreso", 4540.0, -1.0, "Piaca, Arequipa", None, None),
-        (stage_3_id, "19713632", "DH Cruce Pocsi - Z", 3320.0, -4.6, "Pocsi, Arequipa", None, None),
-        (stage_3_id, "31319233", "Hacienda la Luna", 1210.0, 2.5, "Arequipa", None, None),
+        (stage_1_id, "31227003", "La encalaminadora Quishuarani", 2840.0, -3.9, "Uchumayo, Arequipa", 1872, 1981),
+        (stage_1_id, "18378066", "Pte. Quishuarani / Antes bajada a La Joya", 6920.0, 0.7, "Uchumayo, Arequipa", 1799, 1913),
+        (stage_1_id, "41279552", "Arena, calamina, piedras y trepada", 2960.0, 1.8, "Uchumayo, Arequipa", None, None),
+
+        # --- Fecha 2 · Z Xtreme 2026 (5 segmentos seleccionados) ---
+        (stage_2_id, "36718652", "Alterna Giriguaya", 2710.0, 5.3, "Mollebaya, Arequipa", 2530, 2674),
+        (stage_2_id, "27868955", "Z de desenfreno 🔥", 5720.0, -4.2, "Uchumayo, Arequipa", 2488, 2726),
+        (stage_2_id, "12875208", "Corte_Mollebaya", 710.0, 8.1, "Giriguaya, Arequipa", 2550, 2608),
+        (stage_2_id, "36718907", "Subida giriguaya a la entrada a la Z", 3650.0, 5.9, "Mollebaya, Arequipa", 2510, 2725),
+        (stage_2_id, "40129265", "EL PRIMER OBSTACULO", 750.0, 8.2, "Mollebaya, Arequipa", 2540, 2602),
+
+        # --- Fecha 3 · Vuelta a los Poblados (5 segmentos seleccionados) ---
+        (stage_3_id, "25245306", "Trepada Carretera 602 - Hasta Iglesia Cacayaco", 5400.0, 6.2, "Cacayaco, Arequipa", 2890, 3224),
+        (stage_3_id, "27868955", "Z de desenfreno 🔥", 5720.0, -4.2, "Pocsi / Mollebaya, Arequipa", 2488, 2726),
+        (stage_3_id, "30658106", "Santa Maria a Cacayaco", 4330.0, 6.9, "Cacayaco, Arequipa", 2910, 3209),
+        (stage_3_id, "19713632", "DH Cruce Pocsi - Z", 3320.0, -4.6, "Pocsi, Arequipa", 2570, 2725),
+        (stage_3_id, "21396382", "Cruce Chiguata - Mosopuquio", 8730.0, 3.7, "Mosopuquio, Arequipa", 2980, 3326),
     ]
+
+    active_keys = set()
     for stage_id, seg_id, name, dist, grade, location, ele_min, ele_max in segments:
-        stmt = select(StravaSegment).where(StravaSegment.strava_segment_id == seg_id)
+        active_keys.add((stage_id, str(seg_id)))
+        stmt = (
+            select(StravaSegment)
+            .where(StravaSegment.stage_id == stage_id)
+            .where(StravaSegment.strava_segment_id == str(seg_id))
+        )
         existing = (await session.exec(stmt)).first()
         # El tipo del tramo: subida, bajada o llano. Lo decide la pendiente media.
         if grade >= 0.5:
@@ -900,7 +912,7 @@ async def seed_strava(
         else:
             session.add(StravaSegment(
                 stage_id=stage_id,
-                strava_segment_id=seg_id,
+                strava_segment_id=str(seg_id),
                 name=name,
                 distance_m=dist,
                 average_grade=grade,
@@ -909,36 +921,59 @@ async def seed_strava(
                 elevation_max_m=ele_max,
                 kind=kind,
             ))
+
+    # Limpiar segmentos huérfanos que no pertenezcan a la selección oficial
+    all_segs = (await session.exec(select(StravaSegment))).all()
+    for s in all_segs:
+        if (s.stage_id, str(s.strava_segment_id)) not in active_keys:
+            stmt_eff = select(StravaEffort).where(StravaEffort.segment_id == s.id)
+            for eff in (await session.exec(stmt_eff)).all():
+                await session.delete(eff)
+            await session.delete(s)
     await session.commit()
 
 
 async def seed_route_summits(session: AsyncSession, stage: Stage) -> None:
-    """Siembra las cimas de la ruta con su nombre real.
-
-    El nombre sale del reverse-geocode de OpenStreetMap (Nominatim) sobre la
-    coordenada de la cima. La red se consulta **solo al sembrar**: en cada
-    request la página no depende de un servicio externo.
-
-    Los nombres ya resueltos se guardan aquí para que el seed sea
-    idempotente y no vuelva a pegarle a Nominatim en cada ejecución.
-    """
+    """Siembra las cimas de la ruta con su nombre real."""
     from backend.app.services.route_profile_service import extract_summits
 
     existing = (
         await session.exec(select(RouteSummit).where(RouteSummit.stage_id == stage.id))
     ).all()
-    if existing:
-        return
+    for item in existing:
+        await session.delete(item)
 
     summits = extract_summits(stage.route_geojson, geocode=False)
     if not summits:
+        await session.commit()
         return
 
     for summit in summits:
+        name = summit["name"]
+        if stage.stage_number == 1:
+            if summit["distance_km"] < 15.0 and summit["climb_gain_m"] >= 45:
+                name = "Cañón del Perro Rabioso"
+            elif summit["distance_km"] >= 28.0 and summit["climb_gain_m"] >= 30:
+                name = "Alto Quishuarani"
+            else:
+                continue
+        elif stage.stage_number == 2:
+            if summit["climb_gain_m"] >= 150:
+                name = "Alto de la Z (El Horno)"
+            else:
+                continue
+        elif stage.stage_number == 3:
+            if summit["distance_km"] < 10.0 and summit["climb_gain_m"] >= 150:
+                name = "Alto Cacayaco"
+            elif 10.0 <= summit["distance_km"] < 15.0 and summit["climb_gain_m"] >= 70:
+                name = "Cumbre Murucancha"
+            else:
+                continue
+
         session.add(
             RouteSummit(
                 stage_id=stage.id,
-                name=summit["name"],
+                name=name,
                 category=summit["category"],
                 distance_km=summit["distance_km"],
                 elevation_m=summit["elevation_m"],
@@ -947,7 +982,7 @@ async def seed_route_summits(session: AsyncSession, stage: Stage) -> None:
                 max_grade_pct=summit["max_grade_pct"],
                 lat=summit["lat"],
                 lon=summit["lon"],
-                name_source=summit["name_source"],
+                name_source="osm" if name != summit["name"] else summit["name_source"],
             )
         )
     await session.commit()
