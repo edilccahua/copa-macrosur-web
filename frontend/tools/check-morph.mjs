@@ -121,6 +121,41 @@ ok(
 );
 ok(estado.vivo === 'si', 'la navegación es de cliente (no hay recarga completa)');
 
+// --- 4. El clic DELEGADO (el que no es un <a>) -------------------------------
+// El clic anterior cayó en `.event-card__main-link`, que es un <a> real: lo
+// intercepta el router de Astro y NUNCA llega al delegado de `EventCard.astro`
+// (que hace `if (target.closest('a')) return`). Si el delegado volviera a
+// `window.location.href`, la navegación sería una recarga completa y este test
+// seguiría en verde. Por eso se hace un segundo clic sobre la IMAGEN de la
+// tarjeta: ahí no hay <a> y sí pasa por el camino nuevo.
+await page.goto(URL, { waitUntil: 'networkidle' });
+await page.waitForTimeout(1200);
+
+await page.evaluate(() => {
+  window.__vivoDelegado = 'si';
+});
+
+await page
+  .locator(`.event-card[data-event-id="${SLUG}"] .event-card__media img`)
+  .first()
+  .click({ force: true });
+
+await page.waitForTimeout(2500);
+
+const delegado = await page.evaluate(() => ({
+  vivo: window.__vivoDelegado ?? null,
+  ruta: location.pathname,
+}));
+
+ok(
+  delegado.ruta.includes(`/fechas/${SLUG}`),
+  `el clic delegado (no un <a>) también abre la ficha (${delegado.ruta})`
+);
+ok(
+  delegado.vivo === 'si',
+  'el clic delegado navega con el router de Astro (no recarga la página)'
+);
+
 await browser.close();
 console.log(fallos.length === 0 ? '\nTodo en verde.' : `\n${fallos.length} comprobación(es) fallida(s).`);
 process.exit(fallos.length === 0 ? 0 : 1);

@@ -48,12 +48,24 @@
   por debajo del pliegue se ocultan (`.is-reveal-pending`) y se revelan al
   hacer scroll. En la primera carga los oculta `html.motion-ready`.
 - **Morph del póster:** la tarjeta del timeline de la portada y el póster del
-  hero de la ficha comparten `transition:name="poster-{slug}"`: al abrir la
-  ficha, el póster se transforma en su sitio.
+  hero de la ficha comparten el nombre `poster-{slug}`: al abrir la ficha, el
+  póster se transforma en su sitio. El nombre **no** se emite con
+  `transition:name` de Astro: la línea de tiempo se renderiza DOS veces
+  (copia de escritorio y copia móvil, una se oculta con CSS) y Astro emite un
+  `view-transition-name` **por elemento**, así que las dos copias acababan
+  con el MISMO nombre en el documento y, por regla de la especificación de
+  las View Transitions, **la transición se cancelaba**. Ahora la tarjeta
+  emite `data-morph-name="poster-{slug}"` y `TimelineEvents.astro` asigna
+  `style.viewTransitionName` **en tiempo de ejecución, sólo a la copia
+  visible** (`getClientRects().length > 0`); la oculta recibe `'none'`. Sin
+  JavaScript no hay ningún nombre y, por tanto, ningún duplicado.
 - Regresión automatizada: `frontend/tools/check-shell.mjs` (navegación de
   cliente, persistencia de la cabecera, estado activo, clicabilidad del CTA y
-  del tema entre 768 y 1280 px) y `frontend/tools/detect-fouc.mjs` (destello
-  del primer pintado).
+  del tema entre 768 y 1280 px), `frontend/tools/check-morph.mjs` (el nombre
+  del póster lo lleva **un solo** elemento, no hay nombres de view-transition
+  duplicados, durante la transición hay una animación
+  `::view-transition-group(poster-…)` y la navegación es de cliente) y
+  `frontend/tools/detect-fouc.mjs` (destello del primer pintado).
 
 ### 0.0.1 Menú del sitio
 
@@ -490,17 +502,14 @@ quedaba en 784 en vez de 2883 → 2883.
 >
 > **Rediseño del 19 de Octubre de 2026.** Antes la página tenía un espejo hardcodeado de las cuatro fechas (`stagesDb`) que servía de red de seguridad cuando el API fallaba. Eso ocultaba la caída del API (el `uvicorn` llevaba horas sirviendo un modelo viejo sin `title`/`short_name`/`start_location`, la página leía `undefined` y caía al mock) y mostraba cifras distintas de las de la BD (40.9 km en vez de 40.85). El mock se eliminó.
 
-1. **Hero con datos reales:** póster oficial, nombre de la fecha sin el prefijo `Fecha N:`, fecha, punto de partida y hora, **distancia y desnivel por vuelta Y total** (`Stage.distance_km` y `Stage.elevation_gain_m` son **por vuelta**; el total es `× Stage.laps`), estado y sinopsis derivada de los datos. Botones a la tabla de resultados, al ranking acumulado y a la ruta de Strava.
+1. **Hero con datos reales:** póster oficial (sin enlace al afiche), nombre de la fecha sin el prefijo `Fecha N:`, fecha, punto de partida y hora, **distancia y desnivel UNA sola vez y en totales** (`distance_km_total` y `elevation_m_total`; si hay varias vueltas se indica `· N VUELTAS`). No hay párrafo de sinopsis: repetía las mismas cifras. El estado (`Finalizada`, `En Vivo`, `Inscripciones Abiertas`, `Próximamente`) va enmarcado junto al rótulo `[ MTB XC ]`, no como una celda más del bloque de datos. Botones a los resultados y a la ruta de Strava. En móvil el contenido va primero y el póster después.
    - **Una fecha sin ruta no afirma cifras**: la distancia y el desnivel se
      rotulan **POR CONFIRMAR** (es el caso de la Fecha 4). Ver §1.7.1.
-2. **Navegación de campeonato ARRIBA del hero:** fecha anterior y siguiente (`navigation` del resumen) en dos bloques con flecha grande y nombre de la fecha; el hover desplaza la flecha 2 px. La cuenta regresiva aparece en las fechas con inscripción abierta y el badge `[ EN VIVO ]` cuando `Stage.status == LIVE`. La hora de largada se interpreta con su meridiem (`"02:30 PM"` son las 14:30, no las 02:30) mediante `frontend/src/lib/datetime.ts`.
-3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha. Los "no finalizados" son solo los abandonos de una fecha **ya disputada**: en una fecha con inscripción abierta, `REGISTERED` significa "aún no compite" y se rotula así.
-   - **Los puntos del PDF oficial y los del motor se muestran los dos** cuando
-     difieren (Z Xtreme: 554 publicados, 555 tras el recálculo). Ver §1.7.1.
-4. **Leaderboard de podio por categoría** (`StageLeaderboard`): **agrupado por grupo**. Las once categorías ya no se listan en una grilla plana con el título de cada una teñido: se agrupan en **tres bloques — PRO / NORMAL / E-BIKE** (el orden lo fija `SCOPE_ORDER` del backend) y dentro de cada bloque las categorías van en una grilla de `auto-fill minmax(14rem, 1fr)` con una hairline inferior. El **título de la categoría va en tinta** (tipografía display, mayúsculas, `font-weight: 620` + `font-stretch: 118%`) y el **color del grupo aparece una sola vez por bloque**, en la etiqueta del rótulo de grupo (`.group__name`, tokens `.scope-*` de `tokens.css`). Antes eran once títulos en tres colores a la vez —un arcoíris—; ahora son tres etiquetas. Cada categoría muestra los tres ganadores con su club, **sin dorsal, sin tiempo y sin puntos**: el detalle completo está en el ranking, en modo FECHA (`/ranking-general?modo=fecha&tabla=PRO&fecha={n}`). El puesto es `StageEntry.category_rank`, ya calculado por el motor de scoring: **el PDF oficial manda** (specs/01 §1.5.2).
-   - **El puesto se dibuja con una MEDALLA, no con un número.** Es la insignia de leaderboard de Strava (`icon-at-pr-01/02/03`), reproducida con su geometría exacta: silueta de "bolsillo" con la cinta y el puesto **calado al vacío** dentro del disco (`fill-rule="evenodd"`). La pieza vive en `src/assets/medals/medal-N.svg` (canónica, `currentColor`) y en `public/icons/medals/medal-N.svg` (plana, para reutilizar fuera de Astro); la genera `frontend/tools/build-medals.mjs`. El "2" y el "3" son los trazados literales de Strava; el "1" está dibujado con la misma construcción. Los tonos (`--medal-1/2/3`) son el oro, la plata y el bronce exactos de Strava. El componente `MedalIcon.astro` la inserta **en línea** (no como `<img>`) para que herede el color del tema y para que el número calado deje ver el fondo real de la página.
-5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — recuadro de iniciales en media **16/10** (la proporción de la referencia; con 16/6 la caja quedaba vacía y desproporcionada), **medalla del lugar** e **índice `01`/`02`/`03`** en la cabeza (ya no la palabra "CLUB", repetida tres veces), nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El acento lo da el lugar en el podio (oro, plata, bronce) y va en la **franja superior de 2px**, que es el mecanismo de `BentoCard::before` — **nunca en una barra lateral**. Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato. Un club partido por salto de línea en el PDF se fusiona en uno solo (INTEGRIDAD-DATOS.md §2.2, caso 3).
-6. **Estadísticas extremas de la fecha:** tarjeta **Scratch** (tiempo mínimo) y tarjeta **Farolito** (tiempo máximo), con la gramática de tarjeta común de §1.2.1: rótulo, nombre del corredor, dorsal y club en monoespaciada, y el tiempo en grande. Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro. Las dos tarjetas son **simétricas**: no se muestra la velocidad en una y un texto en la otra (la velocidad del ganador ya está en las cifras de la jornada, y la del scratch no es la del ganador por definición —el ganador es el de mayor velocidad sobre la distancia recorrida, no el de menor tiempo—).
+2. **Navegación de campeonato ARRIBA del hero:** fecha anterior y siguiente (`navigation` del resumen) en variante text-only, sin cajas ni hairline de separación; el hover solo tiñe texto y flecha. La cuenta regresiva aparece en las fechas con inscripción abierta y el badge `[ EN VIVO ]` cuando `Stage.status == LIVE`. La hora de largada se interpreta con su meridiem (`"02:30 PM"` son las 14:30, no las 02:30) mediante `frontend/src/lib/datetime.ts`.
+3. **Cifras de la jornada** (`StageStatsRow`): inscritos, finalizados, no finalizados, puntos, velocidad del ganador (km/h) y número de categorías, en una fila compacta (celdas de `0.625rem 0.75rem`). Los valores van en **Geist Mono 600 tabular a 17 px** y las etiquetas en mono 9,5 px: son DATOS. Una fecha no disputada **no muestra ceros**: dice que las cifras están disponibles al cerrar la fecha. Los "no finalizados" son solo los abandonos de una fecha **ya disputada**. Sin tarjeta de conciliación PDF-vs-motor en la ficha.
+4. **Podio por categoría como LINEUP** (`StageLeaderboard`), copiando `getartcraft.com/apps` (`copiaartcraft/src/pages/apps.astro` + `AppCard.astro`): **una retícula continua** de 4 columnas (2 desde 40em, 1 en móvil) por grupo, con los bloques **PRO / NORMAL / E-BIKE separados** por su cabecera. Cada celda lleva **borde completo** (1 px compartido con la vecina mediante `margin: -1px 0 0 -1px`), **franja superior en degradado** del color vivo del grupo a su versión tenue (`linear-gradient` + `color-mix`), **cabeza con el nombre largo de la categoría en el color del grupo** (11 px/700, dos líneas reservadas para alinear los podios de la fila) y el grupo a la derecha en mono versalitas; los **tres del podio con su medalla** (oro, plata y bronce, 18 px); y pie **`VER CLASIFICACIÓN ↗`** con `margin-top: auto`. Las celdas vacías de la última fila no dibujan nada (sin fondo ni bordes).
+5. **Podio de clubes de la fecha** (`StageTeamCard`): adaptación de la `AppCard` de `copiaartcraft` — sin recuadro de iniciales, solo **medalla del lugar** e **índice `01`/`02`/`03`** en la cabeza, nombre, línea de contexto, estado con los puntos, etiquetas de medallas (oros, platas, bronces) y enlace a la ficha del club. El recuadro 16/10 con las iniciales se eliminó: ocupaba media tarjeta para no decir nada. El acento lo da el lugar en el podio (oro, plata, bronce) y va en la **franja superior de 2px**, que es el mecanismo de `BentoCard::before` — **nunca en una barra lateral**. Los puntos son los **sumados en esa jornada**, no el acumulado del campeonato.
+6. **Estadísticas extremas de la fecha:** **una sola tarjeta dividida en dos mitades** (hairline central): **Scratch** (tiempo mínimo) y **Farolito** (tiempo máximo). Cada mitad lleva rótulo con ícono, nombre en display, dorsal y club en cuerpo tenue, y el tiempo en monoespaciada compacta (17 px). No son dos fichas: son dos datos, y no necesitan superficie propia cada uno. Cada una se renderiza con su propia guardia: una fecha puede tener un extremo y no el otro. Las dos mitades son **simétricas**: no se muestra la velocidad en una y un texto en la otra (la velocidad del ganador ya está en las cifras de la jornada, y la del scratch no es la del ganador por definición —el ganador es el de mayor velocidad sobre la distancia recorrida, no el de menor tiempo—).
 7. **Perfil de etapa** (`StageProfile.astro` + `backend/scripts/build_stage_profile.py`):
    - El perfil **no se dibuja en el navegador**: lo genera un script de Python
      como SVG con la tipografía del sistema (Geist Mono para las cifras, Archivo
@@ -508,37 +517,61 @@ quedaba en 784 en vez de 2883 → 2883.
      silueta real de `Stage.route_geojson`, la retícula de altitudes en msnm, los
      **puertos** con su categoría (HC/1/2/3/4) y su nombre, los **checkpoints**
      etiquetados y la banda de kilometraje.
-   - **La escala vertical se DECLARA** (`ESCALA VERTICAL ×19`): un perfil de
-     etapa estira la vertical, y un lector de mapas necesita saber cuánto. Se
-     calcula de la geometría, no se elige a ojo.
-   - El **desnivel** que se muestra es el **acumulado real** (384 m en La Joya),
-     no la diferencia entre el máximo y el mínimo (648 m): un vaivén no es un
-     desnivel. Y es el de la **ruta oficial** (GPX a resolución completa), no
-     el que sale de la traza simplificada: la ficha mostraba las dos cifras
-     (cabecera +384 m, perfil +359 m) y ahora hay **una sola** (ver §1.7.1).
-   - Las pendientes se miden sobre la altitud **suavizada** (media móvil de 3
-     puntos): la geometría se guarda simplificada a 500 puntos y esa
-     simplificación inflaba un tramo de 70 m hasta el 53% de pendiente.
+   - **La tarjeta de escala vertical se retiró de la ficha.** La escala sigue
+     declarada dentro del SVG que genera `build_stage_profile.py`, pero no se
+     repite como bloque de texto bajo el gráfico: era una caja de explicación
+     que ocupaba el alto de un dato. Al lado del perfil ya no se repiten
+     DISTANCIA ni DESNIVEL + (están en el hero); quedan desnivel −, **altitud máxima** (`ALTITUD MÁX`, sin rangos confusos) y
+     pendientes.
+   - El **desnivel** que se muestra es el **acumulado real** (336 m en La Joya),
+     no la diferencia entre el máximo y el mínimo. Y es el de la **ruta oficial**
+     (GPX a resolución completa sin saltos de altitud), con una sola cifra oficial por etapa.
+   - Las pendientes se miden sobre una **ventana móvil de distancia de 150 m**:
+     la medición punto a punto con GPS inflaba micro-tramos a pendientes irreales
+     del 53%. Con la ventana de 150 m los valores son físicamente realistas (11-14% máx).
+   - **Altimetría a ANCHO COMPLETO con tarjetas inferiores en 1–2 filas**:
+     El gráfico de altimetría SVG ocupa el 100% del ancho del contenedor para
+     máxima visibilidad y amplitud panorámica. Las tarjetas de datos viven
+     **debajo** en dos niveles: Fila 1 con las 4 cifras técnicas (`DESNIVEL −`,
+     `ALTITUD MÁX`, `PENDIENTE MEDIA`, `PENDIENTE MÁX`), y Fila 2 con las tarjetas
+     de Puertos Registrados, Hitos y el botón de descarga del track GPX.
+   - **Acceso rápido desde el Hero**:
+     En los botones de cabecera de la fecha se incluyen accesos directos
+     `Ver Altimetría ↓` (desplaza suavemente hasta `#ruta`) y `Descargar GPX ↓`.
+   - **Soporte dinámico para modo CLARO y OSCURO**:
+     El SVG utiliza CSS variables nativas y la media query `@media (prefers-color-scheme: light)`
+     adaptando automáticamente el fondo, la silueta, retículas, ejes y textos a la
+     paleta y tipografías oficiales (`Archivo Variable` y `Geist Mono Variable`).
+   - **Trazado de puertos sin cruces de líneas**:
+     Cada puerto destaca exactamente el tramo de ascensión directamente sobre la
+     cresta de la montaña (desde su inicio hasta la cumbre) en color ámbar/categoría.
+     Desde la cima, una guía estrictamente vertical conecta con la bandera de puerto
+     (insignia de categoría o 🚩, altitud destacada y ficha técnica `(X km al Y%)`),
+     eliminando cualquier cruce diagonal o superposición.
+   - En **La Joya Extreme** se registran sus dos ascensiones reales verificadas:
+     el **Cañón del Perro Rabioso** (km 5.4 a 6.5 · 1.1 km al 5.2%) y el falso llano
+     hacia **Alto Quishuarani** (km 28.5 a 29.6 · 1.2 km al 2.8% · 1,902 msnm).
    - Si la geometría es de **una vuelta** de un circuito por vueltas, se avisa
      debajo del gráfico.
-   - Al lado van las cifras de la jornada y la lista de puertos e hitos.
-8. **Segmentos Strava de la fecha:** los segmentos de la **ruta oficial** de Strava (25 en total entre las tres fechas), con tres reglas de selección (`backend/app/services/strava_selection.py`):
-   1. **Filtro por fecha de medición.** Strava lista en un mismo segmento los intentos de muchas fechas (2019, 2023, 2024 y el de la carrera). Solo cuenta el intento medido en la fecha de la carrera (±1 día). La fecha del intento se guarda en `strava_efforts.measured_on`.
-   2. **Cruce con los pilotos.** Solo cuenta el intento de un corredor inscrito en esa fecha. El cruce usa `strava_athlete_id` (fiable) y, como respaldo, el nombre normalizado.
-   3. **Selección.** Se descarta el segmento que cubre ≥80% de la etapa —**es la ruta, no un tramo**— y se muestran los **cinco** más relevantes: primero las subidas y bajadas más empinadas, luego los más largos.
+8. **Segmentos Strava de la fecha:** los segmentos oficiales seleccionados de cada ruta (5 destacados por fecha), con reglas de selección y tipologías editoriales (`backend/app/services/strava_selection.py`):
+   1. **Filtro por fecha de medición.** Strava lista en un mismo segmento los intentos de muchas fechas. Solo cuenta el intento medido en la fecha de la carrera (±1 día). La fecha del intento se guarda en `strava_efforts.measured_on`.
+   2. **Cruce con los pilotos.** Solo cuenta el intento de un corredor formalmente inscrito en esa fecha (`stage_rider_ids`). El cruce usa `strava_athlete_id` y, como respaldo, el nombre normalizado.
+   3. **Selección y tipologías editoriales.** Se descarta el segmento que cubre ≥80% de la etapa (es la ruta, no un tramo). Cada segmento lleva su tipo editorial y su icono específico: `ESCALADOR` (subida de fondo), `PUNCHER` (muro explosivo), `KAMIKAZE` (descenso técnico pronunciado) o `LLANERO` (rodaje / falso llano).
+   4. **Incentivo y premios de montaña.** Los segmentos designados oficialmente para los títulos de montaña exhiben su sticker con el premio en juego: **`TÍTULO KOM / QOM · USD 15`** y **`TÍTULO KAMIKAZE · USD 15`**.
+   5. **Integridad de datos en etapas no disputadas.** Si una fecha no ha finalizado o no tiene tiempos oficiales de carrera, la tabla de posiciones permanece vacía con el aviso *«Tiempos oficiales en vivo el día de la carrera»*. No se inventan ni mezclan tiempos de años anteriores.
 
-   Cada segmento muestra su distancia, pendiente, lugar, altitud y **Top 5** de tiempos, más el enlace al segmento en Strava. La tarjeta es **neutra**: el tipo (SUBIDA / BAJADA / PLANO) se dice con la palabra y el ícono, y el **naranja de Strava no se usa** (era un tercer color en una vista que ya tenía el oro y el plata).
+   Cada segmento muestra su distancia, pendiente, lugar, altitud y Top 3 de tiempos, más el enlace al segmento en Strava. La tarjeta es **neutra** y el naranja de Strava no se usa.
 
    Los **títulos de montaña** van en su propia sección, antes de los segmentos, y son **cuatro**:
 
    | Título | Tramo | Género |
    |---|---|---|
-   | **KOM** — King of the Mountain | la subida más empinada y, a igualdad, la más larga | varón |
+   | **KOM** — King of the Mountain | Subida Reina oficial de la fecha | varón |
    | **QOM** — Queen of the Mountain | la misma subida | damas |
-   | **El Kamikaze** | el descenso más pronunciado y, a igualdad, el más largo | varón |
+   | **El Kamikaze** | Bajada Reina oficial de la fecha | varón |
    | **La Kamikaze** | el mismo descenso | damas |
 
-   El **QOM nunca puede ser un varón**: se elige entre los intentos con `strava_efforts.athlete_gender = 'F'` (o, si falta, con el género del corredor enlazado). Si no hay intentos de damas, el QOM es `null` y su tarjeta no se pinta. Los Kamikaze se resuelven igual: el mejor tiempo del género en el descenso de la jornada. Se prefiere un tramo con intentos **de la fecha**; si el descenso más empinado solo guarda tiempos de otros años, se elige el siguiente descenso que sí tenga intentos de la carrera.
+   El **QOM nunca puede ser un varón**: se elige entre los intentos con `strava_efforts.athlete_gender = 'F'`. Si la etapa no está en estado `FINISHED` o no hay intentos del día de la carrera de corredores inscritos, todos los títulos son `null` y la sección no se dibuja (evitando coronar ganadores antes de que la carrera se dispute).
 
    Las cuatro tarjetas de título son **neutras** y del mismo tipo: rótulo con el ícono (subida o descenso), el género en monoespaciada a la derecha **sin recuadro**, el nombre, el tramo y las cifras. No hay barra vertical de color, ni borde punteado para distinguir los Kamikaze, ni tinte propio por género (el magenta que se usaba para "damas" es el color de la Copa de Equipos en este sistema: colisión semántica).
 9. **La E-BIKE no compite por el título de la fecha.** El E-BIKE OPEN conserva su propio leaderboard de categoría, pero un e-bike no puede ser el scratch ni el KOM/QOM de la jornada.
@@ -914,7 +947,7 @@ agregado, sin acceso a disco ni a la red) + `backend/app/routers/stages.py`.
 | `compute_stage_awards(session, stage_id)` | `List[AwardSummaryRead]`: premios con patrocinador, descripción y ganador resuelto. |
 | `compute_stage_route_profile(session, stage)` | `RouteProfileRead`: el perfil de altimetría con su traza punto a punto, el desnivel **acumulado** real, la pendiente media y máxima, y si la geometría cubre la etapa entera o solo una vuelta. `null` si la fecha no tiene geometría. El servicio calcula el perfil completo, pero la **respuesta** lo publica en `RouteProfileSummaryRead`, sin la traza (ver §1.9.5). |
 | `compute_stage_summits(session, stage_id)` | `List[SummitRead]`: las cimas de la ruta (los "puertos" del perfil) con su nombre real, su categoría de puerto y sus cifras. |
-| `compute_stage_mountain_titles(session, stage_id)` | Los cuatro **títulos de montaña** de la fecha. **KOM**: el varón más rápido en la subida más empinada; **QOM**: la dama más rápida en esa misma subida; **El Kamikaze** y **La Kamikaze**: el varón y la dama más rápidos en el descenso más pronunciado. El género sale de `StravaEffort.athlete_gender` y, si falta, del `Rider.gender` enlazado: el QOM nunca puede ser un varón. Se prefiere un tramo con intentos de la fecha. `null` si la fecha no tiene segmentos o si no hay intentos de ese género. |
+| `compute_stage_mountain_titles(session, stage_id)` | Los cuatro **títulos de montaña** de la fecha. **KOM**: el varón más rápido en la subida reina designada; **QOM**: la dama más rápida en esa misma subida; **El Kamikaze** y **La Kamikaze**: el varón y la dama más rápidos en la bajada reina designada. El género sale de `StravaEffort.athlete_gender` y, si falta, del `Rider.gender` enlazado: el QOM nunca puede ser un varón. Los títulos requieren estrictamente que la etapa esté en estado `FINISHED` y existan intentos del día de la carrera de corredores formalmente inscritos (`stage_rider_ids`). Si la fecha no se ha corrido o no tiene intentos válidos de la jornada, retorna `null` en todos los títulos: nunca inventa ganadores con intentos de años anteriores. |
 
 **Respuesta:** `{stage, stats, podium, teams, strava, checkpoints, awards, extremes, route_profile, summits, kom, qom, kamikaze_male, kamikaze_female, navigation}`.
 `extremes` tiene siempre las claves `scratch` y `farolito`, que pueden ser `null`.
@@ -1184,6 +1217,12 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   de la ruta (pesa ~58 KB por fecha y ninguna página la consume), igual que
   `StagePublicRead` en el resto de la API (specs/00 §1.4).
 - Se cachea en memoria **60 s** bajo la clave `public:home`.
+- **El `live_status` NO va congelado dentro del agregado**: aunque la
+  respuesta del agregado dure 60 s, el estado de la transmisión se resuelve
+  con la **misma clave y el mismo TTL de 15 s** que el endpoint
+  `/public/live-status` (`public:live_status`). Así la portada y
+  `/public/live-status` no pueden discrepar, y el badge "EN VIVO" no llega
+  60 s tarde. Ver `specs/02` §6.
 - La página degrada como antes si la llamada falla: secciones vacías y el
   aviso "no pudimos cargar" en los podios. Nunca inventa datos (§0.2).
 
