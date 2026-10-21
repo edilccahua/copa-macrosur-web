@@ -409,19 +409,59 @@ ok(
   'tablas: las celdas no tienen borde propio'
 );
 
-// ── 9 · La ficha de una fecha sigue usando la tarjeta de la portada ───────
+// ── 9 · La ficha de una fecha ─────────────────────────────────────────────
 await page.goto(`${BASE}/fechas/la-joya-extreme`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1200);
 
 const ficha = await leerTarjetas(page, '.prize');
-ok(ficha.length >= 1, `ficha: hay tarjeta de premios (${ficha.length})`);
+ok(
+  ficha.length === 1,
+  `ficha: en la ficha de una fecha sólo va el premio de esa fecha (${ficha.length})`
+);
 ok(
   ficha[0]?.pie === 'CADA FECHA',
   `ficha: el premio de la jornada dice "CADA FECHA" (${ficha[0]?.pie})`
 );
 ok(
-  ficha[0]?.icono === portada[2]?.icono,
-  'ficha: el icono es el mismo que en la portada y en /premios'
+  ficha[0]?.podio.length === 3,
+  'ficha: el premio de la jornada se dibuja como podio'
+);
+
+// El orden: los segmentos (el contexto) antes que los títulos (el resultado).
+const ordenFicha = await page.$$eval('.premios-section, .titles-section, .strava-section', (els) =>
+  els.map((e) => e.id).filter(Boolean)
+);
+ok(
+  ordenFicha.indexOf('strava') < ordenFicha.indexOf('titulos'),
+  `ficha: los segmentos van antes que los títulos (${ordenFicha.join(' → ')})`
+);
+
+// Las medallas: la página no puede llenarse de insignias.
+const medallas = await page.$$eval('.medal', (els) => els.length);
+const categorias = await page.$$eval('.panel__podium', (els) => els.length);
+ok(
+  medallas <= categorias + 6,
+  `ficha: las medallas se limitan a una por categoría, la de clubes y el podio final (${medallas} medallas, ${categorias} podios de categoría)`
+);
+
+// Los segmentos: el tiempo del primero en oro y SIN medallas.
+const segmentos = await page.$$eval('.strava-card', (els) =>
+  els.map((el) => ({
+    medallas: el.querySelectorAll('.medal').length,
+    primeroEnOro: (() => {
+      const t = el.querySelector('.board-row--first .board-time');
+      return t ? getComputedStyle(t).color : null;
+    })(),
+  }))
+);
+ok(
+  segmentos.every((s) => s.medallas === 0),
+  'ficha: los tramos no llevan medallas (el puesto va con el número)'
+);
+const OROS = ['rgb(240, 194, 46)', 'rgb(154, 106, 0)'];
+ok(
+  segmentos.some((s) => OROS.includes(s.primeroEnOro ?? '')),
+  `ficha: el tiempo del primero en cada tramo va en oro (${segmentos[0]?.primeroEnOro})`
 );
 
 await browser.close();
