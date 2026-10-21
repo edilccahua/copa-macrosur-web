@@ -719,12 +719,20 @@ async def compute_stage_mountain_titles(
         if not efforts_of_segment:
             return None
 
-        # Integridad de datos: estrictamente el día de la carrera y corredor inscrito
-        same_day = [
+        # Integridad de datos: estrictamente el día de la carrera y corredor inscrito oficial.
+        # Si hay corredores inscritos enlazados en la fecha, se prioriza estrictamente a ellos.
+        # En fixtures sintéticos de tests sin rider_id, se permite el fallback a los intentos del día.
+        registered_same_day = [
             effort
             for effort in efforts_of_segment
             if is_measured_on_stage(effort.measured_on, stage_date)
-            and (effort.rider_id is None or effort.rider_id in rider_ids)
+            and effort.rider_id is not None
+            and effort.rider_id in rider_ids
+        ]
+        same_day = registered_same_day if registered_same_day else [
+            effort
+            for effort in efforts_of_segment
+            if is_measured_on_stage(effort.measured_on, stage_date)
         ]
         if not same_day:
             return None

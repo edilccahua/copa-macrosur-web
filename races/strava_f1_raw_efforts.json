@@ -1,0 +1,8723 @@
+{
+  "25045985": {
+    "id": "25045985",
+    "name": "Perro rabioso - trepada",
+    "role": "Subida Reina KOM/QOM",
+    "total_extracted": 116,
+    "efforts": [
+      {
+        "athleteName": "Johana Mantilla Pinto",
+        "athleteId": "111569421",
+        "cells": [
+          "",
+          "Johana Mantilla Pinto",
+          "3 may 2026",
+          "13,8 km/h",
+          "165 bpm",
+          "—",
+          "—",
+          "4:21"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Alejandra Caceres",
+        "athleteId": "121615172",
+        "cells": [
+          "2",
+          "Alejandra Caceres",
+          "17 may 2026",
+          "12,8 km/h",
+          "—",
+          "—",
+          "—",
+          "4:42"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "VANIA MANRIQUE CHIRINOS",
+        "athleteId": "111311731",
+        "cells": [
+          "3",
+          "VANIA MANRIQUE CHIRINOS",
+          "1 mar 2026",
+          "12,0 km/h",
+          "122 bpm",
+          "—",
+          "—",
+          "5:01"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Sandra Apaza Nano",
+        "athleteId": "45844049",
+        "cells": [
+          "4",
+          "Sandra Apaza Nano",
+          "17 may 2026",
+          "10,0 km/h",
+          "174 bpm",
+          "—",
+          "—",
+          "6:01"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Francis Emely Quintanilla Mango",
+        "athleteId": "107200423",
+        "cells": [
+          "5",
+          "Francis Emely Quintanilla Mango",
+          "4 abr 2026",
+          "9,8 km/h",
+          "118 bpm",
+          "—",
+          "—",
+          "6:08"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Carolina Salas Zegarra",
+        "athleteId": "147415832",
+        "cells": [
+          "6",
+          "Carolina Salas Zegarra",
+          "17 may 2026",
+          "9,7 km/h",
+          "—",
+          "—",
+          "—",
+          "6:10"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Cecilia Guillen López",
+        "athleteId": "158379385",
+        "cells": [
+          "7",
+          "Cecilia Guillen López",
+          "17 may 2026",
+          "9,6 km/h",
+          "—",
+          "—",
+          "—",
+          "6:14"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "UL Elvi",
+        "athleteId": "123731993",
+        "cells": [
+          "8",
+          "UL Elvi",
+          "17 may 2026",
+          "9,2 km/h",
+          "—",
+          "—",
+          "—",
+          "6:33"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Kelicita Aguilar",
+        "athleteId": "44595052",
+        "cells": [
+          "9",
+          "Kelicita Aguilar",
+          "17 may 2026",
+          "8,9 km/h",
+          "168 bpm",
+          "—",
+          "—",
+          "6:46"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Vanessa Patiño Puma",
+        "athleteId": "150392274",
+        "cells": [
+          "10",
+          "Vanessa Patiño Puma",
+          "17 may 2026",
+          "8,6 km/h",
+          "—",
+          "—",
+          "—",
+          "7:01"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Y",
+        "athleteId": "75401402",
+        "cells": [
+          "10",
+          "Victoria Y",
+          "17 may 2026",
+          "8,6 km/h",
+          "—",
+          "—",
+          "—",
+          "7:01"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Ana María Rodriguez",
+        "athleteId": "87875730",
+        "cells": [
+          "12",
+          "Ana María Rodriguez",
+          "26 abr 2026",
+          "8,2 km/h",
+          "—",
+          "—",
+          "—",
+          "7:18"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Kelita V D",
+        "athleteId": "68229113",
+        "cells": [
+          "13",
+          "Kelita V D",
+          "9 ago 2026",
+          "8,1 km/h",
+          "—",
+          "—",
+          "—",
+          "7:23"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Natali Alvera",
+        "athleteId": "81363813",
+        "cells": [
+          "14",
+          "Natali Alvera",
+          "17 may 2026",
+          "7,8 km/h",
+          "—",
+          "—",
+          "—",
+          "7:41"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Irene Alfaro Vizcarra",
+        "athleteId": "44875054",
+        "cells": [
+          "15",
+          "Irene Alfaro Vizcarra",
+          "17 may 2026",
+          "6,8 km/h",
+          "149 bpm",
+          "—",
+          "—",
+          "8:47"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Gloria Ch",
+        "athleteId": "161631402",
+        "cells": [
+          "16",
+          "Gloria Ch",
+          "19 abr 2026",
+          "4,2 km/h",
+          "—",
+          "—",
+          "—",
+          "14:13"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Niltom Flores",
+        "athleteId": "82544897",
+        "cells": [
+          "",
+          "Niltom Flores",
+          "27 abr 2026",
+          "18,9 km/h",
+          "—",
+          "—",
+          "—",
+          "3:11"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alexis TANTANI",
+        "athleteId": "39245919",
+        "cells": [
+          "2",
+          "Alexis TANTANI",
+          "17 may 2026",
+          "18,8 km/h",
+          "176 bpm",
+          "—",
+          "—",
+          "3:12"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Charles Morfy Gonzales Gonzales",
+        "athleteId": "64206931",
+        "cells": [
+          "2",
+          "Charles Morfy Gonzales Gonzales",
+          "17 may 2026",
+          "18,8 km/h",
+          "—",
+          "—",
+          "—",
+          "3:12"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Ronald Luza",
+        "athleteId": "26160379",
+        "cells": [
+          "4",
+          "Ronald Luza",
+          "17 may 2026",
+          "18,5 km/h",
+          "171 bpm",
+          "—",
+          "—",
+          "3:15"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Rodrigo Sanchez Huayta",
+        "athleteId": "45273647",
+        "cells": [
+          "5",
+          "Rodrigo Sanchez Huayta",
+          "17 may 2026",
+          "17,9 km/h",
+          "—",
+          "—",
+          "—",
+          "3:21"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Alfredo Reynoso Simoni",
+        "athleteId": "19145880",
+        "cells": [
+          "6",
+          "Jose Alfredo Reynoso Simoni",
+          "17 may 2026",
+          "16,7 km/h",
+          "—",
+          "—",
+          "—",
+          "3:36"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Edilson Ccahua",
+        "athleteId": "112878037",
+        "cells": [
+          "7",
+          "Edilson Ccahua",
+          "2 may 2026",
+          "16,2 km/h",
+          "182 bpm",
+          "—",
+          "—",
+          "3:43"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Cardenas",
+        "athleteId": "61269264",
+        "cells": [
+          "8",
+          "Oscar Cardenas",
+          "17 may 2026",
+          "16,1 km/h",
+          "166 bpm",
+          "—",
+          "—",
+          "3:44"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Maque",
+        "athleteId": "82560760",
+        "cells": [
+          "9",
+          "Jose Maque",
+          "17 may 2026",
+          "15,9 km/h",
+          "—",
+          "—",
+          "—",
+          "3:47"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Reyner Bellido Fuentes",
+        "athleteId": "201873139",
+        "cells": [
+          "10",
+          "Reyner Bellido Fuentes",
+          "17 may 2026",
+          "15,7 km/h",
+          "—",
+          "—",
+          "—",
+          "3:49"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Silvio Ancco",
+        "athleteId": "47287486",
+        "cells": [
+          "11",
+          "Silvio Ancco",
+          "17 may 2026",
+          "15,5 km/h",
+          "—",
+          "—",
+          "—",
+          "3:52"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Persy roque",
+        "athleteId": "158622847",
+        "cells": [
+          "12",
+          "Persy roque",
+          "17 may 2026",
+          "15,5 km/h",
+          "—",
+          "—",
+          "—",
+          "3:53"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Yeison Zeballos",
+        "athleteId": "37298291",
+        "cells": [
+          "13",
+          "Yeison Zeballos",
+          "17 may 2026",
+          "15,3 km/h",
+          "244 bpm",
+          "272 W",
+          "—",
+          "3:55"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Santiago AO",
+        "athleteId": "78665759",
+        "cells": [
+          "14",
+          "Santiago AO",
+          "17 may 2026",
+          "15,1 km/h",
+          "—",
+          "—",
+          "—",
+          "3:59"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Giovanni Chávez-Velando R.",
+        "athleteId": "71867960",
+        "cells": [
+          "14",
+          "Giovanni Chávez-Velando R.",
+          "17 may 2026",
+          "15,1 km/h",
+          "174 bpm",
+          "—",
+          "—",
+          "3:59"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Brandon Jossehp Quispe Zarate",
+        "athleteId": "136655386",
+        "cells": [
+          "16",
+          "Brandon Jossehp Quispe Zarate",
+          "17 may 2026",
+          "15,0 km/h",
+          "—",
+          "—",
+          "—",
+          "4:00"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Victor Alfonso Jiménez",
+        "athleteId": "100858538",
+        "cells": [
+          "16",
+          "Victor Alfonso Jiménez",
+          "17 may 2026",
+          "15,0 km/h",
+          "—",
+          "—",
+          "—",
+          "4:00"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "deyviss sasari",
+        "athleteId": "142926004",
+        "cells": [
+          "18",
+          "deyviss sasari",
+          "17 may 2026",
+          "15,0 km/h",
+          "177 bpm",
+          "—",
+          "—",
+          "4:01"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Paulo Martinez",
+        "athleteId": "14152238",
+        "cells": [
+          "18",
+          "Paulo Martinez",
+          "25 jul 2026",
+          "15,0 km/h",
+          "93 bpm",
+          "—",
+          "—",
+          "4:01"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Ccolque",
+        "athleteId": "130975933",
+        "cells": [
+          "20",
+          "Oscar Ccolque",
+          "17 may 2026",
+          "14,9 km/h",
+          "—",
+          "—",
+          "—",
+          "4:02"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Anthony Chuctaya",
+        "athleteId": "118418797",
+        "cells": [
+          "21",
+          "Anthony Chuctaya",
+          "17 may 2026",
+          "14,7 km/h",
+          "—",
+          "—",
+          "—",
+          "4:05"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Le Pox",
+        "athleteId": "100721316",
+        "cells": [
+          "21",
+          "Le Pox",
+          "29 ago 2026",
+          "14,7 km/h",
+          "—",
+          "—",
+          "—",
+          "4:05"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Juan Agustín Fernández Santos",
+        "athleteId": "89660988",
+        "cells": [
+          "23",
+          "Juan Agustín Fernández Santos",
+          "17 may 2026",
+          "14,6 km/h",
+          "182 bpm",
+          "—",
+          "—",
+          "4:06"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Gonzalo Málaga",
+        "athleteId": "21126267",
+        "cells": [
+          "24",
+          "Gonzalo Málaga",
+          "2 may 2026",
+          "14,6 km/h",
+          "173 bpm",
+          "255 W",
+          "—",
+          "4:07"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Chino Rondon",
+        "athleteId": "9630606",
+        "cells": [
+          "24",
+          "Chino Rondon",
+          "30 jun 2026",
+          "14,6 km/h",
+          "—",
+          "—",
+          "—",
+          "4:07"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jorge Luis Coaquira mamani",
+        "athleteId": "853071462",
+        "cells": [
+          "26",
+          "Jorge Luis Coaquira mamani",
+          "26 abr 2026",
+          "14,5 km/h",
+          "—",
+          "—",
+          "—",
+          "4:09"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Hayler Shiru Luján 🐲",
+        "athleteId": "28667906",
+        "cells": [
+          "27",
+          "Hayler Shiru Luján 🐲",
+          "17 may 2026",
+          "14,4 km/h",
+          "160 bpm",
+          "—",
+          "—",
+          "4:11"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Alonzo Rubattino Salomon",
+        "athleteId": "7383894",
+        "cells": [
+          "28",
+          "Alonzo Rubattino Salomon",
+          "14 feb 2026",
+          "14,3 km/h",
+          "173 bpm",
+          "—",
+          "—",
+          "4:12"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Joaquin Lazo Rodriguiez",
+        "athleteId": "94613339",
+        "cells": [
+          "29",
+          "Joaquin Lazo Rodriguiez",
+          "3 may 2026",
+          "14,2 km/h",
+          "161 bpm",
+          "—",
+          "—",
+          "4:13"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "AnTon RamSak",
+        "athleteId": "142294242",
+        "cells": [
+          "30",
+          "AnTon RamSak",
+          "17 may 2026",
+          "14,2 km/h",
+          "—",
+          "—",
+          "—",
+          "4:14"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Hans Niño de Guzman",
+        "athleteId": "7693419",
+        "cells": [
+          "31",
+          "Hans Niño de Guzman",
+          "14 feb 2026",
+          "14,1 km/h",
+          "146 bpm",
+          "—",
+          "—",
+          "4:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Angel Chambi Mamani 😇",
+        "athleteId": "20506529",
+        "cells": [
+          "31",
+          "Angel Chambi Mamani 😇",
+          "17 may 2026",
+          "14,1 km/h",
+          "179 bpm",
+          "—",
+          "—",
+          "4:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "$3rgi0 €ruz",
+        "athleteId": "107393297",
+        "cells": [
+          "31",
+          "$3rgi0 €ruz",
+          "17 may 2026",
+          "14,1 km/h",
+          "181 bpm",
+          "—",
+          "—",
+          "4:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Franco Benjamin",
+        "athleteId": "50445704",
+        "cells": [
+          "34",
+          "Franco Benjamin",
+          "17 may 2026",
+          "14,1 km/h",
+          "170 bpm",
+          "215 W",
+          "—",
+          "4:16"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Líder roberto Cruz solis",
+        "athleteId": "88520604",
+        "cells": [
+          "34",
+          "Líder roberto Cruz solis",
+          "17 may 2026",
+          "14,1 km/h",
+          "—",
+          "—",
+          "—",
+          "4:16"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Aldo Peña",
+        "athleteId": "21836611",
+        "cells": [
+          "36",
+          "Aldo Peña",
+          "17 may 2026",
+          "14,0 km/h",
+          "—",
+          "—",
+          "—",
+          "4:17"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "rudy Quirita Florez",
+        "athleteId": "102898258",
+        "cells": [
+          "37",
+          "rudy Quirita Florez",
+          "17 may 2026",
+          "13,9 km/h",
+          "162 bpm",
+          "—",
+          "—",
+          "4:19"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Aly Champi Quispe",
+        "athleteId": "69974828",
+        "cells": [
+          "38",
+          "Aly Champi Quispe",
+          "3 may 2026",
+          "13,8 km/h",
+          "—",
+          "—",
+          "—",
+          "4:22"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Kevin Chavez",
+        "athleteId": "20591991",
+        "cells": [
+          "39",
+          "Kevin Chavez",
+          "17 may 2026",
+          "13,7 km/h",
+          "—",
+          "—",
+          "—",
+          "4:23"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Yoel Chara",
+        "athleteId": "90316231",
+        "cells": [
+          "40",
+          "Yoel Chara",
+          "17 may 2026",
+          "13,5 km/h",
+          "180 bpm",
+          "—",
+          "—",
+          "4:26"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Ale Noemi",
+        "athleteId": "1352025",
+        "cells": [
+          "40",
+          "Ale Noemi",
+          "15 ago 2026",
+          "13,5 km/h",
+          "143 bpm",
+          "295 W",
+          "—",
+          "4:26"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Norman Peña",
+        "athleteId": "16571987",
+        "cells": [
+          "42",
+          "Norman Peña",
+          "9 may 2026",
+          "13,4 km/h",
+          "—",
+          "—",
+          "—",
+          "4:28"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Ledú Apaza",
+        "athleteId": "102661755",
+        "cells": [
+          "43",
+          "Ledú Apaza",
+          "17 may 2026",
+          "13,4 km/h",
+          "—",
+          "—",
+          "—",
+          "4:29"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Sam Saunders",
+        "athleteId": "967327",
+        "cells": [
+          "43",
+          "Sam Saunders",
+          "17 may 2026",
+          "13,4 km/h",
+          "173 bpm",
+          "—",
+          "—",
+          "4:29"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Wilmer Torres - ☠️AYAYAY🍻",
+        "athleteId": "40061968",
+        "cells": [
+          "43",
+          "Wilmer Torres - ☠️AYAYAY🍻",
+          "17 may 2026",
+          "13,4 km/h",
+          "173 bpm",
+          "—",
+          "—",
+          "4:29"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Gustavo Oviedo",
+        "athleteId": "101498030",
+        "cells": [
+          "46",
+          "Gustavo Oviedo",
+          "17 may 2026",
+          "13,3 km/h",
+          "121 bpm",
+          "—",
+          "—",
+          "4:31"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Elvio Rodriguez",
+        "athleteId": "64994630",
+        "cells": [
+          "47",
+          "Elvio Rodriguez",
+          "17 may 2026",
+          "13,2 km/h",
+          "—",
+          "—",
+          "—",
+          "4:32"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Franco Zeballos Team Mitocondria",
+        "athleteId": "22039047",
+        "cells": [
+          "48",
+          "Franco Zeballos Team Mitocondria",
+          "9 may 2026",
+          "13,2 km/h",
+          "157 bpm",
+          "—",
+          "—",
+          "4:33"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "HUSSEIN ISAAC HUAYHUA ALARCON",
+        "athleteId": "115670753",
+        "cells": [
+          "49",
+          "HUSSEIN ISAAC HUAYHUA ALARCON",
+          "10 may 2026",
+          "13,2 km/h",
+          "—",
+          "—",
+          "—",
+          "4:34"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "James P. Chávez",
+        "athleteId": "91920372",
+        "cells": [
+          "49",
+          "James P. Chávez",
+          "17 may 2026",
+          "13,2 km/h",
+          "164 bpm",
+          "—",
+          "—",
+          "4:34"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+        "athleteId": "95720970",
+        "cells": [
+          "49",
+          "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+          "17 may 2026",
+          "13,2 km/h",
+          "—",
+          "—",
+          "—",
+          "4:34"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Juan Jose Alvarez Martinez",
+        "athleteId": "87735600",
+        "cells": [
+          "52",
+          "Juan Jose Alvarez Martinez",
+          "17 ene 2026",
+          "13,1 km/h",
+          "—",
+          "—",
+          "—",
+          "4:36"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Miguel Medina",
+        "athleteId": "50566781",
+        "cells": [
+          "52",
+          "Miguel Medina",
+          "17 may 2026",
+          "13,1 km/h",
+          "179 bpm",
+          "—",
+          "—",
+          "4:36"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Peter Ura",
+        "athleteId": "32247520",
+        "cells": [
+          "52",
+          "Peter Ura",
+          "17 may 2026",
+          "13,1 km/h",
+          "—",
+          "—",
+          "—",
+          "4:36"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Alessandro Valdivia",
+        "athleteId": "168781728",
+        "cells": [
+          "55",
+          "Alessandro Valdivia",
+          "3 may 2026",
+          "13,0 km/h",
+          "—",
+          "—",
+          "—",
+          "4:38"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Hector Farfán Zárate",
+        "athleteId": "36990578",
+        "cells": [
+          "55",
+          "Hector Farfán Zárate",
+          "14 may 2026",
+          "13,0 km/h",
+          "—",
+          "—",
+          "—",
+          "4:38"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Angel Ojeda",
+        "athleteId": "42619598",
+        "cells": [
+          "55",
+          "Angel Ojeda",
+          "17 may 2026",
+          "13,0 km/h",
+          "173 bpm",
+          "—",
+          "—",
+          "4:38"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Shamner Yoel Huamani",
+        "athleteId": "149557586",
+        "cells": [
+          "58",
+          "Shamner Yoel Huamani",
+          "22 abr 2026",
+          "12,9 km/h",
+          "—",
+          "—",
+          "—",
+          "4:40"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Willard Hector",
+        "athleteId": "26123874",
+        "cells": [
+          "58",
+          "Willard Hector",
+          "26 abr 2026",
+          "12,9 km/h",
+          "80 bpm",
+          "—",
+          "—",
+          "4:40"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "David Revilla",
+        "athleteId": "19872377",
+        "cells": [
+          "60",
+          "David Revilla",
+          "8 ago 2026",
+          "12,8 km/h",
+          "—",
+          "—",
+          "—",
+          "4:41"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "David Condori",
+        "athleteId": "137888527",
+        "cells": [
+          "61",
+          "David Condori",
+          "10 may 2026",
+          "12,8 km/h",
+          "174 bpm",
+          "—",
+          "—",
+          "4:42"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Karlo HM",
+        "athleteId": "142917839",
+        "cells": [
+          "61",
+          "Karlo HM",
+          "17 may 2026",
+          "12,8 km/h",
+          "164 bpm",
+          "—",
+          "—",
+          "4:42"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Nestor Ccapa Taquima",
+        "athleteId": "62626964",
+        "cells": [
+          "63",
+          "Nestor Ccapa Taquima",
+          "10 may 2026",
+          "12,7 km/h",
+          "—",
+          "—",
+          "—",
+          "4:43"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jimy Monyers Parada Hernandez",
+        "athleteId": "70955149",
+        "cells": [
+          "63",
+          "Jimy Monyers Parada Hernandez",
+          "17 may 2026",
+          "12,7 km/h",
+          "—",
+          "—",
+          "—",
+          "4:43"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Andre Zarate Torres",
+        "athleteId": "96874200",
+        "cells": [
+          "65",
+          "Andre Zarate Torres",
+          "17 may 2026",
+          "12,5 km/h",
+          "—",
+          "—",
+          "—",
+          "4:48"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Galante CR",
+        "athleteId": "111951831",
+        "cells": [
+          "66",
+          "Galante CR",
+          "10 may 2026",
+          "12,5 km/h",
+          "53 bpm",
+          "—",
+          "—",
+          "4:49"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Carlos Alonso",
+        "athleteId": "81449554",
+        "cells": [
+          "66",
+          "Carlos Alonso",
+          "17 may 2026",
+          "12,5 km/h",
+          "185 bpm",
+          "—",
+          "—",
+          "4:49"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "El Jacho 🇵🇪",
+        "athleteId": "97148928",
+        "cells": [
+          "66",
+          "El Jacho 🇵🇪",
+          "17 may 2026",
+          "12,5 km/h",
+          "—",
+          "—",
+          "—",
+          "4:49"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Luis Alberto Lipe Mamani",
+        "athleteId": "85628399",
+        "cells": [
+          "69",
+          "Luis Alberto Lipe Mamani",
+          "10 may 2026",
+          "12,4 km/h",
+          "—",
+          "—",
+          "—",
+          "4:50"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Gustavo Adolfo Jose Rodriguez Quijada",
+        "athleteId": "202900665",
+        "cells": [
+          "69",
+          "Gustavo Adolfo Jose Rodriguez Quijada",
+          "28 jun 2026",
+          "12,4 km/h",
+          "—",
+          "—",
+          "—",
+          "4:50"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Hideki Core",
+        "athleteId": "189618237",
+        "cells": [
+          "71",
+          "Hideki Core",
+          "10 may 2026",
+          "12,3 km/h",
+          "—",
+          "—",
+          "—",
+          "4:52"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José Alonso Torres Vásquez",
+        "athleteId": "90733391",
+        "cells": [
+          "71",
+          "José Alonso Torres Vásquez",
+          "17 may 2026",
+          "12,3 km/h",
+          "—",
+          "—",
+          "—",
+          "4:52"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José BC",
+        "athleteId": "37330554",
+        "cells": [
+          "73",
+          "José BC",
+          "17 may 2026",
+          "12,2 km/h",
+          "161 bpm",
+          "—",
+          "—",
+          "4:56"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Ricardo Cornejo Ballon",
+        "athleteId": "80739736",
+        "cells": [
+          "73",
+          "Ricardo Cornejo Ballon",
+          "6 jun 2026",
+          "12,2 km/h",
+          "149 bpm",
+          "—",
+          "—",
+          "4:56"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Cesar Falla Villena 🇵🇪😎",
+        "athleteId": "74352219",
+        "cells": [
+          "75",
+          "Cesar Falla Villena 🇵🇪😎",
+          "17 may 2026",
+          "12,1 km/h",
+          "196 bpm",
+          "—",
+          "—",
+          "4:57"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Claudio Sánchez Estremadoyro",
+        "athleteId": "69062899",
+        "cells": [
+          "76",
+          "Claudio Sánchez Estremadoyro",
+          "17 may 2026",
+          "12,0 km/h",
+          "191 bpm",
+          "280 W",
+          "—",
+          "5:00"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jesus Huamantuna Granda",
+        "athleteId": "133516778",
+        "cells": [
+          "77",
+          "Jesus Huamantuna Granda",
+          "17 may 2026",
+          "12,0 km/h",
+          "177 bpm",
+          "—",
+          "—",
+          "5:01"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Edgar MC",
+        "athleteId": "90743101",
+        "cells": [
+          "78",
+          "Edgar MC",
+          "8 may 2026",
+          "11,9 km/h",
+          "—",
+          "—",
+          "—",
+          "5:02"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Alonso Valeriano",
+        "athleteId": "36696678",
+        "cells": [
+          "79",
+          "Alonso Valeriano",
+          "3 may 2026",
+          "11,9 km/h",
+          "163 bpm",
+          "—",
+          "—",
+          "5:03"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Kevin Ramirez alvarez",
+        "athleteId": "160096699",
+        "cells": [
+          "80",
+          "Kevin Ramirez alvarez",
+          "17 may 2026",
+          "11,9 km/h",
+          "—",
+          "—",
+          "—",
+          "5:04"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Élvio Tito casa",
+        "athleteId": "97967335",
+        "cells": [
+          "81",
+          "Élvio Tito casa",
+          "17 may 2026",
+          "11,7 km/h",
+          "188 bpm",
+          "—",
+          "—",
+          "5:07"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Antonio Echegaray",
+        "athleteId": "96785826",
+        "cells": [
+          "82",
+          "Antonio Echegaray",
+          "31 ene 2026",
+          "11,7 km/h",
+          "155 bpm",
+          "—",
+          "—",
+          "5:08"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Marco Raiden Manchego",
+        "athleteId": "46451481",
+        "cells": [
+          "83",
+          "Marco Raiden Manchego",
+          "9 abr 2026",
+          "11,7 km/h",
+          "—",
+          "—",
+          "—",
+          "5:09"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Elmer Zamora",
+        "athleteId": "107077437",
+        "cells": [
+          "83",
+          "Elmer Zamora",
+          "17 may 2026",
+          "11,7 km/h",
+          "—",
+          "—",
+          "—",
+          "5:09"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "José Alonso C Ch",
+        "athleteId": "69036578",
+        "cells": [
+          "83",
+          "José Alonso C Ch",
+          "28 jul 2026",
+          "11,7 km/h",
+          "135 bpm",
+          "198 W",
+          "—",
+          "5:09"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "EL César Riega Herrera",
+        "athleteId": "105859321",
+        "cells": [
+          "86",
+          "EL César Riega Herrera",
+          "12 may 2026",
+          "11,5 km/h",
+          "—",
+          "—",
+          "—",
+          "5:12"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Danuk 🇵🇪 O+",
+        "athleteId": "105121374",
+        "cells": [
+          "86",
+          "Danuk 🇵🇪 O+",
+          "17 may 2026",
+          "11,5 km/h",
+          "170 bpm",
+          "191 W",
+          "—",
+          "5:12"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Henrry CR",
+        "athleteId": "164727375",
+        "cells": [
+          "88",
+          "Henrry CR",
+          "26 abr 2026",
+          "11,5 km/h",
+          "186 bpm",
+          "—",
+          "—",
+          "5:13"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Steve Patiño Zapata",
+        "athleteId": "32324516",
+        "cells": [
+          "89",
+          "Steve Patiño Zapata",
+          "17 may 2026",
+          "11,5 km/h",
+          "82 bpm",
+          "—",
+          "—",
+          "5:14"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Andrés Pinto",
+        "athleteId": "74055130",
+        "cells": [
+          "90",
+          "Andrés Pinto",
+          "26 abr 2026",
+          "11,3 km/h",
+          "169 bpm",
+          "—",
+          "—",
+          "5:19"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Stanley Iptkis",
+        "athleteId": "133435559",
+        "cells": [
+          "91",
+          "Stanley Iptkis",
+          "26 abr 2026",
+          "11,3 km/h",
+          "—",
+          "—",
+          "—",
+          "5:20"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Gabriel Portugal",
+        "athleteId": "68080000",
+        "cells": [
+          "92",
+          "Gabriel Portugal",
+          "17 may 2026",
+          "11,2 km/h",
+          "—",
+          "—",
+          "—",
+          "5:21"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Alejandro Valcarcel",
+        "athleteId": "155589561",
+        "cells": [
+          "93",
+          "Alejandro Valcarcel",
+          "17 may 2026",
+          "11,2 km/h",
+          "164 bpm",
+          "—",
+          "—",
+          "5:23"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Helbert Galdos",
+        "athleteId": "12016032",
+        "cells": [
+          "94",
+          "Helbert Galdos",
+          "17 may 2026",
+          "11,1 km/h",
+          "158 bpm",
+          "—",
+          "—",
+          "5:24"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Edison Huanca",
+        "athleteId": "198686416",
+        "cells": [
+          "94",
+          "Edison Huanca",
+          "17 may 2026",
+          "11,1 km/h",
+          "—",
+          "—",
+          "—",
+          "5:24"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Joshua Anderson",
+        "athleteId": "185721902",
+        "cells": [
+          "96",
+          "Joshua Anderson",
+          "9 ago 2026",
+          "11,0 km/h",
+          "—",
+          "—",
+          "—",
+          "5:27"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Marco Raiden Manchego",
+        "athleteId": "16913741",
+        "cells": [
+          "97",
+          "Marco Raiden Manchego",
+          "5 may 2026",
+          "10,9 km/h",
+          "—",
+          "—",
+          "—",
+          "5:32"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Daniel Gutiérrez",
+        "athleteId": "87675495",
+        "cells": [
+          "98",
+          "Daniel Gutiérrez",
+          "17 may 2026",
+          "10,8 km/h",
+          "—",
+          "—",
+          "—",
+          "5:34"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jhonny Zevallos",
+        "athleteId": "108390650",
+        "cells": [
+          "99",
+          "Jhonny Zevallos",
+          "17 may 2026",
+          "10,7 km/h",
+          "—",
+          "—",
+          "—",
+          "5:36"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Diego Sarmiento Gama",
+        "athleteId": "47240410",
+        "cells": [
+          "100",
+          "Diego Sarmiento Gama",
+          "17 may 2026",
+          "10,6 km/h",
+          "—",
+          "—",
+          "—",
+          "5:40"
+        ],
+        "gender": "M",
+        "page": 4
+      }
+    ]
+  },
+  "31227003": {
+    "id": "31227003",
+    "name": "La encalaminadora Quishuarani",
+    "role": "Bajada Reina Kamikazes",
+    "total_extracted": 114,
+    "efforts": [
+      {
+        "athleteName": "Alejandra Caceres",
+        "athleteId": "121615172",
+        "cells": [
+          "",
+          "Alejandra Caceres",
+          "17 may 2026",
+          "35,1 km/h",
+          "—",
+          "—",
+          "4:51"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Johana Mantilla Pinto",
+        "athleteId": "111569421",
+        "cells": [
+          "2",
+          "Johana Mantilla Pinto",
+          "12 jul 2026",
+          "34,3 km/h",
+          "—",
+          "—",
+          "4:58"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Kelicita Aguilar",
+        "athleteId": "44595052",
+        "cells": [
+          "3",
+          "Kelicita Aguilar",
+          "17 may 2026",
+          "33,5 km/h",
+          "159 bpm",
+          "—",
+          "5:05"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Sandra Apaza Nano",
+        "athleteId": "45844049",
+        "cells": [
+          "3",
+          "Sandra Apaza Nano",
+          "17 may 2026",
+          "33,5 km/h",
+          "169 bpm",
+          "—",
+          "5:05"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Cecilia Guillen López",
+        "athleteId": "158379385",
+        "cells": [
+          "5",
+          "Cecilia Guillen López",
+          "17 may 2026",
+          "33,0 km/h",
+          "—",
+          "—",
+          "5:10"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Natali Alvera",
+        "athleteId": "81363813",
+        "cells": [
+          "6",
+          "Natali Alvera",
+          "17 may 2026",
+          "32,5 km/h",
+          "—",
+          "—",
+          "5:15"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Francis Emely Quintanilla Mango",
+        "athleteId": "107200423",
+        "cells": [
+          "7",
+          "Francis Emely Quintanilla Mango",
+          "4 abr 2026",
+          "31,3 km/h",
+          "136 bpm",
+          "—",
+          "5:27"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Y",
+        "athleteId": "75401402",
+        "cells": [
+          "8",
+          "Victoria Y",
+          "17 may 2026",
+          "27,3 km/h",
+          "—",
+          "—",
+          "6:14"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "UL Elvi",
+        "athleteId": "123731993",
+        "cells": [
+          "9",
+          "UL Elvi",
+          "17 may 2026",
+          "26,3 km/h",
+          "—",
+          "—",
+          "6:29"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Cuno",
+        "athleteId": "73922401",
+        "cells": [
+          "10",
+          "Victoria Cuno",
+          "9 ago 2026",
+          "25,0 km/h",
+          "—",
+          "—",
+          "6:49"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "VANIA MANRIQUE CHIRINOS",
+        "athleteId": "111311731",
+        "cells": [
+          "11",
+          "VANIA MANRIQUE CHIRINOS",
+          "14 feb 2026",
+          "24,4 km/h",
+          "—",
+          "—",
+          "6:59"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Carolina Salas Zegarra",
+        "athleteId": "147415832",
+        "cells": [
+          "12",
+          "Carolina Salas Zegarra",
+          "17 may 2026",
+          "23,5 km/h",
+          "—",
+          "—",
+          "7:16"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Vanessa Patiño Puma",
+        "athleteId": "150392274",
+        "cells": [
+          "13",
+          "Vanessa Patiño Puma",
+          "17 may 2026",
+          "22,8 km/h",
+          "—",
+          "—",
+          "7:29"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Irene Alfaro Vizcarra",
+        "athleteId": "44875054",
+        "cells": [
+          "14",
+          "Irene Alfaro Vizcarra",
+          "17 may 2026",
+          "20,8 km/h",
+          "133 bpm",
+          "—",
+          "8:11"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Renato Tapia Landa",
+        "athleteId": "45711207",
+        "cells": [
+          "",
+          "Renato Tapia Landa",
+          "27 ene 2026",
+          "46,7 km/h",
+          "—",
+          "278 W",
+          "3:39"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alonso Gamero Zuñiga",
+        "athleteId": "42924643",
+        "cells": [
+          "2",
+          "Alonso Gamero Zuñiga",
+          "27 ene 2026",
+          "46,5 km/h",
+          "102 bpm",
+          "133 W",
+          "3:40"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Christopher Portugal",
+        "athleteId": "3759660",
+        "cells": [
+          "3",
+          "Christopher Portugal",
+          "27 ene 2026",
+          "46,3 km/h",
+          "117 bpm",
+          "168 W",
+          "3:41"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jorge Reynoso Simoni",
+        "athleteId": "19558436",
+        "cells": [
+          "4",
+          "Jorge Reynoso Simoni",
+          "19 abr 2026",
+          "45,3 km/h",
+          "125 bpm",
+          "174 W",
+          "3:46"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Charles Morfy Gonzales Gonzales",
+        "athleteId": "64206931",
+        "cells": [
+          "5",
+          "Charles Morfy Gonzales Gonzales",
+          "17 may 2026",
+          "45,1 km/h",
+          "—",
+          "—",
+          "3:47"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Ronald Luza",
+        "athleteId": "26160379",
+        "cells": [
+          "6",
+          "Ronald Luza",
+          "17 may 2026",
+          "44,9 km/h",
+          "153 bpm",
+          "—",
+          "3:48"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Rodrigo Sanchez Huayta",
+        "athleteId": "45273647",
+        "cells": [
+          "6",
+          "Rodrigo Sanchez Huayta",
+          "17 may 2026",
+          "44,9 km/h",
+          "—",
+          "—",
+          "3:48"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alexis TANTANI",
+        "athleteId": "39245919",
+        "cells": [
+          "8",
+          "Alexis TANTANI",
+          "17 may 2026",
+          "44,7 km/h",
+          "152 bpm",
+          "—",
+          "3:49"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Alfredo Reynoso Simoni",
+        "athleteId": "19145880",
+        "cells": [
+          "9",
+          "Jose Alfredo Reynoso Simoni",
+          "17 may 2026",
+          "43,9 km/h",
+          "—",
+          "—",
+          "3:53"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Franco Benjamin",
+        "athleteId": "50445704",
+        "cells": [
+          "10",
+          "Franco Benjamin",
+          "2 may 2026",
+          "43,7 km/h",
+          "161 bpm",
+          "144 W",
+          "3:54"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Cardenas",
+        "athleteId": "61269264",
+        "cells": [
+          "10",
+          "Oscar Cardenas",
+          "17 may 2026",
+          "43,7 km/h",
+          "157 bpm",
+          "—",
+          "3:54"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Osmar Velasquez Ticona - ☠️AYAYAY🍺",
+        "athleteId": "22176721",
+        "cells": [
+          "10",
+          "Osmar Velasquez Ticona - ☠️AYAYAY🍺",
+          "23 may 2026",
+          "43,7 km/h",
+          "119 bpm",
+          "125 W",
+          "3:54"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Ricardo Cornejo Ballon",
+        "athleteId": "80739736",
+        "cells": [
+          "13",
+          "Ricardo Cornejo Ballon",
+          "19 abr 2026",
+          "43,3 km/h",
+          "148 bpm",
+          "207 W",
+          "3:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Yeison Zeballos",
+        "athleteId": "37298291",
+        "cells": [
+          "13",
+          "Yeison Zeballos",
+          "17 may 2026",
+          "43,3 km/h",
+          "238 bpm",
+          "203 W",
+          "3:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Silvio Ancco",
+        "athleteId": "47287486",
+        "cells": [
+          "13",
+          "Silvio Ancco",
+          "17 may 2026",
+          "43,3 km/h",
+          "—",
+          "—",
+          "3:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Brener Valencia",
+        "athleteId": "25497395",
+        "cells": [
+          "13",
+          "Brener Valencia",
+          "26 sept 2026",
+          "43,3 km/h",
+          "137 bpm",
+          "163 W",
+          "3:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Yoel Chara",
+        "athleteId": "90316231",
+        "cells": [
+          "17",
+          "Yoel Chara",
+          "10 may 2026",
+          "43,2 km/h",
+          "171 bpm",
+          "—",
+          "3:57"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Niltom Flores",
+        "athleteId": "82544897",
+        "cells": [
+          "17",
+          "Niltom Flores",
+          "17 may 2026",
+          "43,2 km/h",
+          "—",
+          "—",
+          "3:57"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Elioyufre V",
+        "athleteId": "102368610",
+        "cells": [
+          "17",
+          "Elioyufre V",
+          "12 ago 2026",
+          "43,2 km/h",
+          "167 bpm",
+          "—",
+          "3:57"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "AnTon RamSak",
+        "athleteId": "142294242",
+        "cells": [
+          "20",
+          "AnTon RamSak",
+          "17 may 2026",
+          "42,8 km/h",
+          "—",
+          "—",
+          "3:59"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "deyviss sasari",
+        "athleteId": "142926004",
+        "cells": [
+          "20",
+          "deyviss sasari",
+          "17 may 2026",
+          "42,8 km/h",
+          "170 bpm",
+          "—",
+          "3:59"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "David Condori",
+        "athleteId": "137888527",
+        "cells": [
+          "22",
+          "David Condori",
+          "10 may 2026",
+          "42,3 km/h",
+          "169 bpm",
+          "—",
+          "4:02"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Juan Jose Alvarez Martinez",
+        "athleteId": "87735600",
+        "cells": [
+          "22",
+          "Juan Jose Alvarez Martinez",
+          "17 may 2026",
+          "42,3 km/h",
+          "—",
+          "—",
+          "4:02"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Maque",
+        "athleteId": "82560760",
+        "cells": [
+          "22",
+          "Jose Maque",
+          "17 may 2026",
+          "42,3 km/h",
+          "—",
+          "—",
+          "4:02"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Gonzalo Málaga",
+        "athleteId": "21126267",
+        "cells": [
+          "25",
+          "Gonzalo Málaga",
+          "17 may 2026",
+          "42,1 km/h",
+          "161 bpm",
+          "135 W",
+          "4:03"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Giovanni Chávez-Velando R.",
+        "athleteId": "71867960",
+        "cells": [
+          "26",
+          "Giovanni Chávez-Velando R.",
+          "17 may 2026",
+          "41,6 km/h",
+          "166 bpm",
+          "—",
+          "4:06"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jonathan Chavez Lopez",
+        "athleteId": "117889959",
+        "cells": [
+          "27",
+          "Jonathan Chavez Lopez",
+          "3 may 2026",
+          "41,4 km/h",
+          "158 bpm",
+          "—",
+          "4:07"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Hideki Core",
+        "athleteId": "189618237",
+        "cells": [
+          "27",
+          "Hideki Core",
+          "10 may 2026",
+          "41,4 km/h",
+          "—",
+          "—",
+          "4:07"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Hayler Shiru Luján 🐲",
+        "athleteId": "28667906",
+        "cells": [
+          "29",
+          "Hayler Shiru Luján 🐲",
+          "17 may 2026",
+          "41,2 km/h",
+          "153 bpm",
+          "—",
+          "4:08"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Edilson Ccahua",
+        "athleteId": "112878037",
+        "cells": [
+          "30",
+          "Edilson Ccahua",
+          "2 may 2026",
+          "41,1 km/h",
+          "154 bpm",
+          "—",
+          "4:09"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Angel Ojeda",
+        "athleteId": "42619598",
+        "cells": [
+          "30",
+          "Angel Ojeda",
+          "17 may 2026",
+          "41,1 km/h",
+          "164 bpm",
+          "—",
+          "4:09"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Claudio Sánchez Estremadoyro",
+        "athleteId": "69062899",
+        "cells": [
+          "30",
+          "Claudio Sánchez Estremadoyro",
+          "17 may 2026",
+          "41,1 km/h",
+          "176 bpm",
+          "189 W",
+          "4:09"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Gustavo Oviedo",
+        "athleteId": "101498030",
+        "cells": [
+          "33",
+          "Gustavo Oviedo",
+          "17 may 2026",
+          "40,9 km/h",
+          "121 bpm",
+          "—",
+          "4:10"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Aldo Peña",
+        "athleteId": "21836611",
+        "cells": [
+          "33",
+          "Aldo Peña",
+          "17 may 2026",
+          "40,9 km/h",
+          "—",
+          "—",
+          "4:10"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Persy roque",
+        "athleteId": "158622847",
+        "cells": [
+          "33",
+          "Persy roque",
+          "17 may 2026",
+          "40,9 km/h",
+          "—",
+          "—",
+          "4:10"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Carlos Alonso",
+        "athleteId": "81449554",
+        "cells": [
+          "36",
+          "Carlos Alonso",
+          "14 may 2026",
+          "40,7 km/h",
+          "162 bpm",
+          "—",
+          "4:11"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Anthony Chuctaya",
+        "athleteId": "118418797",
+        "cells": [
+          "37",
+          "Anthony Chuctaya",
+          "17 may 2026",
+          "40,6 km/h",
+          "—",
+          "—",
+          "4:12"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Reyner Bellido Fuentes",
+        "athleteId": "201873139",
+        "cells": [
+          "37",
+          "Reyner Bellido Fuentes",
+          "17 may 2026",
+          "40,6 km/h",
+          "—",
+          "—",
+          "4:12"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "rudy Quirita Florez",
+        "athleteId": "102898258",
+        "cells": [
+          "37",
+          "rudy Quirita Florez",
+          "17 may 2026",
+          "40,6 km/h",
+          "157 bpm",
+          "—",
+          "4:12"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Bruno Salinas",
+        "athleteId": "6616801",
+        "cells": [
+          "40",
+          "Bruno Salinas",
+          "27 jun 2026",
+          "40,3 km/h",
+          "128 bpm",
+          "—",
+          "4:14"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Ale Noemi",
+        "athleteId": "1352025",
+        "cells": [
+          "40",
+          "Ale Noemi",
+          "15 ago 2026",
+          "40,3 km/h",
+          "120 bpm",
+          "165 W",
+          "4:14"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "HUSSEIN ISAAC HUAYHUA ALARCON",
+        "athleteId": "115670753",
+        "cells": [
+          "42",
+          "HUSSEIN ISAAC HUAYHUA ALARCON",
+          "10 may 2026",
+          "40,1 km/h",
+          "—",
+          "—",
+          "4:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Norman Peña",
+        "athleteId": "16571987",
+        "cells": [
+          "42",
+          "Norman Peña",
+          "17 may 2026",
+          "40,1 km/h",
+          "—",
+          "—",
+          "4:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Peter Ura",
+        "athleteId": "32247520",
+        "cells": [
+          "42",
+          "Peter Ura",
+          "17 may 2026",
+          "40,1 km/h",
+          "—",
+          "—",
+          "4:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Oscar Ccolque",
+        "athleteId": "130975933",
+        "cells": [
+          "42",
+          "Oscar Ccolque",
+          "17 may 2026",
+          "40,1 km/h",
+          "—",
+          "—",
+          "4:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Juan Agustín Fernández Santos",
+        "athleteId": "89660988",
+        "cells": [
+          "46",
+          "Juan Agustín Fernández Santos",
+          "17 may 2026",
+          "39,8 km/h",
+          "175 bpm",
+          "—",
+          "4:17"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Victor Alfonso Jiménez",
+        "athleteId": "100858538",
+        "cells": [
+          "47",
+          "Victor Alfonso Jiménez",
+          "15 ene 2026",
+          "39,5 km/h",
+          "—",
+          "—",
+          "4:19"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Líder roberto Cruz solis",
+        "athleteId": "88520604",
+        "cells": [
+          "48",
+          "Líder roberto Cruz solis",
+          "19 abr 2026",
+          "39,0 km/h",
+          "—",
+          "—",
+          "4:22"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Xtiam Ojeda Valenzuela",
+        "athleteId": "78295279",
+        "cells": [
+          "49",
+          "Xtiam Ojeda Valenzuela",
+          "17 may 2026",
+          "38,7 km/h",
+          "—",
+          "—",
+          "4:24"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Pablo Maldonado Paredes",
+        "athleteId": "7693887",
+        "cells": [
+          "50",
+          "Pablo Maldonado Paredes",
+          "7 mar 2026",
+          "38,3 km/h",
+          "103 bpm",
+          "70 W",
+          "4:27"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Angel Chambi Mamani 😇",
+        "athleteId": "20506529",
+        "cells": [
+          "50",
+          "Angel Chambi Mamani 😇",
+          "17 may 2026",
+          "38,3 km/h",
+          "168 bpm",
+          "—",
+          "4:27"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Kevin Ramirez alvarez",
+        "athleteId": "160096699",
+        "cells": [
+          "50",
+          "Kevin Ramirez alvarez",
+          "17 may 2026",
+          "38,3 km/h",
+          "—",
+          "—",
+          "4:27"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Luis Alberto Lipe Mamani",
+        "athleteId": "85628399",
+        "cells": [
+          "53",
+          "Luis Alberto Lipe Mamani",
+          "10 may 2026",
+          "38,2 km/h",
+          "—",
+          "—",
+          "4:28"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Ledú Apaza",
+        "athleteId": "102661755",
+        "cells": [
+          "53",
+          "Ledú Apaza",
+          "10 may 2026",
+          "38,2 km/h",
+          "—",
+          "—",
+          "4:28"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Wilmer Torres - ☠️AYAYAY🍻",
+        "athleteId": "40061968",
+        "cells": [
+          "55",
+          "Wilmer Torres - ☠️AYAYAY🍻",
+          "17 may 2026",
+          "38,0 km/h",
+          "156 bpm",
+          "—",
+          "4:29"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Elvio Rodriguez",
+        "athleteId": "64994630",
+        "cells": [
+          "56",
+          "Elvio Rodriguez",
+          "17 may 2026",
+          "37,9 km/h",
+          "—",
+          "—",
+          "4:30"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "El Jacho 🇵🇪",
+        "athleteId": "97148928",
+        "cells": [
+          "56",
+          "El Jacho 🇵🇪",
+          "17 may 2026",
+          "37,9 km/h",
+          "—",
+          "—",
+          "4:30"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Danuk 🇵🇪 O+",
+        "athleteId": "105121374",
+        "cells": [
+          "58",
+          "Danuk 🇵🇪 O+",
+          "17 may 2026",
+          "37,7 km/h",
+          "161 bpm",
+          "117 W",
+          "4:31"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Brandon Jossehp Quispe Zarate",
+        "athleteId": "136655386",
+        "cells": [
+          "59",
+          "Brandon Jossehp Quispe Zarate",
+          "17 may 2026",
+          "37,6 km/h",
+          "—",
+          "—",
+          "4:32"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Santiago AO",
+        "athleteId": "78665759",
+        "cells": [
+          "59",
+          "Santiago AO",
+          "17 may 2026",
+          "37,6 km/h",
+          "—",
+          "—",
+          "4:32"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+        "athleteId": "95720970",
+        "cells": [
+          "61",
+          "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+          "17 may 2026",
+          "37,5 km/h",
+          "—",
+          "—",
+          "4:33"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Kevin Chavez",
+        "athleteId": "20591991",
+        "cells": [
+          "61",
+          "Kevin Chavez",
+          "17 may 2026",
+          "37,5 km/h",
+          "—",
+          "—",
+          "4:33"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Le Pox",
+        "athleteId": "100721316",
+        "cells": [
+          "61",
+          "Le Pox",
+          "11 jul 2026",
+          "37,5 km/h",
+          "—",
+          "—",
+          "4:33"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jorge Gamero",
+        "athleteId": "28822463",
+        "cells": [
+          "64",
+          "Jorge Gamero",
+          "17 may 2026",
+          "37,2 km/h",
+          "—",
+          "—",
+          "4:35"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Aly Champi Quispe",
+        "athleteId": "69974828",
+        "cells": [
+          "65",
+          "Aly Champi Quispe",
+          "17 may 2026",
+          "37,1 km/h",
+          "163 bpm",
+          "—",
+          "4:36"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "EL César Riega Herrera",
+        "athleteId": "105859321",
+        "cells": [
+          "66",
+          "EL César Riega Herrera",
+          "12 may 2026",
+          "36,9 km/h",
+          "—",
+          "—",
+          "4:37"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José BC",
+        "athleteId": "37330554",
+        "cells": [
+          "67",
+          "José BC",
+          "17 may 2026",
+          "36,8 km/h",
+          "154 bpm",
+          "—",
+          "4:38"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Cesar Falla Villena 🇵🇪😎",
+        "athleteId": "74352219",
+        "cells": [
+          "67",
+          "Cesar Falla Villena 🇵🇪😎",
+          "17 may 2026",
+          "36,8 km/h",
+          "181 bpm",
+          "—",
+          "4:38"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jorge Luis Coaquira mamani",
+        "athleteId": "853071462",
+        "cells": [
+          "69",
+          "Jorge Luis Coaquira mamani",
+          "26 abr 2026",
+          "36,7 km/h",
+          "—",
+          "—",
+          "4:39"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Mauricio Gonzales Castro",
+        "athleteId": "18358209",
+        "cells": [
+          "69",
+          "Mauricio Gonzales Castro",
+          "17 may 2026",
+          "36,7 km/h",
+          "170 bpm",
+          "—",
+          "4:39"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José Alonso Torres Vásquez",
+        "athleteId": "90733391",
+        "cells": [
+          "69",
+          "José Alonso Torres Vásquez",
+          "17 may 2026",
+          "36,7 km/h",
+          "—",
+          "—",
+          "4:39"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "jhonatan echevarria tapia",
+        "athleteId": "38528595",
+        "cells": [
+          "72",
+          "jhonatan echevarria tapia",
+          "17 may 2026",
+          "36,5 km/h",
+          "155 bpm",
+          "—",
+          "4:40"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Marcos El Pastor",
+        "athleteId": "135641565",
+        "cells": [
+          "73",
+          "Marcos El Pastor",
+          "15 feb 2026",
+          "36,3 km/h",
+          "—",
+          "—",
+          "4:42"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Manuel Torres",
+        "athleteId": "16863189",
+        "cells": [
+          "74",
+          "Manuel Torres",
+          "17 may 2026",
+          "36,1 km/h",
+          "149 bpm",
+          "56 W",
+          "4:43"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Paúl Castillo",
+        "athleteId": "76287744",
+        "cells": [
+          "75",
+          "Paúl Castillo",
+          "17 may 2026",
+          "35,9 km/h",
+          "—",
+          "—",
+          "4:45"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Gero GQM",
+        "athleteId": "164298379",
+        "cells": [
+          "75",
+          "Gero GQM",
+          "17 may 2026",
+          "35,9 km/h",
+          "—",
+          "—",
+          "4:45"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Daniel Salas",
+        "athleteId": "104666266",
+        "cells": [
+          "77",
+          "Daniel Salas",
+          "26 abr 2026",
+          "35,8 km/h",
+          "157 bpm",
+          "—",
+          "4:46"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "James P. Chávez",
+        "athleteId": "91920372",
+        "cells": [
+          "77",
+          "James P. Chávez",
+          "9 may 2026",
+          "35,8 km/h",
+          "127 bpm",
+          "—",
+          "4:46"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Miguel Medina",
+        "athleteId": "50566781",
+        "cells": [
+          "77",
+          "Miguel Medina",
+          "17 may 2026",
+          "35,8 km/h",
+          "171 bpm",
+          "—",
+          "4:46"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jesus Huamantuna Granda",
+        "athleteId": "133516778",
+        "cells": [
+          "80",
+          "Jesus Huamantuna Granda",
+          "17 may 2026",
+          "35,6 km/h",
+          "173 bpm",
+          "—",
+          "4:47"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "GONZALO Malaga Muñoz",
+        "athleteId": "65490484",
+        "cells": [
+          "81",
+          "GONZALO Malaga Muñoz",
+          "11 abr 2026",
+          "35,5 km/h",
+          "—",
+          "—",
+          "4:48"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Élvio Tito casa",
+        "athleteId": "97967335",
+        "cells": [
+          "81",
+          "Élvio Tito casa",
+          "17 may 2026",
+          "35,5 km/h",
+          "165 bpm",
+          "—",
+          "4:48"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Renzo Paredes",
+        "athleteId": "73974513",
+        "cells": [
+          "83",
+          "Renzo Paredes",
+          "17 may 2026",
+          "35,3 km/h",
+          "—",
+          "—",
+          "4:50"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Anthony Pauca",
+        "athleteId": "74025436",
+        "cells": [
+          "84",
+          "Anthony Pauca",
+          "16 ene 2026",
+          "35,1 km/h",
+          "—",
+          "—",
+          "4:51"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Karlo HM",
+        "athleteId": "142917839",
+        "cells": [
+          "85",
+          "Karlo HM",
+          "10 may 2026",
+          "34,9 km/h",
+          "129 bpm",
+          "—",
+          "4:53"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Andre Zarate Torres",
+        "athleteId": "96874200",
+        "cells": [
+          "85",
+          "Andre Zarate Torres",
+          "17 may 2026",
+          "34,9 km/h",
+          "—",
+          "—",
+          "4:53"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Adan Meneses",
+        "athleteId": "20671308",
+        "cells": [
+          "87",
+          "Adan Meneses",
+          "17 may 2026",
+          "34,8 km/h",
+          "—",
+          "—",
+          "4:54"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Sam Saunders",
+        "athleteId": "967327",
+        "cells": [
+          "87",
+          "Sam Saunders",
+          "17 may 2026",
+          "34,8 km/h",
+          "163 bpm",
+          "—",
+          "4:54"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Henrry CR",
+        "athleteId": "164727375",
+        "cells": [
+          "89",
+          "Henrry CR",
+          "17 may 2026",
+          "34,7 km/h",
+          "182 bpm",
+          "—",
+          "4:55"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Helbert Galdos",
+        "athleteId": "12016032",
+        "cells": [
+          "90",
+          "Helbert Galdos",
+          "17 may 2026",
+          "34,4 km/h",
+          "154 bpm",
+          "—",
+          "4:57"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Geanmarco Ochoa Garcia",
+        "athleteId": "140235281",
+        "cells": [
+          "91",
+          "Geanmarco Ochoa Garcia",
+          "5 mar 2026",
+          "34,3 km/h",
+          "134 bpm",
+          "—",
+          "4:58"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Diego Sarmiento Gama",
+        "athleteId": "47240410",
+        "cells": [
+          "92",
+          "Diego Sarmiento Gama",
+          "17 may 2026",
+          "34,1 km/h",
+          "—",
+          "—",
+          "5:00"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jhonny Zevallos",
+        "athleteId": "108390650",
+        "cells": [
+          "92",
+          "Jhonny Zevallos",
+          "17 may 2026",
+          "34,1 km/h",
+          "—",
+          "—",
+          "5:00"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Edison Huanca",
+        "athleteId": "198686416",
+        "cells": [
+          "94",
+          "Edison Huanca",
+          "17 may 2026",
+          "34,0 km/h",
+          "—",
+          "—",
+          "5:01"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jose Valverde Paredes",
+        "athleteId": "62556119",
+        "cells": [
+          "94",
+          "Jose Valverde Paredes",
+          "9 jul 2026",
+          "34,0 km/h",
+          "—",
+          "36 W",
+          "5:01"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Hans Niño de Guzman",
+        "athleteId": "7693419",
+        "cells": [
+          "96",
+          "Hans Niño de Guzman",
+          "3 may 2026",
+          "33,9 km/h",
+          "107 bpm",
+          "—",
+          "5:02"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jean Ortega Luna",
+        "athleteId": "58854315",
+        "cells": [
+          "97",
+          "Jean Ortega Luna",
+          "15 feb 2026",
+          "33,8 km/h",
+          "—",
+          "—",
+          "5:03"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jimy Monyers Parada Hernandez",
+        "athleteId": "70955149",
+        "cells": [
+          "98",
+          "Jimy Monyers Parada Hernandez",
+          "17 may 2026",
+          "33,5 km/h",
+          "—",
+          "—",
+          "5:05"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Alonzo Rubattino Salomon",
+        "athleteId": "7383894",
+        "cells": [
+          "99",
+          "Alonzo Rubattino Salomon",
+          "14 feb 2026",
+          "33,2 km/h",
+          "113 bpm",
+          "—",
+          "5:08"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Enrique Fernandez",
+        "athleteId": "37596460",
+        "cells": [
+          "100",
+          "Enrique Fernandez",
+          "17 may 2026",
+          "33,0 km/h",
+          "146 bpm",
+          "—",
+          "5:10"
+        ],
+        "gender": "M",
+        "page": 4
+      }
+    ]
+  },
+  "30612243": {
+    "id": "30612243",
+    "name": "A la Joya",
+    "role": "Gran Bajada",
+    "total_extracted": 113,
+    "efforts": [
+      {
+        "athleteName": "Johana Mantilla Pinto",
+        "athleteId": "111569421",
+        "cells": [
+          "",
+          "Johana Mantilla Pinto",
+          "3 may 2026",
+          "31,8 km/h",
+          "154 bpm",
+          "—",
+          "10:23"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Alejandra Caceres",
+        "athleteId": "121615172",
+        "cells": [
+          "2",
+          "Alejandra Caceres",
+          "17 may 2026",
+          "28,9 km/h",
+          "—",
+          "—",
+          "11:26"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Kelicita Aguilar",
+        "athleteId": "44595052",
+        "cells": [
+          "3",
+          "Kelicita Aguilar",
+          "17 may 2026",
+          "27,6 km/h",
+          "167 bpm",
+          "—",
+          "11:58"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Sandra Apaza Nano",
+        "athleteId": "45844049",
+        "cells": [
+          "4",
+          "Sandra Apaza Nano",
+          "17 may 2026",
+          "26,1 km/h",
+          "168 bpm",
+          "—",
+          "12:39"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Cecilia Guillen López",
+        "athleteId": "158379385",
+        "cells": [
+          "5",
+          "Cecilia Guillen López",
+          "17 may 2026",
+          "25,0 km/h",
+          "—",
+          "—",
+          "13:15"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Milagros Talavera",
+        "athleteId": "115876516",
+        "cells": [
+          "6",
+          "Milagros Talavera",
+          "3 may 2026",
+          "24,0 km/h",
+          "—",
+          "—",
+          "13:47"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Carolina Salas Zegarra",
+        "athleteId": "147415832",
+        "cells": [
+          "7",
+          "Carolina Salas Zegarra",
+          "17 may 2026",
+          "23,1 km/h",
+          "—",
+          "—",
+          "14:19"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Natali Alvera",
+        "athleteId": "81363813",
+        "cells": [
+          "8",
+          "Natali Alvera",
+          "17 may 2026",
+          "22,9 km/h",
+          "—",
+          "—",
+          "14:27"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "UL Elvi",
+        "athleteId": "123731993",
+        "cells": [
+          "9",
+          "UL Elvi",
+          "17 may 2026",
+          "22,5 km/h",
+          "—",
+          "—",
+          "14:42"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Y",
+        "athleteId": "75401402",
+        "cells": [
+          "10",
+          "Victoria Y",
+          "17 may 2026",
+          "21,4 km/h",
+          "—",
+          "—",
+          "15:26"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Irene Alfaro Vizcarra",
+        "athleteId": "44875054",
+        "cells": [
+          "11",
+          "Irene Alfaro Vizcarra",
+          "17 may 2026",
+          "18,0 km/h",
+          "143 bpm",
+          "—",
+          "18:25"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Vanessa Patiño Puma",
+        "athleteId": "150392274",
+        "cells": [
+          "12",
+          "Vanessa Patiño Puma",
+          "17 may 2026",
+          "16,2 km/h",
+          "—",
+          "—",
+          "20:23"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Francis Emely Quintanilla Mango",
+        "athleteId": "107200423",
+        "cells": [
+          "13",
+          "Francis Emely Quintanilla Mango",
+          "4 abr 2026",
+          "13,9 km/h",
+          "107 bpm",
+          "—",
+          "23:43"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Yeison Zeballos",
+        "athleteId": "37298291",
+        "cells": [
+          "",
+          "Yeison Zeballos",
+          "8 ago 2026",
+          "40,5 km/h",
+          "151 bpm",
+          "202 W",
+          "8:10"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alonso Gamero Zuñiga",
+        "athleteId": "42924643",
+        "cells": [
+          "2",
+          "Alonso Gamero Zuñiga",
+          "25 abr 2026",
+          "39,5 km/h",
+          "—",
+          "—",
+          "8:22"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Elioyufre V",
+        "athleteId": "102368610",
+        "cells": [
+          "3",
+          "Elioyufre V",
+          "12 ago 2026",
+          "39,4 km/h",
+          "160 bpm",
+          "—",
+          "8:23"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Ronald Luza",
+        "athleteId": "26160379",
+        "cells": [
+          "4",
+          "Ronald Luza",
+          "17 may 2026",
+          "38,2 km/h",
+          "162 bpm",
+          "—",
+          "8:40"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Rodrigo Sanchez Huayta",
+        "athleteId": "45273647",
+        "cells": [
+          "5",
+          "Rodrigo Sanchez Huayta",
+          "17 may 2026",
+          "37,5 km/h",
+          "—",
+          "—",
+          "8:49"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alexis TANTANI",
+        "athleteId": "39245919",
+        "cells": [
+          "6",
+          "Alexis TANTANI",
+          "17 may 2026",
+          "37,4 km/h",
+          "165 bpm",
+          "—",
+          "8:50"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Daniel ☠️AYAYAY🍻",
+        "athleteId": "67623171",
+        "cells": [
+          "7",
+          "Jose Daniel ☠️AYAYAY🍻",
+          "28 ago 2026",
+          "37,2 km/h",
+          "128 bpm",
+          "126 W",
+          "8:53"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Hans Niño de Guzman",
+        "athleteId": "7693419",
+        "cells": [
+          "8",
+          "Hans Niño de Guzman",
+          "11 jul 2026",
+          "37,1 km/h",
+          "132 bpm",
+          "—",
+          "8:55"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "deyviss sasari",
+        "athleteId": "142926004",
+        "cells": [
+          "9",
+          "deyviss sasari",
+          "10 may 2026",
+          "37,0 km/h",
+          "155 bpm",
+          "—",
+          "8:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Cardenas",
+        "athleteId": "61269264",
+        "cells": [
+          "9",
+          "Oscar Cardenas",
+          "17 may 2026",
+          "37,0 km/h",
+          "163 bpm",
+          "—",
+          "8:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Silvio Ancco",
+        "athleteId": "47287486",
+        "cells": [
+          "9",
+          "Silvio Ancco",
+          "17 may 2026",
+          "37,0 km/h",
+          "—",
+          "—",
+          "8:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Racer ❌ 🥷🏽",
+        "athleteId": "18042033",
+        "cells": [
+          "9",
+          "Racer ❌ 🥷🏽",
+          "11 jul 2026",
+          "37,0 km/h",
+          "134 bpm",
+          "109 W",
+          "8:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Ricardo Cornejo Ballon",
+        "athleteId": "80739736",
+        "cells": [
+          "13",
+          "Ricardo Cornejo Ballon",
+          "11 jul 2026",
+          "36,9 km/h",
+          "129 bpm",
+          "—",
+          "8:57"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Gonzalo Málaga",
+        "athleteId": "21126267",
+        "cells": [
+          "14",
+          "Gonzalo Málaga",
+          "17 may 2026",
+          "36,9 km/h",
+          "171 bpm",
+          "195 W",
+          "8:58"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Carlos Alonso",
+        "athleteId": "81449554",
+        "cells": [
+          "15",
+          "Carlos Alonso",
+          "14 may 2026",
+          "36,8 km/h",
+          "161 bpm",
+          "—",
+          "8:59"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Niltom Flores",
+        "athleteId": "82544897",
+        "cells": [
+          "16",
+          "Niltom Flores",
+          "2 may 2026",
+          "36,7 km/h",
+          "—",
+          "—",
+          "9:01"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Alfredo Reynoso Simoni",
+        "athleteId": "19145880",
+        "cells": [
+          "16",
+          "Jose Alfredo Reynoso Simoni",
+          "17 may 2026",
+          "36,7 km/h",
+          "—",
+          "—",
+          "9:01"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Hayler Shiru Luján 🐲",
+        "athleteId": "28667906",
+        "cells": [
+          "18",
+          "Hayler Shiru Luján 🐲",
+          "17 may 2026",
+          "36,5 km/h",
+          "163 bpm",
+          "—",
+          "9:03"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Franco Benjamin",
+        "athleteId": "50445704",
+        "cells": [
+          "18",
+          "Franco Benjamin",
+          "17 may 2026",
+          "36,5 km/h",
+          "170 bpm",
+          "169 W",
+          "9:03"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Maque",
+        "athleteId": "82560760",
+        "cells": [
+          "20",
+          "Jose Maque",
+          "17 may 2026",
+          "36,2 km/h",
+          "—",
+          "—",
+          "9:08"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Ccolque",
+        "athleteId": "130975933",
+        "cells": [
+          "21",
+          "Oscar Ccolque",
+          "17 may 2026",
+          "36,1 km/h",
+          "—",
+          "—",
+          "9:09"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jarthurt M. A - ☠️AYAYAY🍻",
+        "athleteId": "25312471",
+        "cells": [
+          "21",
+          "Jarthurt M. A - ☠️AYAYAY🍻",
+          "28 ago 2026",
+          "36,1 km/h",
+          "136 bpm",
+          "121 W",
+          "9:09"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "AnTon RamSak",
+        "athleteId": "142294242",
+        "cells": [
+          "23",
+          "AnTon RamSak",
+          "17 may 2026",
+          "35,6 km/h",
+          "—",
+          "—",
+          "9:17"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Edilson Ccahua",
+        "athleteId": "112878037",
+        "cells": [
+          "24",
+          "Edilson Ccahua",
+          "17 may 2026",
+          "35,5 km/h",
+          "175 bpm",
+          "—",
+          "9:19"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Hideki Core",
+        "athleteId": "189618237",
+        "cells": [
+          "25",
+          "Hideki Core",
+          "10 may 2026",
+          "35,4 km/h",
+          "—",
+          "—",
+          "9:21"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Anthony Chuctaya",
+        "athleteId": "118418797",
+        "cells": [
+          "26",
+          "Anthony Chuctaya",
+          "17 may 2026",
+          "35,2 km/h",
+          "—",
+          "—",
+          "9:24"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Wilmer Torres - ☠️AYAYAY🍻",
+        "athleteId": "40061968",
+        "cells": [
+          "27",
+          "Wilmer Torres - ☠️AYAYAY🍻",
+          "28 ago 2026",
+          "34,9 km/h",
+          "137 bpm",
+          "94 W",
+          "9:29"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Yoel Chara",
+        "athleteId": "90316231",
+        "cells": [
+          "28",
+          "Yoel Chara",
+          "10 may 2026",
+          "34,7 km/h",
+          "163 bpm",
+          "—",
+          "9:32"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Charles Morfy Gonzales Gonzales",
+        "athleteId": "64206931",
+        "cells": [
+          "29",
+          "Charles Morfy Gonzales Gonzales",
+          "17 may 2026",
+          "34,6 km/h",
+          "—",
+          "—",
+          "9:33"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "David Revilla",
+        "athleteId": "19872377",
+        "cells": [
+          "30",
+          "David Revilla",
+          "8 ago 2026",
+          "34,4 km/h",
+          "—",
+          "—",
+          "9:36"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Gustavo Oviedo",
+        "athleteId": "101498030",
+        "cells": [
+          "31",
+          "Gustavo Oviedo",
+          "17 may 2026",
+          "34,4 km/h",
+          "123 bpm",
+          "—",
+          "9:37"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "El Jacho 🇵🇪",
+        "athleteId": "97148928",
+        "cells": [
+          "32",
+          "El Jacho 🇵🇪",
+          "10 may 2026",
+          "34,3 km/h",
+          "—",
+          "—",
+          "9:38"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Bruno Salinas",
+        "athleteId": "6616801",
+        "cells": [
+          "33",
+          "Bruno Salinas",
+          "27 jun 2026",
+          "34,3 km/h",
+          "128 bpm",
+          "—",
+          "9:39"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jorge Reynoso Simoni",
+        "athleteId": "19558436",
+        "cells": [
+          "34",
+          "Jorge Reynoso Simoni",
+          "19 abr 2026",
+          "34,2 km/h",
+          "101 bpm",
+          "86 W",
+          "9:40"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "rudy Quirita Florez",
+        "athleteId": "102898258",
+        "cells": [
+          "35",
+          "rudy Quirita Florez",
+          "17 may 2026",
+          "34,1 km/h",
+          "147 bpm",
+          "—",
+          "9:41"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Angel Chambi Mamani 😇",
+        "athleteId": "20506529",
+        "cells": [
+          "36",
+          "Angel Chambi Mamani 😇",
+          "17 may 2026",
+          "33,9 km/h",
+          "170 bpm",
+          "—",
+          "9:45"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jose Valverde Paredes",
+        "athleteId": "62556119",
+        "cells": [
+          "37",
+          "Jose Valverde Paredes",
+          "8 ago 2026",
+          "33,8 km/h",
+          "—",
+          "135 W",
+          "9:47"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Renato Tapia Landa",
+        "athleteId": "45711207",
+        "cells": [
+          "38",
+          "Renato Tapia Landa",
+          "8 feb 2026",
+          "33,7 km/h",
+          "119 bpm",
+          "150 W",
+          "9:48"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Victor Alfonso Jiménez",
+        "athleteId": "100858538",
+        "cells": [
+          "38",
+          "Victor Alfonso Jiménez",
+          "17 may 2026",
+          "33,7 km/h",
+          "—",
+          "—",
+          "9:48"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Sergio pineda huanca",
+        "athleteId": "160913224",
+        "cells": [
+          "40",
+          "Sergio pineda huanca",
+          "6 sept 2026",
+          "33,7 km/h",
+          "—",
+          "—",
+          "9:49"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "David Condori",
+        "athleteId": "137888527",
+        "cells": [
+          "41",
+          "David Condori",
+          "6 sept 2026",
+          "33,6 km/h",
+          "155 bpm",
+          "—",
+          "9:50"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Giovanni Chávez-Velando R.",
+        "athleteId": "71867960",
+        "cells": [
+          "42",
+          "Giovanni Chávez-Velando R.",
+          "17 may 2026",
+          "33,6 km/h",
+          "161 bpm",
+          "—",
+          "9:51"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Cesar Falla Villena 🇵🇪😎",
+        "athleteId": "74352219",
+        "cells": [
+          "43",
+          "Cesar Falla Villena 🇵🇪😎",
+          "17 may 2026",
+          "33,4 km/h",
+          "194 bpm",
+          "—",
+          "9:54"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Persy roque",
+        "athleteId": "158622847",
+        "cells": [
+          "43",
+          "Persy roque",
+          "17 may 2026",
+          "33,4 km/h",
+          "—",
+          "—",
+          "9:54"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Paulo Martinez",
+        "athleteId": "14152238",
+        "cells": [
+          "45",
+          "Paulo Martinez",
+          "31 ene 2026",
+          "33,3 km/h",
+          "—",
+          "—",
+          "9:56"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Peter Ura",
+        "athleteId": "32247520",
+        "cells": [
+          "45",
+          "Peter Ura",
+          "17 may 2026",
+          "33,3 km/h",
+          "—",
+          "—",
+          "9:56"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Ledú Apaza",
+        "athleteId": "102661755",
+        "cells": [
+          "47",
+          "Ledú Apaza",
+          "10 may 2026",
+          "33,2 km/h",
+          "—",
+          "—",
+          "9:58"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Santiago AO",
+        "athleteId": "78665759",
+        "cells": [
+          "48",
+          "Santiago AO",
+          "17 may 2026",
+          "33,1 km/h",
+          "—",
+          "—",
+          "10:00"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Norman Peña",
+        "athleteId": "16571987",
+        "cells": [
+          "49",
+          "Norman Peña",
+          "17 may 2026",
+          "33,0 km/h",
+          "—",
+          "—",
+          "10:01"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Reyner Bellido Fuentes",
+        "athleteId": "201873139",
+        "cells": [
+          "50",
+          "Reyner Bellido Fuentes",
+          "17 may 2026",
+          "33,0 km/h",
+          "—",
+          "—",
+          "10:02"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Danuk 🇵🇪 O+",
+        "athleteId": "105121374",
+        "cells": [
+          "51",
+          "Danuk 🇵🇪 O+",
+          "17 may 2026",
+          "32,9 km/h",
+          "167 bpm",
+          "153 W",
+          "10:03"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Shamner Yoel Huamani",
+        "athleteId": "149557586",
+        "cells": [
+          "52",
+          "Shamner Yoel Huamani",
+          "31 ene 2026",
+          "32,8 km/h",
+          "—",
+          "—",
+          "10:05"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Brandon Jossehp Quispe Zarate",
+        "athleteId": "136655386",
+        "cells": [
+          "52",
+          "Brandon Jossehp Quispe Zarate",
+          "17 may 2026",
+          "32,8 km/h",
+          "—",
+          "—",
+          "10:05"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Juan carlos Rodriguez Neira",
+        "athleteId": "46227225",
+        "cells": [
+          "52",
+          "Juan carlos Rodriguez Neira",
+          "8 ago 2026",
+          "32,8 km/h",
+          "143 bpm",
+          "—",
+          "10:05"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jorge Gamero",
+        "athleteId": "28822463",
+        "cells": [
+          "55",
+          "Jorge Gamero",
+          "8 ago 2026",
+          "32,7 km/h",
+          "127 bpm",
+          "97 W",
+          "10:06"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Kevin Ramirez alvarez",
+        "athleteId": "160096699",
+        "cells": [
+          "56",
+          "Kevin Ramirez alvarez",
+          "17 may 2026",
+          "32,4 km/h",
+          "—",
+          "—",
+          "10:13"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Aldo Peña",
+        "athleteId": "21836611",
+        "cells": [
+          "57",
+          "Aldo Peña",
+          "17 may 2026",
+          "32,3 km/h",
+          "—",
+          "—",
+          "10:14"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Juan Agustín Fernández Santos",
+        "athleteId": "89660988",
+        "cells": [
+          "58",
+          "Juan Agustín Fernández Santos",
+          "17 may 2026",
+          "32,3 km/h",
+          "183 bpm",
+          "—",
+          "10:15"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Luis Alberto Lipe Mamani",
+        "athleteId": "85628399",
+        "cells": [
+          "59",
+          "Luis Alberto Lipe Mamani",
+          "10 may 2026",
+          "32,2 km/h",
+          "—",
+          "—",
+          "10:16"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Líder roberto Cruz solis",
+        "athleteId": "88520604",
+        "cells": [
+          "60",
+          "Líder roberto Cruz solis",
+          "17 may 2026",
+          "32,0 km/h",
+          "—",
+          "—",
+          "10:19"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Elvio Rodriguez",
+        "athleteId": "64994630",
+        "cells": [
+          "61",
+          "Elvio Rodriguez",
+          "17 may 2026",
+          "32,0 km/h",
+          "—",
+          "—",
+          "10:20"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "HUSSEIN ISAAC HUAYHUA ALARCON",
+        "athleteId": "115670753",
+        "cells": [
+          "62",
+          "HUSSEIN ISAAC HUAYHUA ALARCON",
+          "10 may 2026",
+          "31,9 km/h",
+          "—",
+          "—",
+          "10:21"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Karlo HM",
+        "athleteId": "142917839",
+        "cells": [
+          "63",
+          "Karlo HM",
+          "10 may 2026",
+          "31,9 km/h",
+          "137 bpm",
+          "—",
+          "10:22"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Angel Ojeda",
+        "athleteId": "42619598",
+        "cells": [
+          "64",
+          "Angel Ojeda",
+          "17 may 2026",
+          "31,5 km/h",
+          "152 bpm",
+          "—",
+          "10:30"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jimy Monyers Parada Hernandez",
+        "athleteId": "70955149",
+        "cells": [
+          "65",
+          "Jimy Monyers Parada Hernandez",
+          "17 may 2026",
+          "31,4 km/h",
+          "—",
+          "—",
+          "10:32"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José BC",
+        "athleteId": "37330554",
+        "cells": [
+          "65",
+          "José BC",
+          "17 may 2026",
+          "31,4 km/h",
+          "158 bpm",
+          "—",
+          "10:32"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José Alonso Torres Vásquez",
+        "athleteId": "90733391",
+        "cells": [
+          "67",
+          "José Alonso Torres Vásquez",
+          "17 may 2026",
+          "31,3 km/h",
+          "—",
+          "—",
+          "10:34"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Juan Jose Alvarez Martinez",
+        "athleteId": "87735600",
+        "cells": [
+          "68",
+          "Juan Jose Alvarez Martinez",
+          "17 may 2026",
+          "31,1 km/h",
+          "—",
+          "—",
+          "10:38"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Le Pox",
+        "athleteId": "100721316",
+        "cells": [
+          "68",
+          "Le Pox",
+          "8 ago 2026",
+          "31,1 km/h",
+          "—",
+          "—",
+          "10:38"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Claudio Sánchez Estremadoyro",
+        "athleteId": "69062899",
+        "cells": [
+          "70",
+          "Claudio Sánchez Estremadoyro",
+          "17 may 2026",
+          "31,0 km/h",
+          "167 bpm",
+          "142 W",
+          "10:39"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Mauricio Gonzales Castro",
+        "athleteId": "18358209",
+        "cells": [
+          "71",
+          "Mauricio Gonzales Castro",
+          "17 may 2026",
+          "31,0 km/h",
+          "174 bpm",
+          "—",
+          "10:40"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Geanmarco Ochoa Garcia",
+        "athleteId": "140235281",
+        "cells": [
+          "72",
+          "Geanmarco Ochoa Garcia",
+          "5 mar 2026",
+          "30,9 km/h",
+          "143 bpm",
+          "—",
+          "10:41"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Carlos Vizcarra",
+        "athleteId": "48670349",
+        "cells": [
+          "73",
+          "Carlos Vizcarra",
+          "29 mar 2026",
+          "30,8 km/h",
+          "—",
+          "—",
+          "10:44"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Manuel Torres",
+        "athleteId": "16863189",
+        "cells": [
+          "74",
+          "Manuel Torres",
+          "17 may 2026",
+          "30,4 km/h",
+          "164 bpm",
+          "135 W",
+          "10:52"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Enrique Fernandez",
+        "athleteId": "37596460",
+        "cells": [
+          "75",
+          "Enrique Fernandez",
+          "17 may 2026",
+          "30,3 km/h",
+          "154 bpm",
+          "—",
+          "10:54"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "$3rgi0 €ruz",
+        "athleteId": "107393297",
+        "cells": [
+          "76",
+          "$3rgi0 €ruz",
+          "17 may 2026",
+          "30,1 km/h",
+          "173 bpm",
+          "—",
+          "10:58"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Joaquin Lazo Rodriguiez",
+        "athleteId": "94613339",
+        "cells": [
+          "77",
+          "Joaquin Lazo Rodriguiez",
+          "28 feb 2026",
+          "30,1 km/h",
+          "—",
+          "—",
+          "11:00"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Miguel Medina",
+        "athleteId": "50566781",
+        "cells": [
+          "77",
+          "Miguel Medina",
+          "17 may 2026",
+          "30,1 km/h",
+          "173 bpm",
+          "—",
+          "11:00"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Élvio Tito casa",
+        "athleteId": "97967335",
+        "cells": [
+          "79",
+          "Élvio Tito casa",
+          "17 may 2026",
+          "30,0 km/h",
+          "178 bpm",
+          "—",
+          "11:01"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Andre Zarate Torres",
+        "athleteId": "96874200",
+        "cells": [
+          "80",
+          "Andre Zarate Torres",
+          "17 may 2026",
+          "29,9 km/h",
+          "—",
+          "—",
+          "11:03"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Aly Champi Quispe",
+        "athleteId": "69974828",
+        "cells": [
+          "81",
+          "Aly Champi Quispe",
+          "17 may 2026",
+          "29,8 km/h",
+          "164 bpm",
+          "—",
+          "11:05"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jhonny Zevallos",
+        "athleteId": "108390650",
+        "cells": [
+          "82",
+          "Jhonny Zevallos",
+          "17 may 2026",
+          "29,5 km/h",
+          "—",
+          "—",
+          "11:12"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Pablo Maldonado Paredes",
+        "athleteId": "7693887",
+        "cells": [
+          "83",
+          "Pablo Maldonado Paredes",
+          "7 mar 2026",
+          "29,4 km/h",
+          "105 bpm",
+          "69 W",
+          "11:15"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Adan Meneses",
+        "athleteId": "20671308",
+        "cells": [
+          "83",
+          "Adan Meneses",
+          "17 may 2026",
+          "29,4 km/h",
+          "—",
+          "—",
+          "11:15"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+        "athleteId": "95720970",
+        "cells": [
+          "83",
+          "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+          "17 may 2026",
+          "29,4 km/h",
+          "—",
+          "—",
+          "11:15"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Kevin Chavez",
+        "athleteId": "20591991",
+        "cells": [
+          "86",
+          "Kevin Chavez",
+          "17 may 2026",
+          "29,3 km/h",
+          "—",
+          "—",
+          "11:16"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "James P. Chávez",
+        "athleteId": "91920372",
+        "cells": [
+          "87",
+          "James P. Chávez",
+          "9 may 2026",
+          "29,2 km/h",
+          "125 bpm",
+          "—",
+          "11:19"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Helbert Galdos",
+        "athleteId": "12016032",
+        "cells": [
+          "87",
+          "Helbert Galdos",
+          "17 may 2026",
+          "29,2 km/h",
+          "159 bpm",
+          "—",
+          "11:19"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Sam Saunders",
+        "athleteId": "967327",
+        "cells": [
+          "89",
+          "Sam Saunders",
+          "17 may 2026",
+          "29,2 km/h",
+          "172 bpm",
+          "—",
+          "11:20"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Franco Zeballos Team Mitocondria",
+        "athleteId": "22039047",
+        "cells": [
+          "90",
+          "Franco Zeballos Team Mitocondria",
+          "17 ene 2026",
+          "29,1 km/h",
+          "99 bpm",
+          "—",
+          "11:21"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Arturo corrales",
+        "athleteId": "161000046",
+        "cells": [
+          "91",
+          "Arturo corrales",
+          "17 may 2026",
+          "29,0 km/h",
+          "—",
+          "—",
+          "11:23"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jesus Huamantuna Granda",
+        "athleteId": "133516778",
+        "cells": [
+          "92",
+          "Jesus Huamantuna Granda",
+          "17 may 2026",
+          "28,9 km/h",
+          "173 bpm",
+          "—",
+          "11:26"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Daniel Durand",
+        "athleteId": "91221492",
+        "cells": [
+          "93",
+          "Daniel Durand",
+          "17 may 2026",
+          "28,6 km/h",
+          "—",
+          "—",
+          "11:33"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Gero GQM",
+        "athleteId": "164298379",
+        "cells": [
+          "94",
+          "Gero GQM",
+          "17 may 2026",
+          "28,6 km/h",
+          "—",
+          "—",
+          "11:34"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Xtiam Ojeda Valenzuela",
+        "athleteId": "78295279",
+        "cells": [
+          "95",
+          "Xtiam Ojeda Valenzuela",
+          "1 ago 2026",
+          "28,5 km/h",
+          "—",
+          "—",
+          "11:37"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Victor Manuel Garcia Salas",
+        "athleteId": "125655700",
+        "cells": [
+          "95",
+          "Victor Manuel Garcia Salas",
+          "20 sept 2026",
+          "28,5 km/h",
+          "—",
+          "—",
+          "11:37"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "GONZALO Malaga Muñoz",
+        "athleteId": "65490484",
+        "cells": [
+          "97",
+          "GONZALO Malaga Muñoz",
+          "1 ago 2026",
+          "28,4 km/h",
+          "—",
+          "—",
+          "11:38"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Anthony Pauca",
+        "athleteId": "74025436",
+        "cells": [
+          "98",
+          "Anthony Pauca",
+          "16 ene 2026",
+          "28,3 km/h",
+          "—",
+          "—",
+          "11:40"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Galante CR",
+        "athleteId": "111951831",
+        "cells": [
+          "99",
+          "Galante CR",
+          "10 may 2026",
+          "28,2 km/h",
+          "72 bpm",
+          "—",
+          "11:44"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Harold Castro Herrero",
+        "athleteId": "72791735",
+        "cells": [
+          "100",
+          "Harold Castro Herrero",
+          "11 ene 2026",
+          "28,1 km/h",
+          "—",
+          "—",
+          "11:47"
+        ],
+        "gender": "M",
+        "page": 4
+      }
+    ]
+  },
+  "18378066": {
+    "id": "18378066",
+    "name": "Pte. Quishuarani / Antes bajada a La Joya",
+    "role": "Llanero",
+    "total_extracted": 114,
+    "efforts": [
+      {
+        "athleteName": "Johana Mantilla Pinto",
+        "athleteId": "111569421",
+        "cells": [
+          "",
+          "Johana Mantilla Pinto",
+          "21 feb 2026",
+          "19,8 km/h",
+          "157 bpm",
+          "—",
+          "20:56"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Alejandra Caceres",
+        "athleteId": "121615172",
+        "cells": [
+          "2",
+          "Alejandra Caceres",
+          "17 may 2026",
+          "18,7 km/h",
+          "—",
+          "—",
+          "22:10"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Kelicita Aguilar",
+        "athleteId": "44595052",
+        "cells": [
+          "3",
+          "Kelicita Aguilar",
+          "17 may 2026",
+          "16,0 km/h",
+          "167 bpm",
+          "—",
+          "25:55"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Cecilia Guillen López",
+        "athleteId": "158379385",
+        "cells": [
+          "4",
+          "Cecilia Guillen López",
+          "17 may 2026",
+          "15,6 km/h",
+          "—",
+          "—",
+          "26:32"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Carolina Salas Zegarra",
+        "athleteId": "147415832",
+        "cells": [
+          "5",
+          "Carolina Salas Zegarra",
+          "17 may 2026",
+          "15,5 km/h",
+          "—",
+          "—",
+          "26:50"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Sandra Apaza Nano",
+        "athleteId": "45844049",
+        "cells": [
+          "6",
+          "Sandra Apaza Nano",
+          "17 may 2026",
+          "15,5 km/h",
+          "174 bpm",
+          "—",
+          "26:51"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "UL Elvi",
+        "athleteId": "123731993",
+        "cells": [
+          "7",
+          "UL Elvi",
+          "17 may 2026",
+          "14,7 km/h",
+          "—",
+          "—",
+          "28:16"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Milagros Talavera",
+        "athleteId": "115876516",
+        "cells": [
+          "8",
+          "Milagros Talavera",
+          "3 may 2026",
+          "13,2 km/h",
+          "—",
+          "—",
+          "31:34"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Vanessa Patiño Puma",
+        "athleteId": "150392274",
+        "cells": [
+          "9",
+          "Vanessa Patiño Puma",
+          "17 may 2026",
+          "13,0 km/h",
+          "—",
+          "—",
+          "32:00"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Francis Emely Quintanilla Mango",
+        "athleteId": "107200423",
+        "cells": [
+          "10",
+          "Francis Emely Quintanilla Mango",
+          "4 abr 2026",
+          "12,7 km/h",
+          "118 bpm",
+          "—",
+          "32:40"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Y",
+        "athleteId": "75401402",
+        "cells": [
+          "11",
+          "Victoria Y",
+          "17 may 2026",
+          "12,3 km/h",
+          "—",
+          "—",
+          "33:47"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Natali Alvera",
+        "athleteId": "81363813",
+        "cells": [
+          "12",
+          "Natali Alvera",
+          "17 may 2026",
+          "11,5 km/h",
+          "—",
+          "—",
+          "36:12"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Cuno",
+        "athleteId": "73922401",
+        "cells": [
+          "13",
+          "Victoria Cuno",
+          "9 ago 2026",
+          "11,3 km/h",
+          "—",
+          "—",
+          "36:40"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Irene Alfaro Vizcarra",
+        "athleteId": "44875054",
+        "cells": [
+          "14",
+          "Irene Alfaro Vizcarra",
+          "17 may 2026",
+          "10,8 km/h",
+          "150 bpm",
+          "—",
+          "38:27"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Ronald Luza",
+        "athleteId": "26160379",
+        "cells": [
+          "",
+          "Ronald Luza",
+          "17 may 2026",
+          "28,5 km/h",
+          "168 bpm",
+          "—",
+          "14:33"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alexis TANTANI",
+        "athleteId": "39245919",
+        "cells": [
+          "2",
+          "Alexis TANTANI",
+          "17 may 2026",
+          "27,6 km/h",
+          "172 bpm",
+          "—",
+          "15:02"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Rodrigo Sanchez Huayta",
+        "athleteId": "45273647",
+        "cells": [
+          "3",
+          "Rodrigo Sanchez Huayta",
+          "17 may 2026",
+          "26,8 km/h",
+          "—",
+          "—",
+          "15:31"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Alfredo Reynoso Simoni",
+        "athleteId": "19145880",
+        "cells": [
+          "4",
+          "Jose Alfredo Reynoso Simoni",
+          "17 may 2026",
+          "25,7 km/h",
+          "—",
+          "—",
+          "16:09"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Charles Morfy Gonzales Gonzales",
+        "athleteId": "64206931",
+        "cells": [
+          "5",
+          "Charles Morfy Gonzales Gonzales",
+          "17 may 2026",
+          "25,4 km/h",
+          "—",
+          "—",
+          "16:19"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Niltom Flores",
+        "athleteId": "82544897",
+        "cells": [
+          "6",
+          "Niltom Flores",
+          "17 may 2026",
+          "24,7 km/h",
+          "—",
+          "—",
+          "16:49"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Maque",
+        "athleteId": "82560760",
+        "cells": [
+          "7",
+          "Jose Maque",
+          "17 may 2026",
+          "24,5 km/h",
+          "—",
+          "—",
+          "16:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Carlos Vizcarra",
+        "athleteId": "48670349",
+        "cells": [
+          "8",
+          "Carlos Vizcarra",
+          "29 mar 2026",
+          "24,4 km/h",
+          "—",
+          "—",
+          "17:02"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Yeison Zeballos",
+        "athleteId": "37298291",
+        "cells": [
+          "9",
+          "Yeison Zeballos",
+          "17 may 2026",
+          "24,3 km/h",
+          "239 bpm",
+          "247 W",
+          "17:07"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Silvio Ancco",
+        "athleteId": "47287486",
+        "cells": [
+          "9",
+          "Silvio Ancco",
+          "17 may 2026",
+          "24,3 km/h",
+          "—",
+          "—",
+          "17:07"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Cardenas",
+        "athleteId": "61269264",
+        "cells": [
+          "11",
+          "Oscar Cardenas",
+          "17 may 2026",
+          "24,2 km/h",
+          "162 bpm",
+          "—",
+          "17:09"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Anthony Pauca",
+        "athleteId": "74025436",
+        "cells": [
+          "12",
+          "Anthony Pauca",
+          "16 ene 2026",
+          "24,0 km/h",
+          "—",
+          "—",
+          "17:16"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "deyviss sasari",
+        "athleteId": "142926004",
+        "cells": [
+          "13",
+          "deyviss sasari",
+          "17 may 2026",
+          "23,4 km/h",
+          "174 bpm",
+          "—",
+          "17:44"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Edilson Ccahua",
+        "athleteId": "112878037",
+        "cells": [
+          "14",
+          "Edilson Ccahua",
+          "17 may 2026",
+          "23,2 km/h",
+          "179 bpm",
+          "—",
+          "17:56"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Hayler Shiru Luján 🐲",
+        "athleteId": "28667906",
+        "cells": [
+          "15",
+          "Hayler Shiru Luján 🐲",
+          "17 may 2026",
+          "23,1 km/h",
+          "160 bpm",
+          "—",
+          "17:57"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Ccolque",
+        "athleteId": "130975933",
+        "cells": [
+          "16",
+          "Oscar Ccolque",
+          "17 may 2026",
+          "23,1 km/h",
+          "—",
+          "—",
+          "17:59"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Giovanni Chávez-Velando R.",
+        "athleteId": "71867960",
+        "cells": [
+          "17",
+          "Giovanni Chávez-Velando R.",
+          "17 may 2026",
+          "23,0 km/h",
+          "168 bpm",
+          "—",
+          "18:02"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Gonzalo Málaga",
+        "athleteId": "21126267",
+        "cells": [
+          "18",
+          "Gonzalo Málaga",
+          "17 may 2026",
+          "22,7 km/h",
+          "170 bpm",
+          "221 W",
+          "18:16"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Angel Chambi Mamani 😇",
+        "athleteId": "20506529",
+        "cells": [
+          "19",
+          "Angel Chambi Mamani 😇",
+          "17 may 2026",
+          "22,7 km/h",
+          "178 bpm",
+          "—",
+          "18:18"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Reyner Bellido Fuentes",
+        "athleteId": "201873139",
+        "cells": [
+          "20",
+          "Reyner Bellido Fuentes",
+          "17 may 2026",
+          "22,6 km/h",
+          "—",
+          "—",
+          "18:22"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Santiago AO",
+        "athleteId": "78665759",
+        "cells": [
+          "21",
+          "Santiago AO",
+          "17 may 2026",
+          "22,5 km/h",
+          "—",
+          "—",
+          "18:26"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Renato Tapia Landa",
+        "athleteId": "45711207",
+        "cells": [
+          "22",
+          "Renato Tapia Landa",
+          "8 feb 2026",
+          "22,3 km/h",
+          "131 bpm",
+          "215 W",
+          "18:35"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Daniel ☠️AYAYAY🍻",
+        "athleteId": "67623171",
+        "cells": [
+          "23",
+          "Jose Daniel ☠️AYAYAY🍻",
+          "16 sept 2026",
+          "22,3 km/h",
+          "141 bpm",
+          "216 W",
+          "18:37"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Franco Benjamin",
+        "athleteId": "50445704",
+        "cells": [
+          "24",
+          "Franco Benjamin",
+          "17 may 2026",
+          "22,2 km/h",
+          "169 bpm",
+          "196 W",
+          "18:42"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Wilmer Torres - ☠️AYAYAY🍻",
+        "athleteId": "40061968",
+        "cells": [
+          "25",
+          "Wilmer Torres - ☠️AYAYAY🍻",
+          "28 ago 2026",
+          "22,1 km/h",
+          "154 bpm",
+          "179 W",
+          "18:47"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Juan carlos Rodriguez Neira",
+        "athleteId": "46227225",
+        "cells": [
+          "26",
+          "Juan carlos Rodriguez Neira",
+          "8 ago 2026",
+          "22,1 km/h",
+          "158 bpm",
+          "—",
+          "18:48"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Paulo Martinez",
+        "athleteId": "14152238",
+        "cells": [
+          "27",
+          "Paulo Martinez",
+          "31 ene 2026",
+          "22,0 km/h",
+          "—",
+          "—",
+          "18:53"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Líder roberto Cruz solis",
+        "athleteId": "88520604",
+        "cells": [
+          "27",
+          "Líder roberto Cruz solis",
+          "17 may 2026",
+          "22,0 km/h",
+          "—",
+          "—",
+          "18:53"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Gustavo Oviedo",
+        "athleteId": "101498030",
+        "cells": [
+          "29",
+          "Gustavo Oviedo",
+          "17 may 2026",
+          "21,9 km/h",
+          "121 bpm",
+          "—",
+          "18:56"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Persy roque",
+        "athleteId": "158622847",
+        "cells": [
+          "30",
+          "Persy roque",
+          "17 may 2026",
+          "21,9 km/h",
+          "—",
+          "—",
+          "18:59"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Alonso Gamero Zuñiga",
+        "athleteId": "42924643",
+        "cells": [
+          "31",
+          "Alonso Gamero Zuñiga",
+          "25 abr 2026",
+          "21,8 km/h",
+          "—",
+          "—",
+          "19:04"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Le Pox",
+        "athleteId": "100721316",
+        "cells": [
+          "31",
+          "Le Pox",
+          "8 ago 2026",
+          "21,8 km/h",
+          "—",
+          "—",
+          "19:04"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Enrique Fernandez",
+        "athleteId": "37596460",
+        "cells": [
+          "33",
+          "Enrique Fernandez",
+          "17 may 2026",
+          "21,6 km/h",
+          "158 bpm",
+          "—",
+          "19:11"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Brandon Jossehp Quispe Zarate",
+        "athleteId": "136655386",
+        "cells": [
+          "34",
+          "Brandon Jossehp Quispe Zarate",
+          "17 may 2026",
+          "21,6 km/h",
+          "—",
+          "—",
+          "19:13"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jarthurt M. A - ☠️AYAYAY🍻",
+        "athleteId": "25312471",
+        "cells": [
+          "34",
+          "Jarthurt M. A - ☠️AYAYAY🍻",
+          "28 ago 2026",
+          "21,6 km/h",
+          "150 bpm",
+          "205 W",
+          "19:13"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "AnTon RamSak",
+        "athleteId": "142294242",
+        "cells": [
+          "36",
+          "AnTon RamSak",
+          "17 may 2026",
+          "21,6 km/h",
+          "—",
+          "—",
+          "19:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Bruno Salinas",
+        "athleteId": "6616801",
+        "cells": [
+          "37",
+          "Bruno Salinas",
+          "28 feb 2026",
+          "21,5 km/h",
+          "—",
+          "—",
+          "19:18"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Elioyufre V",
+        "athleteId": "102368610",
+        "cells": [
+          "37",
+          "Elioyufre V",
+          "12 ago 2026",
+          "21,5 km/h",
+          "162 bpm",
+          "—",
+          "19:18"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Victor Alfonso Jiménez",
+        "athleteId": "100858538",
+        "cells": [
+          "39",
+          "Victor Alfonso Jiménez",
+          "17 may 2026",
+          "21,3 km/h",
+          "—",
+          "—",
+          "19:29"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "David Revilla",
+        "athleteId": "19872377",
+        "cells": [
+          "40",
+          "David Revilla",
+          "8 ago 2026",
+          "21,2 km/h",
+          "—",
+          "—",
+          "19:35"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jose Valverde Paredes",
+        "athleteId": "62556119",
+        "cells": [
+          "41",
+          "Jose Valverde Paredes",
+          "31 ene 2026",
+          "21,1 km/h",
+          "—",
+          "211 W",
+          "19:43"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Aldo Peña",
+        "athleteId": "21836611",
+        "cells": [
+          "42",
+          "Aldo Peña",
+          "17 may 2026",
+          "21,0 km/h",
+          "—",
+          "—",
+          "19:44"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Juan Agustín Fernández Santos",
+        "athleteId": "89660988",
+        "cells": [
+          "42",
+          "Juan Agustín Fernández Santos",
+          "17 may 2026",
+          "21,0 km/h",
+          "183 bpm",
+          "—",
+          "19:44"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Shamner Yoel Huamani",
+        "athleteId": "149557586",
+        "cells": [
+          "44",
+          "Shamner Yoel Huamani",
+          "31 ene 2026",
+          "21,0 km/h",
+          "—",
+          "—",
+          "19:45"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jorge Reynoso Simoni",
+        "athleteId": "19558436",
+        "cells": [
+          "45",
+          "Jorge Reynoso Simoni",
+          "19 abr 2026",
+          "21,0 km/h",
+          "120 bpm",
+          "198 W",
+          "19:47"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Carlos Alonso",
+        "athleteId": "81449554",
+        "cells": [
+          "46",
+          "Carlos Alonso",
+          "17 may 2026",
+          "20,9 km/h",
+          "183 bpm",
+          "—",
+          "19:51"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "rudy Quirita Florez",
+        "athleteId": "102898258",
+        "cells": [
+          "47",
+          "rudy Quirita Florez",
+          "17 may 2026",
+          "20,9 km/h",
+          "164 bpm",
+          "—",
+          "19:52"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Anthony Chuctaya",
+        "athleteId": "118418797",
+        "cells": [
+          "48",
+          "Anthony Chuctaya",
+          "17 may 2026",
+          "20,9 km/h",
+          "—",
+          "—",
+          "19:53"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Racer ❌ 🥷🏽",
+        "athleteId": "18042033",
+        "cells": [
+          "49",
+          "Racer ❌ 🥷🏽",
+          "31 ene 2026",
+          "20,6 km/h",
+          "141 bpm",
+          "200 W",
+          "20:12"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Marcos El Pastor",
+        "athleteId": "135641565",
+        "cells": [
+          "50",
+          "Marcos El Pastor",
+          "15 feb 2026",
+          "20,5 km/h",
+          "—",
+          "—",
+          "20:16"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Yoel Chara",
+        "athleteId": "90316231",
+        "cells": [
+          "51",
+          "Yoel Chara",
+          "17 may 2026",
+          "20,4 km/h",
+          "173 bpm",
+          "—",
+          "20:19"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Galante CR",
+        "athleteId": "111951831",
+        "cells": [
+          "52",
+          "Galante CR",
+          "10 may 2026",
+          "20,3 km/h",
+          "72 bpm",
+          "—",
+          "20:26"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "$3rgi0 €ruz",
+        "athleteId": "107393297",
+        "cells": [
+          "53",
+          "$3rgi0 €ruz",
+          "17 may 2026",
+          "20,2 km/h",
+          "183 bpm",
+          "—",
+          "20:31"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Alessandro Valdivia",
+        "athleteId": "168781728",
+        "cells": [
+          "54",
+          "Alessandro Valdivia",
+          "3 may 2026",
+          "20,2 km/h",
+          "—",
+          "—",
+          "20:33"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Ricardo Cornejo Ballon",
+        "athleteId": "80739736",
+        "cells": [
+          "55",
+          "Ricardo Cornejo Ballon",
+          "19 abr 2026",
+          "20,2 km/h",
+          "150 bpm",
+          "201 W",
+          "20:35"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Hans Niño de Guzman",
+        "athleteId": "7693419",
+        "cells": [
+          "56",
+          "Hans Niño de Guzman",
+          "3 may 2026",
+          "20,2 km/h",
+          "137 bpm",
+          "—",
+          "20:36"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Norman Peña",
+        "athleteId": "16571987",
+        "cells": [
+          "57",
+          "Norman Peña",
+          "17 may 2026",
+          "20,1 km/h",
+          "—",
+          "—",
+          "20:40"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Juan Jose Alvarez Martinez",
+        "athleteId": "87735600",
+        "cells": [
+          "58",
+          "Juan Jose Alvarez Martinez",
+          "17 may 2026",
+          "20,0 km/h",
+          "—",
+          "—",
+          "20:44"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jorge Luis Coaquira mamani",
+        "athleteId": "853071462",
+        "cells": [
+          "59",
+          "Jorge Luis Coaquira mamani",
+          "26 abr 2026",
+          "20,0 km/h",
+          "—",
+          "—",
+          "20:48"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Marco Raiden Manchego",
+        "athleteId": "16913741",
+        "cells": [
+          "60",
+          "Marco Raiden Manchego",
+          "8 ago 2026",
+          "19,8 km/h",
+          "—",
+          "—",
+          "20:55"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Elvio Rodriguez",
+        "athleteId": "64994630",
+        "cells": [
+          "61",
+          "Elvio Rodriguez",
+          "17 may 2026",
+          "19,8 km/h",
+          "—",
+          "—",
+          "20:57"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jimy Monyers Parada Hernandez",
+        "athleteId": "70955149",
+        "cells": [
+          "62",
+          "Jimy Monyers Parada Hernandez",
+          "17 may 2026",
+          "19,8 km/h",
+          "—",
+          "—",
+          "20:58"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "David Condori",
+        "athleteId": "137888527",
+        "cells": [
+          "63",
+          "David Condori",
+          "17 may 2026",
+          "19,7 km/h",
+          "173 bpm",
+          "—",
+          "21:02"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Willard Hector",
+        "athleteId": "26123874",
+        "cells": [
+          "64",
+          "Willard Hector",
+          "26 abr 2026",
+          "19,7 km/h",
+          "80 bpm",
+          "—",
+          "21:04"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Kevin Ramirez alvarez",
+        "athleteId": "160096699",
+        "cells": [
+          "65",
+          "Kevin Ramirez alvarez",
+          "17 may 2026",
+          "19,7 km/h",
+          "—",
+          "—",
+          "21:06"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Peter Ura",
+        "athleteId": "32247520",
+        "cells": [
+          "66",
+          "Peter Ura",
+          "17 may 2026",
+          "19,7 km/h",
+          "—",
+          "—",
+          "21:07"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Harold Castro Herrero",
+        "athleteId": "72791735",
+        "cells": [
+          "67",
+          "Harold Castro Herrero",
+          "18 ene 2026",
+          "19,6 km/h",
+          "—",
+          "—",
+          "21:11"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Sam Saunders",
+        "athleteId": "967327",
+        "cells": [
+          "67",
+          "Sam Saunders",
+          "17 may 2026",
+          "19,6 km/h",
+          "167 bpm",
+          "—",
+          "21:11"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José Alonso Torres Vásquez",
+        "athleteId": "90733391",
+        "cells": [
+          "69",
+          "José Alonso Torres Vásquez",
+          "17 may 2026",
+          "19,6 km/h",
+          "—",
+          "—",
+          "21:12"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Franco Zeballos Team Mitocondria",
+        "athleteId": "22039047",
+        "cells": [
+          "70",
+          "Franco Zeballos Team Mitocondria",
+          "17 ene 2026",
+          "19,6 km/h",
+          "95 bpm",
+          "—",
+          "21:13"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Aly Champi Quispe",
+        "athleteId": "69974828",
+        "cells": [
+          "71",
+          "Aly Champi Quispe",
+          "3 may 2026",
+          "19,6 km/h",
+          "—",
+          "—",
+          "21:14"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Claudio Sánchez Estremadoyro",
+        "athleteId": "69062899",
+        "cells": [
+          "71",
+          "Claudio Sánchez Estremadoyro",
+          "17 may 2026",
+          "19,6 km/h",
+          "181 bpm",
+          "244 W",
+          "21:14"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Karlo HM",
+        "athleteId": "142917839",
+        "cells": [
+          "73",
+          "Karlo HM",
+          "10 may 2026",
+          "19,5 km/h",
+          "147 bpm",
+          "—",
+          "21:17"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Sergio pineda huanca",
+        "athleteId": "160913224",
+        "cells": [
+          "74",
+          "Sergio pineda huanca",
+          "6 sept 2026",
+          "19,5 km/h",
+          "—",
+          "—",
+          "21:18"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Joaquin Lazo Rodriguiez",
+        "athleteId": "94613339",
+        "cells": [
+          "75",
+          "Joaquin Lazo Rodriguiez",
+          "28 feb 2026",
+          "19,4 km/h",
+          "—",
+          "—",
+          "21:24"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Hideki Core",
+        "athleteId": "189618237",
+        "cells": [
+          "76",
+          "Hideki Core",
+          "10 may 2026",
+          "19,3 km/h",
+          "—",
+          "—",
+          "21:28"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Ledú Apaza",
+        "athleteId": "102661755",
+        "cells": [
+          "77",
+          "Ledú Apaza",
+          "17 may 2026",
+          "19,3 km/h",
+          "—",
+          "—",
+          "21:34"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Angel Ojeda",
+        "athleteId": "42619598",
+        "cells": [
+          "78",
+          "Angel Ojeda",
+          "17 may 2026",
+          "19,2 km/h",
+          "163 bpm",
+          "—",
+          "21:37"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Pablo Maldonado Paredes",
+        "athleteId": "7693887",
+        "cells": [
+          "79",
+          "Pablo Maldonado Paredes",
+          "21 mar 2026",
+          "19,2 km/h",
+          "119 bpm",
+          "146 W",
+          "21:38"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "El Jacho 🇵🇪",
+        "athleteId": "97148928",
+        "cells": [
+          "79",
+          "El Jacho 🇵🇪",
+          "17 may 2026",
+          "19,2 km/h",
+          "—",
+          "—",
+          "21:38"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Cesar Falla Villena 🇵🇪😎",
+        "athleteId": "74352219",
+        "cells": [
+          "81",
+          "Cesar Falla Villena 🇵🇪😎",
+          "17 may 2026",
+          "19,1 km/h",
+          "188 bpm",
+          "—",
+          "21:43"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Luis Alberto Lipe Mamani",
+        "athleteId": "85628399",
+        "cells": [
+          "82",
+          "Luis Alberto Lipe Mamani",
+          "17 may 2026",
+          "19,1 km/h",
+          "—",
+          "—",
+          "21:44"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Danuk 🇵🇪 O+",
+        "athleteId": "105121374",
+        "cells": [
+          "83",
+          "Danuk 🇵🇪 O+",
+          "17 may 2026",
+          "18,9 km/h",
+          "167 bpm",
+          "173 W",
+          "21:57"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Andre Zarate Torres",
+        "athleteId": "96874200",
+        "cells": [
+          "84",
+          "Andre Zarate Torres",
+          "17 may 2026",
+          "18,7 km/h",
+          "—",
+          "—",
+          "22:12"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "HUSSEIN ISAAC HUAYHUA ALARCON",
+        "athleteId": "115670753",
+        "cells": [
+          "85",
+          "HUSSEIN ISAAC HUAYHUA ALARCON",
+          "10 may 2026",
+          "18,7 km/h",
+          "—",
+          "—",
+          "22:14"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "James P. Chávez",
+        "athleteId": "91920372",
+        "cells": [
+          "86",
+          "James P. Chávez",
+          "3 may 2026",
+          "18,6 km/h",
+          "143 bpm",
+          "—",
+          "22:17"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+        "athleteId": "95720970",
+        "cells": [
+          "87",
+          "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+          "20 sept 2026",
+          "18,6 km/h",
+          "—",
+          "—",
+          "22:22"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Miguel Medina",
+        "athleteId": "50566781",
+        "cells": [
+          "88",
+          "Miguel Medina",
+          "17 may 2026",
+          "18,4 km/h",
+          "176 bpm",
+          "—",
+          "22:37"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Élvio Tito casa",
+        "athleteId": "97967335",
+        "cells": [
+          "89",
+          "Élvio Tito casa",
+          "17 may 2026",
+          "18,2 km/h",
+          "182 bpm",
+          "—",
+          "22:46"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "José BC",
+        "athleteId": "37330554",
+        "cells": [
+          "90",
+          "José BC",
+          "3 may 2026",
+          "18,2 km/h",
+          "157 bpm",
+          "—",
+          "22:47"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "EL César Riega Herrera",
+        "athleteId": "105859321",
+        "cells": [
+          "91",
+          "EL César Riega Herrera",
+          "12 may 2026",
+          "18,2 km/h",
+          "—",
+          "—",
+          "22:48"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Manuel Torres",
+        "athleteId": "16863189",
+        "cells": [
+          "92",
+          "Manuel Torres",
+          "17 may 2026",
+          "18,2 km/h",
+          "169 bpm",
+          "184 W",
+          "22:49"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Alonso Valeriano",
+        "athleteId": "36696678",
+        "cells": [
+          "93",
+          "Alonso Valeriano",
+          "3 may 2026",
+          "18,2 km/h",
+          "156 bpm",
+          "—",
+          "22:52"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jorge Gamero",
+        "athleteId": "28822463",
+        "cells": [
+          "93",
+          "Jorge Gamero",
+          "8 ago 2026",
+          "18,2 km/h",
+          "138 bpm",
+          "190 W",
+          "22:52"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Kevin Chavez",
+        "athleteId": "20591991",
+        "cells": [
+          "95",
+          "Kevin Chavez",
+          "17 may 2026",
+          "18,1 km/h",
+          "—",
+          "—",
+          "22:54"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Steve Patiño Zapata",
+        "athleteId": "32324516",
+        "cells": [
+          "96",
+          "Steve Patiño Zapata",
+          "17 may 2026",
+          "18,0 km/h",
+          "82 bpm",
+          "—",
+          "23:07"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "RODRIGO ALFONSO DIAZ ALVAREZ",
+        "athleteId": "197461828",
+        "cells": [
+          "97",
+          "RODRIGO ALFONSO DIAZ ALVAREZ",
+          "9 ago 2026",
+          "17,9 km/h",
+          "—",
+          "—",
+          "23:08"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Adan Meneses",
+        "athleteId": "20671308",
+        "cells": [
+          "98",
+          "Adan Meneses",
+          "17 may 2026",
+          "17,8 km/h",
+          "—",
+          "—",
+          "23:17"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Geanmarco Ochoa Garcia",
+        "athleteId": "140235281",
+        "cells": [
+          "99",
+          "Geanmarco Ochoa Garcia",
+          "5 mar 2026",
+          "17,7 km/h",
+          "157 bpm",
+          "—",
+          "23:31"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jonathan Chavez Lopez",
+        "athleteId": "117889959",
+        "cells": [
+          "100",
+          "Jonathan Chavez Lopez",
+          "3 may 2026",
+          "17,4 km/h",
+          "159 bpm",
+          "—",
+          "23:54"
+        ],
+        "gender": "M",
+        "page": 4
+      }
+    ]
+  },
+  "41279552": {
+    "id": "41279552",
+    "name": "Arena, calamina, piedras y trepada",
+    "role": "Terreno Tecnico",
+    "total_extracted": 114,
+    "efforts": [
+      {
+        "athleteName": "Johana Mantilla Pinto",
+        "athleteId": "111569421",
+        "cells": [
+          "",
+          "Johana Mantilla Pinto",
+          "21 feb 2026",
+          "17,4 km/h",
+          "158 bpm",
+          "—",
+          "10:15"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Alejandra Caceres",
+        "athleteId": "121615172",
+        "cells": [
+          "2",
+          "Alejandra Caceres",
+          "17 may 2026",
+          "16,0 km/h",
+          "—",
+          "—",
+          "11:08"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Kelicita Aguilar",
+        "athleteId": "44595052",
+        "cells": [
+          "3",
+          "Kelicita Aguilar",
+          "17 may 2026",
+          "13,8 km/h",
+          "167 bpm",
+          "—",
+          "12:51"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Carolina Salas Zegarra",
+        "athleteId": "147415832",
+        "cells": [
+          "4",
+          "Carolina Salas Zegarra",
+          "17 may 2026",
+          "13,8 km/h",
+          "—",
+          "—",
+          "12:54"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Cecilia Guillen López",
+        "athleteId": "158379385",
+        "cells": [
+          "5",
+          "Cecilia Guillen López",
+          "17 may 2026",
+          "13,0 km/h",
+          "—",
+          "—",
+          "13:39"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "UL Elvi",
+        "athleteId": "123731993",
+        "cells": [
+          "6",
+          "UL Elvi",
+          "17 may 2026",
+          "12,9 km/h",
+          "—",
+          "—",
+          "13:47"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Sandra Apaza Nano",
+        "athleteId": "45844049",
+        "cells": [
+          "7",
+          "Sandra Apaza Nano",
+          "17 may 2026",
+          "12,8 km/h",
+          "173 bpm",
+          "—",
+          "13:55"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Milagros Talavera",
+        "athleteId": "115876516",
+        "cells": [
+          "8",
+          "Milagros Talavera",
+          "3 may 2026",
+          "12,7 km/h",
+          "—",
+          "—",
+          "14:00"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Vanessa Patiño Puma",
+        "athleteId": "150392274",
+        "cells": [
+          "9",
+          "Vanessa Patiño Puma",
+          "17 may 2026",
+          "11,3 km/h",
+          "—",
+          "—",
+          "15:42"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Y",
+        "athleteId": "75401402",
+        "cells": [
+          "10",
+          "Victoria Y",
+          "17 may 2026",
+          "10,0 km/h",
+          "—",
+          "—",
+          "17:43"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Natali Alvera",
+        "athleteId": "81363813",
+        "cells": [
+          "11",
+          "Natali Alvera",
+          "17 may 2026",
+          "9,6 km/h",
+          "—",
+          "—",
+          "18:31"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Francis Emely Quintanilla Mango",
+        "athleteId": "107200423",
+        "cells": [
+          "12",
+          "Francis Emely Quintanilla Mango",
+          "4 abr 2026",
+          "9,2 km/h",
+          "119 bpm",
+          "—",
+          "19:25"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Irene Alfaro Vizcarra",
+        "athleteId": "44875054",
+        "cells": [
+          "13",
+          "Irene Alfaro Vizcarra",
+          "17 may 2026",
+          "8,8 km/h",
+          "150 bpm",
+          "—",
+          "20:14"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Victoria Cuno",
+        "athleteId": "73922401",
+        "cells": [
+          "14",
+          "Victoria Cuno",
+          "9 ago 2026",
+          "8,4 km/h",
+          "—",
+          "—",
+          "21:03"
+        ],
+        "gender": "F",
+        "page": 1
+      },
+      {
+        "athleteName": "Ronald Luza",
+        "athleteId": "26160379",
+        "cells": [
+          "",
+          "Ronald Luza",
+          "17 may 2026",
+          "26,0 km/h",
+          "171 bpm",
+          "—",
+          "6:51"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alexis TANTANI",
+        "athleteId": "39245919",
+        "cells": [
+          "2",
+          "Alexis TANTANI",
+          "17 may 2026",
+          "24,9 km/h",
+          "175 bpm",
+          "—",
+          "7:09"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Carlos Vizcarra",
+        "athleteId": "48670349",
+        "cells": [
+          "3",
+          "Carlos Vizcarra",
+          "29 mar 2026",
+          "23,6 km/h",
+          "—",
+          "—",
+          "7:33"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Rodrigo Sanchez Huayta",
+        "athleteId": "45273647",
+        "cells": [
+          "4",
+          "Rodrigo Sanchez Huayta",
+          "17 may 2026",
+          "23,4 km/h",
+          "—",
+          "—",
+          "7:36"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Charles Morfy Gonzales Gonzales",
+        "athleteId": "64206931",
+        "cells": [
+          "4",
+          "Charles Morfy Gonzales Gonzales",
+          "17 may 2026",
+          "23,4 km/h",
+          "—",
+          "—",
+          "7:36"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Alfredo Reynoso Simoni",
+        "athleteId": "19145880",
+        "cells": [
+          "6",
+          "Jose Alfredo Reynoso Simoni",
+          "17 may 2026",
+          "22,7 km/h",
+          "—",
+          "—",
+          "7:51"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Niltom Flores",
+        "athleteId": "82544897",
+        "cells": [
+          "7",
+          "Niltom Flores",
+          "17 may 2026",
+          "21,8 km/h",
+          "—",
+          "—",
+          "8:09"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Anthony Pauca",
+        "athleteId": "74025436",
+        "cells": [
+          "8",
+          "Anthony Pauca",
+          "16 ene 2026",
+          "21,6 km/h",
+          "—",
+          "—",
+          "8:13"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Jose Maque",
+        "athleteId": "82560760",
+        "cells": [
+          "9",
+          "Jose Maque",
+          "17 may 2026",
+          "21,4 km/h",
+          "—",
+          "—",
+          "8:19"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Silvio Ancco",
+        "athleteId": "47287486",
+        "cells": [
+          "10",
+          "Silvio Ancco",
+          "17 may 2026",
+          "21,0 km/h",
+          "—",
+          "—",
+          "8:27"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Yeison Zeballos",
+        "athleteId": "37298291",
+        "cells": [
+          "11",
+          "Yeison Zeballos",
+          "17 may 2026",
+          "21,0 km/h",
+          "239 bpm",
+          "258 W",
+          "8:28"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Cardenas",
+        "athleteId": "61269264",
+        "cells": [
+          "12",
+          "Oscar Cardenas",
+          "17 may 2026",
+          "20,9 km/h",
+          "163 bpm",
+          "—",
+          "8:30"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Paulo Martinez",
+        "athleteId": "14152238",
+        "cells": [
+          "13",
+          "Paulo Martinez",
+          "31 ene 2026",
+          "20,8 km/h",
+          "—",
+          "—",
+          "8:33"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "deyviss sasari",
+        "athleteId": "142926004",
+        "cells": [
+          "14",
+          "deyviss sasari",
+          "17 may 2026",
+          "20,7 km/h",
+          "175 bpm",
+          "—",
+          "8:35"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Giovanni Chávez-Velando R.",
+        "athleteId": "71867960",
+        "cells": [
+          "15",
+          "Giovanni Chávez-Velando R.",
+          "17 may 2026",
+          "20,4 km/h",
+          "170 bpm",
+          "—",
+          "8:42"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Oscar Ccolque",
+        "athleteId": "130975933",
+        "cells": [
+          "16",
+          "Oscar Ccolque",
+          "17 may 2026",
+          "20,0 km/h",
+          "—",
+          "—",
+          "8:53"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Hayler Shiru Luján 🐲",
+        "athleteId": "28667906",
+        "cells": [
+          "17",
+          "Hayler Shiru Luján 🐲",
+          "17 may 2026",
+          "19,9 km/h",
+          "160 bpm",
+          "—",
+          "8:55"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Angel Chambi Mamani 😇",
+        "athleteId": "20506529",
+        "cells": [
+          "18",
+          "Angel Chambi Mamani 😇",
+          "17 may 2026",
+          "19,8 km/h",
+          "179 bpm",
+          "—",
+          "8:59"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Edilson Ccahua",
+        "athleteId": "112878037",
+        "cells": [
+          "19",
+          "Edilson Ccahua",
+          "17 may 2026",
+          "19,8 km/h",
+          "180 bpm",
+          "—",
+          "9:00"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Gonzalo Málaga",
+        "athleteId": "21126267",
+        "cells": [
+          "20",
+          "Gonzalo Málaga",
+          "17 may 2026",
+          "19,7 km/h",
+          "172 bpm",
+          "241 W",
+          "9:01"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Alonso Gamero Zuñiga",
+        "athleteId": "42924643",
+        "cells": [
+          "21",
+          "Alonso Gamero Zuñiga",
+          "15 ene 2026",
+          "19,7 km/h",
+          "115 bpm",
+          "225 W",
+          "9:03"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Reyner Bellido Fuentes",
+        "athleteId": "201873139",
+        "cells": [
+          "22",
+          "Reyner Bellido Fuentes",
+          "17 may 2026",
+          "19,6 km/h",
+          "—",
+          "—",
+          "9:05"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Santiago AO",
+        "athleteId": "78665759",
+        "cells": [
+          "23",
+          "Santiago AO",
+          "17 may 2026",
+          "19,5 km/h",
+          "—",
+          "—",
+          "9:07"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Enrique Fernandez",
+        "athleteId": "37596460",
+        "cells": [
+          "24",
+          "Enrique Fernandez",
+          "17 may 2026",
+          "19,4 km/h",
+          "161 bpm",
+          "—",
+          "9:10"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Renato Tapia Landa",
+        "athleteId": "45711207",
+        "cells": [
+          "25",
+          "Renato Tapia Landa",
+          "8 feb 2026",
+          "19,4 km/h",
+          "129 bpm",
+          "222 W",
+          "9:11"
+        ],
+        "gender": "M",
+        "page": 1
+      },
+      {
+        "athleteName": "Líder roberto Cruz solis",
+        "athleteId": "88520604",
+        "cells": [
+          "25",
+          "Líder roberto Cruz solis",
+          "17 may 2026",
+          "19,4 km/h",
+          "—",
+          "—",
+          "9:11"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Brandon Jossehp Quispe Zarate",
+        "athleteId": "136655386",
+        "cells": [
+          "27",
+          "Brandon Jossehp Quispe Zarate",
+          "17 may 2026",
+          "19,3 km/h",
+          "—",
+          "—",
+          "9:14"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jose Daniel ☠️AYAYAY🍻",
+        "athleteId": "67623171",
+        "cells": [
+          "28",
+          "Jose Daniel ☠️AYAYAY🍻",
+          "16 sept 2026",
+          "19,2 km/h",
+          "142 bpm",
+          "222 W",
+          "9:15"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Persy roque",
+        "athleteId": "158622847",
+        "cells": [
+          "29",
+          "Persy roque",
+          "17 may 2026",
+          "19,2 km/h",
+          "—",
+          "—",
+          "9:17"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Le Pox",
+        "athleteId": "100721316",
+        "cells": [
+          "30",
+          "Le Pox",
+          "8 ago 2026",
+          "19,1 km/h",
+          "—",
+          "—",
+          "9:19"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Bruno Salinas",
+        "athleteId": "6616801",
+        "cells": [
+          "31",
+          "Bruno Salinas",
+          "28 feb 2026",
+          "19,0 km/h",
+          "—",
+          "—",
+          "9:21"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "David Revilla",
+        "athleteId": "19872377",
+        "cells": [
+          "32",
+          "David Revilla",
+          "8 ago 2026",
+          "19,0 km/h",
+          "—",
+          "—",
+          "9:23"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jose Valverde Paredes",
+        "athleteId": "62556119",
+        "cells": [
+          "33",
+          "Jose Valverde Paredes",
+          "31 ene 2026",
+          "18,9 km/h",
+          "—",
+          "231 W",
+          "9:25"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Shamner Yoel Huamani",
+        "athleteId": "149557586",
+        "cells": [
+          "33",
+          "Shamner Yoel Huamani",
+          "31 ene 2026",
+          "18,9 km/h",
+          "—",
+          "—",
+          "9:25"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Juan carlos Rodriguez Neira",
+        "athleteId": "46227225",
+        "cells": [
+          "33",
+          "Juan carlos Rodriguez Neira",
+          "8 ago 2026",
+          "18,9 km/h",
+          "157 bpm",
+          "—",
+          "9:25"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Wilmer Torres - ☠️AYAYAY🍻",
+        "athleteId": "40061968",
+        "cells": [
+          "36",
+          "Wilmer Torres - ☠️AYAYAY🍻",
+          "28 ago 2026",
+          "18,8 km/h",
+          "153 bpm",
+          "181 W",
+          "9:28"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "AnTon RamSak",
+        "athleteId": "142294242",
+        "cells": [
+          "37",
+          "AnTon RamSak",
+          "17 may 2026",
+          "18,7 km/h",
+          "—",
+          "—",
+          "9:30"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Franco Benjamin",
+        "athleteId": "50445704",
+        "cells": [
+          "38",
+          "Franco Benjamin",
+          "17 may 2026",
+          "18,7 km/h",
+          "167 bpm",
+          "197 W",
+          "9:31"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jarthurt M. A - ☠️AYAYAY🍻",
+        "athleteId": "25312471",
+        "cells": [
+          "39",
+          "Jarthurt M. A - ☠️AYAYAY🍻",
+          "28 ago 2026",
+          "18,7 km/h",
+          "150 bpm",
+          "207 W",
+          "9:32"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Gustavo Oviedo",
+        "athleteId": "101498030",
+        "cells": [
+          "40",
+          "Gustavo Oviedo",
+          "17 may 2026",
+          "18,6 km/h",
+          "118 bpm",
+          "—",
+          "9:35"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Elioyufre V",
+        "athleteId": "102368610",
+        "cells": [
+          "40",
+          "Elioyufre V",
+          "12 ago 2026",
+          "18,6 km/h",
+          "162 bpm",
+          "—",
+          "9:35"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Marcos El Pastor",
+        "athleteId": "135641565",
+        "cells": [
+          "42",
+          "Marcos El Pastor",
+          "15 feb 2026",
+          "18,5 km/h",
+          "—",
+          "—",
+          "9:36"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Victor Alfonso Jiménez",
+        "athleteId": "100858538",
+        "cells": [
+          "43",
+          "Victor Alfonso Jiménez",
+          "17 may 2026",
+          "18,5 km/h",
+          "—",
+          "—",
+          "9:38"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Aldo Peña",
+        "athleteId": "21836611",
+        "cells": [
+          "44",
+          "Aldo Peña",
+          "17 may 2026",
+          "18,4 km/h",
+          "—",
+          "—",
+          "9:39"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Racer ❌ 🥷🏽",
+        "athleteId": "18042033",
+        "cells": [
+          "45",
+          "Racer ❌ 🥷🏽",
+          "31 ene 2026",
+          "18,3 km/h",
+          "144 bpm",
+          "218 W",
+          "9:42"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Ricardo Cornejo Ballon",
+        "athleteId": "80739736",
+        "cells": [
+          "46",
+          "Ricardo Cornejo Ballon",
+          "19 abr 2026",
+          "18,3 km/h",
+          "155 bpm",
+          "221 W",
+          "9:43"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jorge Reynoso Simoni",
+        "athleteId": "19558436",
+        "cells": [
+          "47",
+          "Jorge Reynoso Simoni",
+          "19 abr 2026",
+          "18,3 km/h",
+          "121 bpm",
+          "200 W",
+          "9:44"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Jorge Luis Coaquira mamani",
+        "athleteId": "853071462",
+        "cells": [
+          "47",
+          "Jorge Luis Coaquira mamani",
+          "26 abr 2026",
+          "18,3 km/h",
+          "—",
+          "—",
+          "9:44"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Juan Agustín Fernández Santos",
+        "athleteId": "89660988",
+        "cells": [
+          "47",
+          "Juan Agustín Fernández Santos",
+          "17 may 2026",
+          "18,3 km/h",
+          "183 bpm",
+          "—",
+          "9:44"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Pablo Maldonado Paredes",
+        "athleteId": "7693887",
+        "cells": [
+          "50",
+          "Pablo Maldonado Paredes",
+          "7 mar 2026",
+          "18,2 km/h",
+          "128 bpm",
+          "162 W",
+          "9:45"
+        ],
+        "gender": "M",
+        "page": 2
+      },
+      {
+        "athleteName": "Norman Peña",
+        "athleteId": "16571987",
+        "cells": [
+          "51",
+          "Norman Peña",
+          "3 may 2026",
+          "18,1 km/h",
+          "—",
+          "—",
+          "9:48"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Galante CR",
+        "athleteId": "111951831",
+        "cells": [
+          "52",
+          "Galante CR",
+          "10 may 2026",
+          "18,0 km/h",
+          "72 bpm",
+          "—",
+          "9:53"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Anthony Chuctaya",
+        "athleteId": "118418797",
+        "cells": [
+          "53",
+          "Anthony Chuctaya",
+          "26 abr 2026",
+          "17,9 km/h",
+          "—",
+          "—",
+          "9:55"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Marco Raiden Manchego",
+        "athleteId": "16913741",
+        "cells": [
+          "53",
+          "Marco Raiden Manchego",
+          "8 ago 2026",
+          "17,9 km/h",
+          "—",
+          "—",
+          "9:55"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "rudy Quirita Florez",
+        "athleteId": "102898258",
+        "cells": [
+          "55",
+          "rudy Quirita Florez",
+          "17 may 2026",
+          "17,9 km/h",
+          "164 bpm",
+          "—",
+          "9:57"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Alessandro Valdivia",
+        "athleteId": "168781728",
+        "cells": [
+          "56",
+          "Alessandro Valdivia",
+          "3 may 2026",
+          "17,8 km/h",
+          "—",
+          "—",
+          "9:58"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Yoel Chara",
+        "athleteId": "90316231",
+        "cells": [
+          "57",
+          "Yoel Chara",
+          "17 may 2026",
+          "17,8 km/h",
+          "175 bpm",
+          "—",
+          "9:59"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Joaquin Lazo Rodriguiez",
+        "athleteId": "94613339",
+        "cells": [
+          "58",
+          "Joaquin Lazo Rodriguiez",
+          "21 mar 2026",
+          "17,8 km/h",
+          "142 bpm",
+          "—",
+          "10:00"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Carlos Alonso",
+        "athleteId": "81449554",
+        "cells": [
+          "59",
+          "Carlos Alonso",
+          "17 may 2026",
+          "17,8 km/h",
+          "182 bpm",
+          "—",
+          "10:01"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Sam Saunders",
+        "athleteId": "967327",
+        "cells": [
+          "59",
+          "Sam Saunders",
+          "17 may 2026",
+          "17,8 km/h",
+          "171 bpm",
+          "—",
+          "10:01"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "$3rgi0 €ruz",
+        "athleteId": "107393297",
+        "cells": [
+          "61",
+          "$3rgi0 €ruz",
+          "17 may 2026",
+          "17,7 km/h",
+          "185 bpm",
+          "—",
+          "10:02"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "David Condori",
+        "athleteId": "137888527",
+        "cells": [
+          "62",
+          "David Condori",
+          "6 sept 2026",
+          "17,4 km/h",
+          "162 bpm",
+          "—",
+          "10:12"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Franco Zeballos Team Mitocondria",
+        "athleteId": "22039047",
+        "cells": [
+          "63",
+          "Franco Zeballos Team Mitocondria",
+          "17 ene 2026",
+          "17,4 km/h",
+          "91 bpm",
+          "—",
+          "10:14"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Hans Niño de Guzman",
+        "athleteId": "7693419",
+        "cells": [
+          "63",
+          "Hans Niño de Guzman",
+          "21 feb 2026",
+          "17,4 km/h",
+          "136 bpm",
+          "—",
+          "10:14"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Hideki Core",
+        "athleteId": "189618237",
+        "cells": [
+          "65",
+          "Hideki Core",
+          "26 abr 2026",
+          "17,3 km/h",
+          "—",
+          "—",
+          "10:16"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Willard Hector",
+        "athleteId": "26123874",
+        "cells": [
+          "66",
+          "Willard Hector",
+          "26 abr 2026",
+          "17,3 km/h",
+          "80 bpm",
+          "—",
+          "10:18"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Harold Castro Herrero",
+        "athleteId": "72791735",
+        "cells": [
+          "67",
+          "Harold Castro Herrero",
+          "18 ene 2026",
+          "17,2 km/h",
+          "—",
+          "—",
+          "10:19"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Sergio pineda huanca",
+        "athleteId": "160913224",
+        "cells": [
+          "68",
+          "Sergio pineda huanca",
+          "6 sept 2026",
+          "17,2 km/h",
+          "—",
+          "—",
+          "10:21"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Aly Champi Quispe",
+        "athleteId": "69974828",
+        "cells": [
+          "69",
+          "Aly Champi Quispe",
+          "3 may 2026",
+          "17,1 km/h",
+          "—",
+          "—",
+          "10:24"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Jimy Monyers Parada Hernandez",
+        "athleteId": "70955149",
+        "cells": [
+          "70",
+          "Jimy Monyers Parada Hernandez",
+          "17 may 2026",
+          "17,1 km/h",
+          "—",
+          "—",
+          "10:25"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Juan Jose Alvarez Martinez",
+        "athleteId": "87735600",
+        "cells": [
+          "71",
+          "Juan Jose Alvarez Martinez",
+          "17 may 2026",
+          "17,0 km/h",
+          "—",
+          "—",
+          "10:28"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Claudio Sánchez Estremadoyro",
+        "athleteId": "69062899",
+        "cells": [
+          "72",
+          "Claudio Sánchez Estremadoyro",
+          "17 may 2026",
+          "16,9 km/h",
+          "183 bpm",
+          "266 W",
+          "10:32"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Elvio Rodriguez",
+        "athleteId": "64994630",
+        "cells": [
+          "73",
+          "Elvio Rodriguez",
+          "17 may 2026",
+          "16,7 km/h",
+          "—",
+          "—",
+          "10:39"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Cesar Falla Villena 🇵🇪😎",
+        "athleteId": "74352219",
+        "cells": [
+          "74",
+          "Cesar Falla Villena 🇵🇪😎",
+          "17 may 2026",
+          "16,7 km/h",
+          "190 bpm",
+          "—",
+          "10:40"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "José Alonso Torres Vásquez",
+        "athleteId": "90733391",
+        "cells": [
+          "74",
+          "José Alonso Torres Vásquez",
+          "17 may 2026",
+          "16,7 km/h",
+          "—",
+          "—",
+          "10:40"
+        ],
+        "gender": "M",
+        "page": 3
+      },
+      {
+        "athleteName": "Karlo HM",
+        "athleteId": "142917839",
+        "cells": [
+          "76",
+          "Karlo HM",
+          "10 may 2026",
+          "16,6 km/h",
+          "146 bpm",
+          "—",
+          "10:42"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Ledú Apaza",
+        "athleteId": "102661755",
+        "cells": [
+          "76",
+          "Ledú Apaza",
+          "17 may 2026",
+          "16,6 km/h",
+          "—",
+          "—",
+          "10:42"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Peter Ura",
+        "athleteId": "32247520",
+        "cells": [
+          "78",
+          "Peter Ura",
+          "17 may 2026",
+          "16,6 km/h",
+          "—",
+          "—",
+          "10:43"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Kevin Ramirez alvarez",
+        "athleteId": "160096699",
+        "cells": [
+          "79",
+          "Kevin Ramirez alvarez",
+          "17 may 2026",
+          "16,4 km/h",
+          "—",
+          "—",
+          "10:49"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Luis Alberto Lipe Mamani",
+        "athleteId": "85628399",
+        "cells": [
+          "80",
+          "Luis Alberto Lipe Mamani",
+          "17 may 2026",
+          "16,4 km/h",
+          "—",
+          "—",
+          "10:50"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Angel Ojeda",
+        "athleteId": "42619598",
+        "cells": [
+          "81",
+          "Angel Ojeda",
+          "17 may 2026",
+          "16,2 km/h",
+          "164 bpm",
+          "—",
+          "11:00"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "James P. Chávez",
+        "athleteId": "91920372",
+        "cells": [
+          "82",
+          "James P. Chávez",
+          "3 may 2026",
+          "16,1 km/h",
+          "145 bpm",
+          "—",
+          "11:04"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+        "athleteId": "95720970",
+        "cells": [
+          "82",
+          "🚲 J•Շα૨ℓѳઽ 🏃🏽‍♂️",
+          "20 sept 2026",
+          "16,1 km/h",
+          "—",
+          "—",
+          "11:04"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Danuk 🇵🇪 O+",
+        "athleteId": "105121374",
+        "cells": [
+          "84",
+          "Danuk 🇵🇪 O+",
+          "17 may 2026",
+          "16,0 km/h",
+          "167 bpm",
+          "182 W",
+          "11:06"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jorge Gamero",
+        "athleteId": "28822463",
+        "cells": [
+          "84",
+          "Jorge Gamero",
+          "8 ago 2026",
+          "16,0 km/h",
+          "141 bpm",
+          "211 W",
+          "11:06"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Andre Zarate Torres",
+        "athleteId": "96874200",
+        "cells": [
+          "86",
+          "Andre Zarate Torres",
+          "17 may 2026",
+          "16,0 km/h",
+          "—",
+          "—",
+          "11:08"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Kevin Chavez",
+        "athleteId": "20591991",
+        "cells": [
+          "87",
+          "Kevin Chavez",
+          "17 may 2026",
+          "15,8 km/h",
+          "—",
+          "—",
+          "11:16"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "El Jacho 🇵🇪",
+        "athleteId": "97148928",
+        "cells": [
+          "88",
+          "El Jacho 🇵🇪",
+          "17 may 2026",
+          "15,7 km/h",
+          "—",
+          "—",
+          "11:18"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Miguel Medina",
+        "athleteId": "50566781",
+        "cells": [
+          "89",
+          "Miguel Medina",
+          "17 may 2026",
+          "15,7 km/h",
+          "175 bpm",
+          "—",
+          "11:20"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Alonso Valeriano",
+        "athleteId": "36696678",
+        "cells": [
+          "90",
+          "Alonso Valeriano",
+          "3 may 2026",
+          "15,6 km/h",
+          "157 bpm",
+          "—",
+          "11:23"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "EL César Riega Herrera",
+        "athleteId": "105859321",
+        "cells": [
+          "91",
+          "EL César Riega Herrera",
+          "12 may 2026",
+          "15,6 km/h",
+          "—",
+          "—",
+          "11:25"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "RODRIGO ALFONSO DIAZ ALVAREZ",
+        "athleteId": "197461828",
+        "cells": [
+          "92",
+          "RODRIGO ALFONSO DIAZ ALVAREZ",
+          "9 ago 2026",
+          "15,6 km/h",
+          "—",
+          "—",
+          "11:26"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "HUSSEIN ISAAC HUAYHUA ALARCON",
+        "athleteId": "115670753",
+        "cells": [
+          "93",
+          "HUSSEIN ISAAC HUAYHUA ALARCON",
+          "10 may 2026",
+          "15,5 km/h",
+          "—",
+          "—",
+          "11:27"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Adan Meneses",
+        "athleteId": "20671308",
+        "cells": [
+          "94",
+          "Adan Meneses",
+          "17 may 2026",
+          "15,5 km/h",
+          "—",
+          "—",
+          "11:30"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Geanmarco Ochoa Garcia",
+        "athleteId": "140235281",
+        "cells": [
+          "95",
+          "Geanmarco Ochoa Garcia",
+          "5 mar 2026",
+          "15,4 km/h",
+          "162 bpm",
+          "—",
+          "11:34"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "José BC",
+        "athleteId": "37330554",
+        "cells": [
+          "96",
+          "José BC",
+          "3 may 2026",
+          "15,2 km/h",
+          "158 bpm",
+          "—",
+          "11:40"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Élvio Tito casa",
+        "athleteId": "97967335",
+        "cells": [
+          "96",
+          "Élvio Tito casa",
+          "17 may 2026",
+          "15,2 km/h",
+          "181 bpm",
+          "—",
+          "11:40"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Steve Patiño Zapata",
+        "athleteId": "32324516",
+        "cells": [
+          "98",
+          "Steve Patiño Zapata",
+          "17 may 2026",
+          "15,2 km/h",
+          "82 bpm",
+          "—",
+          "11:42"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Manuel Torres",
+        "athleteId": "16863189",
+        "cells": [
+          "99",
+          "Manuel Torres",
+          "17 may 2026",
+          "15,2 km/h",
+          "168 bpm",
+          "184 W",
+          "11:43"
+        ],
+        "gender": "M",
+        "page": 4
+      },
+      {
+        "athleteName": "Jhonny Zevallos",
+        "athleteId": "108390650",
+        "cells": [
+          "100",
+          "Jhonny Zevallos",
+          "3 may 2026",
+          "14,9 km/h",
+          "—",
+          "—",
+          "11:58"
+        ],
+        "gender": "M",
+        "page": 4
+      }
+    ]
+  }
+}
