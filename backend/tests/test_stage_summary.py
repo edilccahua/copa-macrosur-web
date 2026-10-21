@@ -993,6 +993,110 @@ async def test_mountain_titles_are_none_without_segments(async_session):
     assert titles["kamikaze_female"] is None
 
 
+async def test_mountain_titles_are_none_when_stage_not_finished(async_session):
+    """Integridad de datos: una etapa no finalizada (REGISTRATION_OPEN o UPCOMING) no tiene títulos."""
+    stage = await _seed_stage_with_results(
+        async_session,
+        slug="vuelta-a-los-poblados",
+        stage_number=3,
+        entries=0,
+        finishers=0,
+        points=0,
+        categories=0,
+    )
+    stage.status = StageStatusEnum.REGISTRATION_OPEN
+    async_session.add(stage)
+    await async_session.flush()
+
+    segment = StravaSegment(
+        stage_id=stage.id,
+        strava_segment_id="25245306",
+        name="Trepada Carretera 602",
+        distance_m=5400.0,
+        average_grade=6.2,
+        kind="CLIMB",
+    )
+    async_session.add(segment)
+    await async_session.flush()
+
+    # Aunque existan intentos históricos de años previos en la BD, no deben otorgar títulos
+    async_session.add(
+        StravaEffort(
+            segment_id=segment.id,
+            athlete_name_raw="HISTORICO 2025",
+            elapsed_time_sec=1000,
+            measured_on="2025-12-14",
+            athlete_gender="M",
+        )
+    )
+    await async_session.commit()
+
+    titles = await compute_stage_mountain_titles(async_session, stage)
+    assert titles["kom"] is None
+    assert titles["qom"] is None
+    assert titles["kamikaze_male"] is None
+    assert titles["kamikaze_female"] is None
+
+
+async def test_mountain_titles_never_fallback_to_historical_attempts(async_session):
+    """Integridad: si una etapa finalizada no tiene intentos de la fecha de carrera, el título es None."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=2, finishers=2, points=20, categories=1
+    )
+    session = async_session
+    segment = StravaSegment(
+        stage_id=stage.id,
+        strava_segment_id="1010",
+        name="SUBIDA SIN INTENTOS DE HOY",
+        distance_m=3000.0,
+        average_grade=5.0,
+        kind="CLIMB",
+    )
+    session.add(segment)
+    await session.flush()
+    # Intento de 2024: fuera de la fecha de carrera
+    session.add(
+        StravaEffort(
+            segment_id=segment.id,
+            athlete_name_raw="PASADO",
+            elapsed_time_sec=500,
+            measured_on="2024-05-17",
+            athlete_gender="M",
+        )
+    )
+    await session.commit()
+
+    titles = await compute_stage_mountain_titles(session, stage)
+    assert titles["kom"] is None
+
+
+async def test_stage_strava_summary_exposes_badge_tags_and_award_targets(async_session):
+    """Los segmentos seleccionados declaran su badge_tag y su award_target con USD 15 si aplica."""
+    stage = await _seed_stage_with_results(
+        async_session, entries=1, finishers=1, points=10, categories=1
+    )
+    session = async_session
+    # Segmento 25045985 es la subida reina oficial de Fecha 1
+    segment = StravaSegment(
+        stage_id=stage.id,
+        strava_segment_id="25045985",
+        name="Perro rabioso - trepada",
+        distance_m=1000.0,
+        average_grade=4.5,
+        kind="CLIMB",
+    )
+    session.add(segment)
+    await session.commit()
+
+    summaries = await compute_stage_strava(session, stage)
+    assert len(summaries) == 1
+    s = summaries[0]
+    assert s.badge_tag == "PUNCHER"
+    assert s.award_target == "KOM_QOM"
+    assert s.award_amount_usd == 15
+
+
+
 async def test_strava_segments_expose_kind_and_location(async_session):
     """Cada segmento declara su tipo y su lugar."""
     stage = await _seed_stage_with_results(

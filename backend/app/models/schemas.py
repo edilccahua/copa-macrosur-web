@@ -3,8 +3,7 @@ from datetime import date as date_cls, datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from backend.app.models.entities import (
-    GenderEnum, StageStatusEnum, PaymentStatusEnum, RaceStatusEnum,
-    TicketTypeEnum, TicketStatusEnum
+    GenderEnum, StageStatusEnum, TicketTypeEnum
 )
 
 
@@ -236,6 +235,12 @@ class StravaSegmentSummaryRead(BaseModel):
     kom: Optional[StravaEffortRead] = None
     # Tipo del tramo: CLIMB | DESCENT | FLAT.
     kind: str = "FLAT"
+    # Tag editorial: ESCALADOR | PUNCHER | KAMIKAZE | LLANERO.
+    badge_tag: str = "LLANERO"
+    # Objetivo de premio oficial en la fecha: KOM_QOM | KAMIKAZE | None.
+    award_target: Optional[str] = None
+    # Monto en USD del premio en juego (15 si tiene premio oficial).
+    award_amount_usd: Optional[int] = None
     # Lugar del segmento ("Uchumayo, Arequipa"), tal como lo reporta Strava.
     location: Optional[str] = None
     elevation_min_m: Optional[int] = None
