@@ -1,6 +1,6 @@
 # Premios — la escala de la edición 2026
 
-> **Fecha:** 20 de octubre de 2026
+> **Fecha:** 26 de octubre de 2026
 > **Estado:** la escala está **en la BD** (`prize_tiers`, con su `group_key`)
 > y la API la publica en `GET /api/v1/public/prizes`.
 > **Alcance:** portada (`/#premios`) y página `/premios`
@@ -9,31 +9,36 @@
 
 ## 1. Regla de la edición 2026
 
-| Ámbito | Agrupación | Puestos | Monto | Se paga a |
+| Ámbito | Agrupación | Puestos | Monto / Tipo | Se paga a |
 | :--- | :--- | :--- | :--- | :--- |
 | **Acumulado del campeonato** | `PRO` | 1º / 2º / 3º | **USD 300 / 200 / 100** | El podio de la agrupación **PRO** |
 | **Acumulado del campeonato** | `NORMAL` | 1º / 2º / 3º | **USD 300 / 200 / 100** | El podio de la agrupación **NORMAL** |
 | **Acumulado de equipos** | `EQUIPOS` | 1º / 2º / 3º | **USD 500 / 400 / 300** | El podio de la **Copa de Equipos** acumulada |
-| **Cada fecha** | — | 1º / 2º / 3º | **USD 100 / 50 / 30** | Podio de **cada una de las 11 categorías**, en cada una de las 4 fechas |
+| **Cada fecha (ELITE)** | `ELITE` | 1º / 2º / 3º | **USD 70** / **Regalo/Presente** / **Regalo/Presente** | Podio de la categoría **ELITE** en cada fecha |
+| **Cada fecha (Demás categorías)** | — | 1º / 2º / 3º | **USD 50** / **Regalo/Presente** / **Regalo/Presente** | Podio de **cada una de las demás categorías** en cada fecha |
 
 Aclaraciones que la UI deja explícitas:
 
 - El acumulado **no es por categoría**: es al que más puntos suma dentro de PRO y dentro de NORMAL.
 - El premio por fecha **no es una bolsa común de NORMAL**: hay un podio por categoría (11 por fecha).
+- En cada fecha, el 1er lugar cobra en efectivo (**USD 70** en Elite y **USD 50** en las demás categorías), mientras que el 2do y 3er puesto reciben regalos / presentes para el ciclista o bicicleta.
 - El premio de equipos es **su propia escala** (500 / 400 / 300): el podio de clubes se paga con un presupuesto propio, no reparte el de los corredores.
 
 ---
 
 ## 2. Cómo está en la BD
 
-`prize_tiers` tiene **12 filas** y una columna `group_key` que dice a qué
+`prize_tiers` tiene **15 filas** y una columna `group_key` que dice a qué
 agrupación pertenece cada una:
 
 | scope | group_key | position | amount_usd | label |
 | :--- | :--- | :--- | :--- | :--- |
-| `FECHA` | `NULL` | 1 | 100 | 1er puesto de cada categoría |
-| `FECHA` | `NULL` | 2 | 50 | 2do puesto de cada categoría |
-| `FECHA` | `NULL` | 3 | 30 | 3er puesto de cada categoría |
+| `FECHA` | `ELITE` | 1 | 70 | 1er puesto Elite |
+| `FECHA` | `ELITE` | 2 | 0 | 2do puesto Elite (Regalo / Presente) |
+| `FECHA` | `ELITE` | 3 | 0 | 3er puesto Elite (Regalo / Presente) |
+| `FECHA` | `NULL` | 1 | 50 | 1er puesto de cada categoría |
+| `FECHA` | `NULL` | 2 | 0 | 2do puesto de cada categoría (Regalo / Presente) |
+| `FECHA` | `NULL` | 3 | 0 | 3er puesto de cada categoría (Regalo / Presente) |
 | `ACUMULADO` | `PRO` | 1 | 300 | Campeón del acumulado PRO |
 | `ACUMULADO` | `PRO` | 2 | 200 | Subcampeón del acumulado PRO |
 | `ACUMULADO` | `PRO` | 3 | 100 | Tercer puesto del acumulado PRO |

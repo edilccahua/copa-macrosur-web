@@ -133,7 +133,7 @@ const leaderDetail = leader
             <li class="prize__tier">
               <span class="prize__pos font-mono">{tier.position}º</span>
               <span class="prize__amount tabular">
-                {currency} {tier.amountUsd}
+                {tier.amountUsd && tier.amountUsd > 0 ? `${currency} ${tier.amountUsd}` : tier.label ?? 'Regalo / Presente'}
               </span>
             </li>
           ))

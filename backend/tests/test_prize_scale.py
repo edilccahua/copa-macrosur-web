@@ -15,7 +15,8 @@ from backend.app.seed import seed_prize_tiers
 
 # La escala de la edición 2026: (scope, group_key) -> {puesto: USD}
 ESCALA_2026 = {
-    ("FECHA", None): {1: 100, 2: 50, 3: 30},
+    ("FECHA", "ELITE"): {1: 70, 2: 0, 3: 0},
+    ("FECHA", None): {1: 50, 2: 0, 3: 0},
     ("ACUMULADO", "PRO"): {1: 300, 2: 200, 3: 100},
     ("ACUMULADO", "NORMAL"): {1: 300, 2: 200, 3: 100},
     ("ACUMULADO", "EQUIPOS"): {1: 500, 2: 400, 3: 300},
@@ -36,7 +37,7 @@ async def test_la_escala_de_la_edicion_2026_queda_sembrada(async_session):
     escala, tiers = await _leer(async_session)
 
     assert escala == ESCALA_2026
-    assert len(tiers) == 12
+    assert len(tiers) == 15
 
 
 @pytest.mark.asyncio
@@ -46,7 +47,7 @@ async def test_el_seed_es_idempotente(async_session):
     escala, tiers = await _leer(async_session)
 
     assert escala == ESCALA_2026
-    assert len(tiers) == 12
+    assert len(tiers) == 15
 
 
 @pytest.mark.asyncio
@@ -68,7 +69,7 @@ async def test_el_seed_actualiza_una_escala_vieja(async_session):
     escala, tiers = await _leer(async_session)
 
     assert escala == ESCALA_2026
-    assert len(tiers) == 12
+    assert len(tiers) == 15
 
 
 @pytest.mark.asyncio

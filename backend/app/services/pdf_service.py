@@ -4,11 +4,15 @@ from typing import List, Dict, Any, Union
 from pypdf import PdfReader
 
 
-def parse_time_to_ms(time_str: str) -> int:
-    """Convierte formato H:MM:SS, HH:MM:SS o HH:MM:SS.mmm a milisegundos enteros."""
-    if not time_str:
+def parse_time_to_ms(time_val: Any) -> int:
+    """Convierte formato H:MM:SS, HH:MM:SS o HH:MM:SS.mmm o datetime.time a milisegundos enteros."""
+    if not time_val:
         return 0
-    parts = time_str.strip().split(":")
+    if hasattr(time_val, "hour") and hasattr(time_val, "minute") and hasattr(time_val, "second"):
+        micro = getattr(time_val, "microsecond", 0)
+        return ((time_val.hour * 3600) + (time_val.minute * 60) + time_val.second) * 1000 + (micro // 1000)
+    time_str = str(time_val).strip()
+    parts = time_str.split(":")
     if len(parts) != 3:
         return 0
     try:

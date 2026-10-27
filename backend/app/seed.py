@@ -5,7 +5,7 @@ import shutil
 from typing import Optional, List, Dict, Any
 
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, text
 
 from backend.app.core.db import init_db, async_session_factory
 from backend.app.core.secrets import judge_pin_for
@@ -18,7 +18,8 @@ from backend.app.services.excel_service import (
     import_riders_from_excel, resolve_category, resolve_or_create_team,
     generate_deterministic_dni, slugify, normalize_name,
 )
-from backend.app.services.pdf_service import extract_race_results_from_pdf, collapse_team_hyphen
+from backend.app.services.pdf_service import extract_race_results_from_pdf, collapse_team_hyphen, parse_time_to_ms
+import openpyxl
 from backend.app.services.gpx_service import parse_gpx_in_memory
 from backend.app.services.special_prizes_service import compute_claro_remontada
 from backend.app.services.scoring import (
@@ -97,14 +98,15 @@ RACE_CONFIG: List[Dict[str, Any]] = [
         "title": "El Retorno a los Poblados 2",
         "slug": "vuelta-a-los-poblados",
         "date": datetime.date(2026, 10, 25),
-        "status": StageStatusEnum.REGISTRATION_OPEN,
+        "status": StageStatusEnum.FINISHED,
         "start_location": "Plaza de Chiguata",
         "start_time": "08:00 AM",
         "poster_url": "/images/posters/f3-retorno-poblados-card.webp",
         "laps": 1,
         "distance_km": 47.23,
         "elevation_gain_m": 761,
-        "excel": [],
+        "excel": ["races/3. INSCRITOS RETORNO A POBLADOS 2026.xlsx"],
+        "results_excel": ["races/RESULTADOS RETORNO A POBLADOS II.xlsx"],
         "pdf": [],
         "gpx": ["races/Vuelta a los poblados 2026.gpx"],
         "gpx_public": "vuelta-a-los-poblados.gpx",
@@ -643,6 +645,8 @@ async def load_results(
         await session.commit()
 
     pdf_path = find_race_file(*cfg.get("pdf", []))
+    results_excel_path = find_race_file(*cfg.get("results_excel", []))
+
     if pdf_path:
         print(f"'{stage.name}': cruzando resultados desde {pdf_path}...")
         # Estado limpio para un cruce determinístico e idempotente
@@ -679,8 +683,169 @@ async def load_results(
         recon = await reconcile_pdf_only_results(session, stage, unmatched, cfg["laps"])
         if recon:
             print(f"   -> {recon} inscritos reconstruidos solo desde el PDF")
+    elif results_excel_path:
+        print(f"'{stage.name}': cruzando resultados desde Excel {results_excel_path}...")
+        entries = (await session.exec(select(StageEntry).where(StageEntry.stage_id == stage.id))).all()
+        for e in entries:
+            e.finish_elapsed_ms = None
+            e.race_status = RaceStatusEnum.REGISTERED
+            e.category_rank = None
+            e.overall_rank = None
+            e.points_earned = 0
+            session.add(e)
+        await session.commit()
+
+        wb_res = openpyxl.load_workbook(results_excel_path, data_only=True)
+        ws_res = wb_res["Hoja1"] if "Hoja1" in wb_res.sheetnames else wb_res.active
+        excel_results = []
+        current_cat_context = None
+        for r in range(1, ws_res.max_row + 1):
+            vals = [ws_res.cell(r, c).value for c in range(1, ws_res.max_column + 1)]
+            if not any(v is not None for v in vals):
+                continue
+            str_vals = [str(v).strip() if v is not None else "" for v in vals]
+            if "DORSAL" in str_vals[0].upper():
+                if len(vals) >= 4 and vals[3] and str(vals[3]).strip():
+                    h_cand = str(vals[3]).strip()
+                    if "TOTAL" not in h_cand.upper() and "PUNTOS" not in h_cand.upper():
+                        current_cat_context = h_cand
+                continue
+            if str_vals[0].isdigit():
+                bib_val = int(str_vals[0])
+                r_name = str_vals[1] if len(str_vals) > 1 else ""
+                r_team = str_vals[2] if len(str_vals) > 2 else ""
+                r_cat = str_vals[3] if len(str_vals) > 3 and str_vals[3] else current_cat_context
+                time_cell = vals[4] if len(vals) > 4 else None
+                elapsed_ms = parse_time_to_ms(time_cell)
+                pts_val = int(str_vals[5]) if len(str_vals) > 5 and str_vals[5].isdigit() else 0
+                rank_val = int(str_vals[6]) if len(str_vals) > 6 and str_vals[6].isdigit() else None
+                excel_results.append({
+                    "bib": bib_val,
+                    "name": r_name,
+                    "team": r_team,
+                    "category": r_cat,
+                    "elapsed_ms": elapsed_ms,
+                    "points": pts_val,
+                    "rank": rank_val,
+                })
+
+        stage.official_results = len(excel_results)
+        stage.official_points = sum(int(r.get("points") or 0) for r in excel_results)
+        session.add(stage)
+        await session.commit()
+        print(
+            f"   -> Excel oficial: {stage.official_results} resultados, "
+            f"{stage.official_points} puntos publicados"
+        )
+
+        # Indexar corredores e inscripciones
+        stmt_riders = select(Rider)
+        riders_all = (await session.exec(stmt_riders)).all()
+        rider_by_id = {r.id: r for r in riders_all}
+        entry_by_rider = {e.rider_id: e for e in entries}
+        entries_by_bib = {e.bib_number: e for e in entries if e.bib_number is not None}
+        taken_bibs = {e.bib_number for e in entries if e.bib_number is not None}
+
+        def _reserve_bib_excel() -> int:
+            cand = 0
+            while cand in taken_bibs:
+                cand -= 1
+            taken_bibs.add(cand)
+            return cand
+
+        def _name_similarity(n1: str, n2: str) -> float:
+            w1 = set(normalize_name(n1).split())
+            w2 = set(normalize_name(n2).split())
+            if not w1 or not w2:
+                return 0.0
+            return len(w1 & w2) / max(len(w1), len(w2))
+
+        matched = 0
+        unmatched = []
+        assigned_entries = set()
+
+        for res in excel_results:
+            target_entry = entries_by_bib.get(res["bib"])
+            r_obj = rider_by_id.get(target_entry.rider_id) if target_entry else None
+            # Si el dorsal coincide y el nombre es compatible
+            if target_entry and r_obj and _name_similarity(r_obj.full_name, res["name"]) >= 0.4:
+                target_entry.finish_elapsed_ms = res["elapsed_ms"]
+                target_entry.race_status = RaceStatusEnum.FINISHED if res["elapsed_ms"] else RaceStatusEnum.REGISTERED
+                session.add(target_entry)
+                assigned_entries.add(target_entry.id)
+                matched += 1
+            else:
+                # Buscar por similitud de nombre entre las inscripciones no asignadas
+                best_entry = None
+                best_sim = 0.0
+                for e in entries:
+                    if e.id in assigned_entries:
+                        continue
+                    e_rider = rider_by_id.get(e.rider_id)
+                    if not e_rider:
+                        continue
+                    sim = _name_similarity(e_rider.full_name, res["name"])
+                    if sim > best_sim:
+                        best_sim = sim
+                        best_entry = e
+
+                if best_entry and best_sim >= 0.5:
+                    old_bib = best_entry.bib_number
+                    # Si el dorsal deseado lo tiene otro corredor sin resultado, reasignarlo a dorsal reservado
+                    conflict = entries_by_bib.get(res["bib"])
+                    if conflict and conflict.id != best_entry.id and conflict.id not in assigned_entries:
+                        conflict.bib_number = _reserve_bib_excel()
+                        conflict.race_status = RaceStatusEnum.DNS
+                        session.add(conflict)
+                        entries_by_bib[conflict.bib_number] = conflict
+
+                    best_entry.bib_number = res["bib"]
+                    best_entry.finish_elapsed_ms = res["elapsed_ms"]
+                    best_entry.race_status = RaceStatusEnum.FINISHED if res["elapsed_ms"] else RaceStatusEnum.REGISTERED
+                    session.add(best_entry)
+                    entries_by_bib[res["bib"]] = best_entry
+                    assigned_entries.add(best_entry.id)
+                    matched += 1
+                    e_rider = rider_by_id.get(best_entry.rider_id)
+                    r_name_log = e_rider.full_name if e_rider else res["name"]
+                    print(f"   -> Dorsal reasignado: {r_name_log} ({old_bib} -> {res['bib']}) [sim={best_sim:.2f}]")
+                else:
+                    unmatched.append(res)
+
+        print(f"   -> {matched} inscritos cruzados con tiempo desde Excel")
+        if unmatched:
+            print(f"   -> {len(unmatched)} resultados reconstruidos")
+            for u in unmatched:
+                r_cat_obj = await resolve_category(session, u["category"])
+                team_id = await resolve_or_create_team(session, u["team"])
+                dni = generate_deterministic_dni(u["name"])
+                stmt_r = select(Rider).where(Rider.dni == dni)
+                r_rider = (await session.exec(stmt_r)).first()
+                if not r_rider:
+                    r_rider = Rider(
+                        dni=dni,
+                        full_name=u["name"],
+                        slug=f"{slugify(u['name'])}-{dni[-4:]}",
+                        team_id=team_id,
+                        gender=GenderEnum.F if "DAMAS" in (u["category"] or "").upper() else GenderEnum.M,
+                    )
+                    session.add(r_rider)
+                    await session.flush()
+                new_entry = StageEntry(
+                    stage_id=stage.id,
+                    rider_id=r_rider.id,
+                    category_id=r_cat_obj.id if r_cat_obj else None,
+                    team_id=team_id,
+                    bib_number=u["bib"],
+                    payment_status=PaymentStatusEnum.PAID,
+                    race_status=RaceStatusEnum.FINISHED if u["elapsed_ms"] else RaceStatusEnum.REGISTERED,
+                    finish_elapsed_ms=u["elapsed_ms"],
+                    laps=cfg["laps"],
+                )
+                session.add(new_entry)
+        await session.commit()
     else:
-        print(f"'{stage.name}': sin PDF de resultados (fecha futura).")
+        print(f"'{stage.name}': sin archivo de resultados (fecha futura).")
 
     # Un solo registro por ciclista y fecha (conserva el mejor tiempo)
     merged = await merge_duplicate_entries(session, stage.id)
@@ -787,11 +952,15 @@ async def seed_prize_tiers(session: AsyncSession) -> None:
     iba sin hacer nada y la BD se quedaba con la escala vieja para siempre.
     """
     escala = [
-        # El premio por fecha: cada una de las 11 categorías cobra lo que dice
-        # su fila. `group_key` nulo.
-        ("FECHA", None, 1, 100, "1er puesto de cada categoría"),
-        ("FECHA", None, 2, 50, "2do puesto de cada categoría"),
-        ("FECHA", None, 3, 30, "3er puesto de cada categoría"),
+        # El premio por fecha:
+        # Categoría ELITE: 70 USD 1er puesto; 2do y 3er puesto Regalo / Presente.
+        ("FECHA", "ELITE", 1, 70, "1er puesto Elite"),
+        ("FECHA", "ELITE", 2, 0, "2do puesto Elite (Regalo / Presente)"),
+        ("FECHA", "ELITE", 3, 0, "3er puesto Elite (Regalo / Presente)"),
+        # Demás categorías: 50 USD 1er puesto; 2do y 3er puesto Regalo / Presente.
+        ("FECHA", None, 1, 50, "1er puesto de cada categoría"),
+        ("FECHA", None, 2, 0, "2do puesto de cada categoría (Regalo / Presente)"),
+        ("FECHA", None, 3, 0, "3er puesto de cada categoría (Regalo / Presente)"),
         # El acumulado: un podio por agrupación, no por categoría.
         ("ACUMULADO", "PRO", 1, 300, "Campeón del acumulado PRO"),
         ("ACUMULADO", "PRO", 2, 200, "Subcampeón del acumulado PRO"),
@@ -813,6 +982,13 @@ async def seed_prize_tiers(session: AsyncSession) -> None:
         )
     ).all()
     por_clave = {(t.scope, t.group_key, t.position): t for t in existentes}
+
+    try:
+        bind = session.get_bind()
+        if bind.dialect.name == "postgresql":
+            await session.exec(text("SELECT setval(pg_get_serial_sequence('prize_tiers', 'id'), COALESCE((SELECT MAX(id) FROM prize_tiers), 1))"))
+    except Exception:
+        pass
 
     cambios = False
     for scope, group_key, position, amount, label in escala:

@@ -204,7 +204,7 @@ async def test_stats_expose_the_official_figures_of_the_pdf(async_session):
 
 @pytest.mark.asyncio
 async def test_prize_tiers_are_in_the_database(async_session):
-    """La escala de premios: por fecha 100/50/30 y acumulada por agrupación."""
+    """La escala de premios: por fecha 70 (Elite) / 50 (Categorias) y regalos para 2do y 3ro."""
     from backend.app.seed import seed_prize_tiers
 
     await seed_prize_tiers(async_session)
@@ -213,10 +213,10 @@ async def test_prize_tiers_are_in_the_database(async_session):
     for tier in tiers:
         by_scope.setdefault(tier.scope, []).append(tier)
 
-    assert sorted(t.amount_usd for t in by_scope["FECHA"]) == [30, 50, 100]
+    # En FECHA hay 3 peldaños para ELITE (70, 0, 0) y 3 para general (50, 0, 0)
+    assert sorted(t.amount_usd for t in by_scope["FECHA"]) == [0, 0, 0, 0, 50, 70]
     assert all(t.currency == "USD" for t in tiers)
-    # El premio es por categoría: hay un peldaño para cada puesto de 1 a 3.
-    assert sorted(t.position for t in by_scope["FECHA"]) == [1, 2, 3]
+    assert len(by_scope["FECHA"]) == 6
     # El acumulado es POR AGRUPACIÓN: PRO, NORMAL y EQUIPOS.
     acumulados = [t for t in tiers if t.scope == "ACUMULADO"]
     assert sorted(t.position for t in acumulados) == [1, 1, 1, 2, 2, 2, 3, 3, 3]
@@ -239,10 +239,39 @@ async def test_prizes_endpoint_returns_the_scale(async_session, client):
     res = await client.get("/api/v1/public/prizes")
     assert res.status_code == 200, res.text
     body = res.json()
-    assert len(body) == 12
-    fecha = {t["position"]: t["amount_usd"] for t in body if t["scope"] == "FECHA"}
-    assert fecha == {1: 100, 2: 50, 3: 30}
+    assert len(body) == 15
+    fecha_elite = {t["position"]: t["amount_usd"] for t in body if t["scope"] == "FECHA" and t.get("group_key") == "ELITE"}
+    assert fecha_elite == {1: 70, 2: 0, 3: 0}
+    fecha_gen = {t["position"]: t["amount_usd"] for t in body if t["scope"] == "FECHA" and t.get("group_key") is None}
+    assert fecha_gen == {1: 50, 2: 0, 3: 0}
     equipos = {
         t["position"]: t["amount_usd"] for t in body if t.get("group_key") == "EQUIPOS"
     }
     assert equipos == {1: 500, 2: 400, 3: 300}
+
+
+@pytest.mark.asyncio
+async def test_stage_3_results_integrity(async_session, monkeypatch):
+    """Verifica la integridad de datos de la Fecha 3: inscritos y resultados de Retorno a los Poblados."""
+    import os
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    monkeypatch.chdir(repo_root)
+    from backend.app.seed import RACE_CONFIG, seed_categories, upsert_stage, load_results
+    from backend.app.models.entities import StageEntry, RaceStatusEnum
+
+    cat_map = await seed_categories(async_session)
+    cfg = RACE_CONFIG[2]  # Fecha 3
+    stage = await upsert_stage(async_session, cfg)
+    await async_session.commit()
+    await load_results(async_session, stage, cfg, cat_map)
+
+    assert stage.status == StageStatusEnum.FINISHED
+    assert stage.official_results == 165
+    assert stage.official_points == 640
+
+    entries = (await async_session.exec(select(StageEntry).where(StageEntry.stage_id == stage.id))).all()
+    finished = [e for e in entries if e.race_status == RaceStatusEnum.FINISHED]
+    assert len(finished) == 165
+    assert all(e.finish_elapsed_ms is not None and e.finish_elapsed_ms > 0 for e in finished)
+    assert all(e.category_rank is not None and e.category_rank >= 1 for e in finished)
+    assert all(e.points_earned is not None and e.points_earned >= 1 for e in finished)

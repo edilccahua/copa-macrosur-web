@@ -29,6 +29,7 @@ import { MOUNTAIN_TITLES } from '../data/mountain-titles';
 import {
   ACCUMULATED_PRIZES,
   PER_DATE_PRIZES,
+  PER_DATE_PRIZES_ELITE,
   PER_DATE_PRIZE_ICON,
   PRIZE_CATEGORIES,
   PRIZE_CURRENCY,
@@ -87,7 +88,7 @@ const [remontada, proScope, normalScope, teamData] = await Promise.all([
  * se resuelven en cada carrera).
  */
 function podio(
-  tiers: { position: PrizePosition; amountUsd: number }[],
+  tiers: { position: PrizePosition; amountUsd?: number; label?: string }[],
   holders: { name: string; points: number }[]
 ): PrizePodiumStep[] {
   return tiers.map((tier) => {
@@ -95,6 +96,7 @@ function podio(
     return {
       position: tier.position,
       amountUsd: tier.amountUsd,
+      label: tier.label,
       holder: holder?.name ?? null,
     };
   });
@@ -168,17 +170,21 @@ function teamHolders(rows: { team_name: string; total_points: number }[]) {
 
       <div class="prize-table prize-table--pair">
         <PrizeCell
-          title="CADA CATEGORÍA"
-          body={`El podio de cada una de las ${PRIZE_CATEGORIES.length} categorías.`}
-          podium={PER_DATE_PRIZES.map((tier) => ({ ...tier, holder: null }))}
+          title="CATEGORÍA ELITE"
+          body="1er lugar en efectivo para la máxima categoría. 2do y 3er puesto reciben presente para ciclista."
+          podium={PER_DATE_PRIZES_ELITE.map((tier) => ({ ...tier, holder: null }))}
           icon={PER_DATE_PRIZE_ICON}
           state="Cada fecha"
-          notes={PRIZE_CATEGORIES}
+          notes={['ELITE VARONES']}
         />
 
         <PrizeCell
-          label="[ CÓMO SE REPARTE ]"
-          body="Once podios por fecha, uno en cada categoría. El acumulado se paga al líder de la agrupación PRO y al de la NORMAL."
+          title="DEMÁS CATEGORÍAS"
+          body={`1er lugar en efectivo en cada una de las demás categorías. 2do y 3er puesto reciben presente/regalo.`}
+          podium={PER_DATE_PRIZES.map((tier) => ({ ...tier, holder: null }))}
+          icon={PER_DATE_PRIZE_ICON}
+          state="Cada fecha"
+          notes={PRIZE_CATEGORIES.filter((c) => c !== 'ELITE')}
         />
       </div>
     </section>

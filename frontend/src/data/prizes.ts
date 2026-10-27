@@ -19,7 +19,8 @@ export type PrizePosition = 1 | 2 | 3;
 
 export interface PrizeStep {
   position: PrizePosition;
-  amountUsd: number;
+  amountUsd?: number;
+  label?: string;
 }
 
 export interface AccumulatedPrize {
@@ -71,13 +72,25 @@ export const ACCUMULATED_PRIZES: AccumulatedPrize[] = [
 export const PER_DATE_PRIZE_ICON: IconName = 'trophy';
 
 /**
- * El premio por fecha se reparte en CADA una de las 11 categorías, en cada
- * una de las cuatro fechas: no hay un ganador único, hay once podios.
+ * Escala por fecha en categorías generales:
+ *  · 1er puesto: 50 USD.
+ *  · 2do y 3er puesto: Regalo / Presente (para bici o ciclista).
  */
 export const PER_DATE_PRIZES: PrizeStep[] = [
-  { position: 1, amountUsd: 100 },
-  { position: 2, amountUsd: 50 },
-  { position: 3, amountUsd: 30 },
+  { position: 1, amountUsd: 50 },
+  { position: 2, label: 'Regalo / Presente' },
+  { position: 3, label: 'Regalo / Presente' },
+];
+
+/**
+ * Escala por fecha en categoría ELITE:
+ *  · 1er puesto: 70 USD.
+ *  · 2do y 3er puesto: Regalo / Presente (para bici o ciclista).
+ */
+export const PER_DATE_PRIZES_ELITE: PrizeStep[] = [
+  { position: 1, amountUsd: 70 },
+  { position: 2, label: 'Regalo / Presente' },
+  { position: 3, label: 'Regalo / Presente' },
 ];
 
 /**

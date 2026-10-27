@@ -42,7 +42,14 @@ Thumbs.db
 # Artefactos de ejecución del plan (workspace SDD)
 .superpowers/
 
+# Archivos personales / llaves temporales / docs
+*.key
+*.docx
+
 # Archivos binarios de carrera: pesan MB y se regeneran; la fuente de verdad
 # es el seed + `races/` ya versionado en el repo de datos.
 races/*.pdf
 races/*.xlsx
+races/*.jpeg
+races/*.jpg
+races/*.png

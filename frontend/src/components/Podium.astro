@@ -16,7 +16,8 @@ import MedalIcon from './MedalIcon.astro';
 
 export interface PodiumStep {
   position: 1 | 2 | 3;
-  amountUsd: number;
+  amountUsd?: number;
+  label?: string;
   /** El ganador provisional del puesto (sólo en los premios acumulados). */
   holder?: string | null;
 }
@@ -42,8 +43,16 @@ const medallero = { 1: 26, 2: 22, 3: 22 } as const;
     escalones.map((step) => (
       <div class={`podium__step podium__step--${step.position}`}>
         <span class="podium__value">
-          <span class="podium__currency font-mono">{currency}</span>
-          {step.amountUsd}
+          {
+            step.amountUsd && step.amountUsd > 0 ? (
+              <>
+                <span class="podium__currency font-mono">{currency}</span>
+                {step.amountUsd}
+              </>
+            ) : (
+              <span class="podium__gift font-mono">{step.label ?? 'Presente'}</span>
+            )
+          }
         </span>
         <span class="podium__block">
           <MedalIcon rank={step.position} size={medallero[step.position]} />
@@ -94,6 +103,16 @@ const medallero = { 1: 26, 2: 22, 3: 22 } as const;
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.1em;
     color: var(--faint);
+  }
+
+  .podium__gift {
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.1;
   }
 
   .podium__block {
