@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -15,7 +16,7 @@ from backend.app.models.schemas import (
     StagePublicRead,
 )
 from backend.app.services.excel_service import slugify, resolve_or_create_team
-from backend.app.services.live_service import resolve_live_status
+from backend.app.services.live_service import resolve_live_status, now_lima
 from backend.app.services.special_prizes_service import compute_claro_remontada
 from backend.app.services.pdf_service import format_ms_to_time
 from backend.app.services.stage_summary_service import compute_stage_mountain_titles
@@ -145,6 +146,97 @@ async def get_home_bundle(session: AsyncSession = Depends(get_session)):
     return _home_con_live_status(bundle, await _live_status_cacheado(session))
 
 
+RECENT_RESULTS_WINDOW_DAYS = 10
+
+
+def compute_hero_card(stages: List[Any], now: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    """Determina la tarjeta destacada en el hero de la portada.
+
+    Si una fecha finalizó hace 10 días o menos (ventana de gracia post-carrera),
+    se muestra en modo 'recent_results' para destacar sus resultados oficiales.
+    Pasada la ventana, conmuta a 'upcoming' con la siguiente fecha disponible.
+    """
+    now = now or now_lima()
+    today = now.date()
+
+    # Etapas finalizadas ordenadas por stage_number
+    disputed = [
+        s for s in stages
+        if getattr(s, "status", None) == StageStatusEnum.FINISHED
+        or (isinstance(s, dict) and s.get("status") == "FINISHED")
+        or (hasattr(s, "status") and getattr(s, "status") == "FINISHED")
+    ]
+    last_disputed = disputed[-1] if disputed else None
+
+    def _extract_date(s) -> Optional[datetime.date]:
+        if s is None:
+            return None
+        val = getattr(s, "date", None) if not isinstance(s, dict) else s.get("date")
+        if isinstance(val, datetime.date):
+            return val
+        if isinstance(val, str):
+            try:
+                return datetime.date.fromisoformat(val)
+            except ValueError:
+                return None
+        return None
+
+    def _extract_status(s) -> Optional[str]:
+        if s is None:
+            return None
+        val = getattr(s, "status", None) if not isinstance(s, dict) else s.get("status")
+        if isinstance(val, StageStatusEnum):
+            return val.value
+        return str(val) if val is not None else None
+
+    # Próxima fecha disponible
+    def _is_upcoming(s):
+        st = _extract_status(s)
+        d = _extract_date(s)
+        return st in ("REGISTRATION_OPEN", "UPCOMING") and (d is None or d >= today)
+
+    upcoming = next((s for s in stages if _is_upcoming(s)), None)
+    if not upcoming:
+        def _is_future_date(s):
+            d = _extract_date(s)
+            return d is not None and d > today
+        upcoming = next((s for s in stages if _is_future_date(s)), None)
+
+    def _to_dump(s):
+        if s is None:
+            return None
+        if isinstance(s, dict):
+            return s
+        return StagePublicRead.model_validate(s).model_dump()
+
+    if last_disputed:
+        last_date = _extract_date(last_disputed)
+        if last_date:
+            diff_days = (today - last_date).days
+            if 0 <= diff_days <= RECENT_RESULTS_WINDOW_DAYS:
+                return {
+                    "mode": "recent_results",
+                    "days_since_race": diff_days,
+                    "stage": _to_dump(last_disputed),
+                    "next_stage": _to_dump(upcoming),
+                }
+
+    if upcoming:
+        return {
+            "mode": "upcoming",
+            "days_since_race": None,
+            "stage": _to_dump(upcoming),
+            "next_stage": None,
+        }
+
+    return {
+        "mode": "finished_all",
+        "days_since_race": (today - _extract_date(last_disputed)).days if (last_disputed and _extract_date(last_disputed)) else None,
+        "stage": _to_dump(last_disputed),
+        "next_stage": None,
+    }
+
+
 def _home_con_live_status(bundle: Dict[str, Any], live_status: Dict[str, Any]) -> Dict[str, Any]:
     """El agregado de la portada con el estado de la transmisión al día.
 
@@ -152,8 +244,10 @@ def _home_con_live_status(bundle: Dict[str, Any], live_status: Dict[str, Any]) -
     con su propio TTL (15 s), que es el del endpoint `/public/live-status`.
     El orden de las claves es el de siempre.
     """
+    hero_card = compute_hero_card(bundle["stages"])
     return {
         "stages": bundle["stages"],
+        "hero_card": hero_card,
         "live_status": live_status,
         "pro_podium": bundle["pro_podium"],
         "normal_podium": bundle["normal_podium"],

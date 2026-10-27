@@ -395,21 +395,20 @@ LA JOYA   Z XTREME   POBLADOS   QUEQUEÑA
 > `site-shell.ts`, que además es lo que garantiza que `/en-vivo` y
 > `/admin/juez` no descarguen GSAP (AGENTS.md §2).
 
-**Banda de la próxima fecha (`hero__next`)**
+**Banda destacada del hero (`hero__next`) — Adaptativa (Resultados Recientes vs Próxima Carrera)**
 
-- El nombre que se muestra es el **real** (`Stage.name` sin el prefijo
-  "Fecha N:"), no el corto: "El Retorno a los Poblados 2", no "Poblados".
-- La distancia y el desnivel son **POR VUELTA** en la BD (specs/01 §1.4): la
-  banda multiplica por `Stage.laps` y, si hay varias vueltas, lo dice
-  ("11.83 KM × 3 VUELTAS = 35.49 KM").
-- **Móvil**: la banda se queda con lo esencial — la fecha, el nombre real, el
-  cronómetro y los botones. Se ocultan el rótulo "[ PRÓXIMA FECHA ]"
-  (`.next__label`) y la línea de datos (`.next__specs`), que a 390 px ocupaba
-  dos renglones de monoespaciada.
-- **Escritorio (≥ 68.75em)**: la fecha se apila ARRIBA del nombre, en la misma
-  columna (`grid-template-areas`). Con la fecha en su propia columna el nombre
-  real se partía en dos renglones y los datos en otros dos: cuatro renglones de
-  ruido en una línea.
+- **Ventana de gracia post-carrera (10 días):** Al culminar una etapa (`StageStatusEnum.FINISHED`), el hero no salta de inmediato a la siguiente carrera. Durante los 10 días posteriores a la fecha disputada, la tarjeta entra en modo `recent_results`:
+  - Rótulo `[ RESULTADOS OFICIALES ]` con dot esmeralda y fecha oficial.
+  - Nombre de la fecha con su styling oficial (`titlePrefix` + `titleHighlight`).
+  - Estadísticas de llegada: formato narrativo de distancia, desnivel y finalistas (`47.23 KM [ +761 M] , 165 lograron completar, revisa los podios y tiempos oficiales.`).
+  - Bloque central con badge deportivo `[ ETAPA CULMINADA ]` en lugar del temporizador regresivo.
+  - Botón prioritario solid `Ver resultados` hacia `/ranking-general?modo=fecha&tabla=PRO&fecha=N`, botón ghost a `Ficha de ruta`, y enlace discreto de anticipación hacia la siguiente carrera.
+- **Modo Próxima Carrera (`upcoming`):** Tras vencer los 10 días (o si no hay fecha disputada reciente), la tarjeta conmuta automáticamente a la fecha venidera:
+  - Rótulo `[ PRÓXIMA FECHA ]` y cuenta regresiva activa `EventCountdown` hacia la largada oficial.
+- El nombre que se muestra es el **real** (`Stage.name` sin el prefijo "Fecha N:"), no el corto: "El Retorno a los Poblados 2", no "Poblados".
+- La distancia y el desnivel son **POR VUELTA** en la BD (specs/01 §1.4): la banda multiplica por `Stage.laps` y, si hay varias vueltas, lo dice ("11.83 KM × 3 VUELTAS = 35.49 KM").
+- **Móvil**: disposición simétrica y centrada — fecha con badge compacto `[ ETAPA CULMINADA ]` en menor tamaño, título centrado y botones equilibrados.
+- **Escritorio (≥ 68.75em)**: la fecha se apila ARRIBA del nombre, en la misma columna (`grid-template-areas`). Con la fecha en su propia columna el nombre real se partía en dos renglones y los datos en otros dos: cuatro renglones de ruido en una línea.
 
 **Línea de tiempo (`TimelineEvents`)**
 
@@ -1284,8 +1283,8 @@ Accesible al hacer clic en cualquier corredor (sin requerir registro ni login):
   distintas y jamás comparten el mismo HTML.
 - La copia se guarda en segundo plano (`waitUntil`): el visitante no espera a
   que termine de escribirse en el edge.
-- El TTL del edge es de **60 s** (`s-maxage`), con `max-age=15` para el
-  navegador y `stale-while-revalidate=300`. La entrada se marca con
+- El TTL del edge es de **300 s (5 min)** (`s-maxage`), con `max-age=30` para el
+  navegador y `stale-while-revalidate=600`. La entrada se marca con
   `X-Kuspide-Cache: HIT | MISS` para poder medirlo desde las cabeceras.
 
 **1.9.5 El contrato de lectura pública**

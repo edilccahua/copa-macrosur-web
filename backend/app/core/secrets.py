@@ -16,11 +16,17 @@ Git **deja de ser un secreto**. Por eso los PIN de juez se guardan en la base
 de datos y se siembran desde el entorno, no desde `seed.py`.
 """
 import os
+import pathlib
 import secrets
 import string
 from typing import Dict
 
 from backend.app.core.config import settings
+
+#: La raíz del repositorio, para leer el `.env` local cuando el script se
+#: ejecuta sin `PYTHONPATH=.` (`backend/app/core` → `backend/app` → `backend`
+#: → raíz).
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 
 #: Longitud del PIN de juez: 4 caracteres en mayúsculas y dígitos, sin los
 #: caracteres que se confunden al dictarlos por radio (`0/O`, `1/I/L`).
@@ -92,6 +98,66 @@ def os_admin_key() -> str:
     return admin_key()
 
 
+def _valor_del_env_local(nombre: str) -> str:
+    """Lee una clave del `.env` de la raíz sin depender de `python-dotenv`.
+
+    Se usa sólo cuando la variable no está en el entorno. Un `.env` ausente
+    no es un error: devuelve cadena vacía y el llamador decide.
+    """
+    try:
+        texto = (_REPO_ROOT / ".env").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for linea in texto.splitlines():
+        linea = linea.strip()
+        if not linea or linea.startswith("#") or "=" not in linea:
+            continue
+        clave, valor = linea.split("=", 1)
+        if clave.strip() == nombre:
+            return valor.strip().strip('"').strip("'")
+    return ""
+
+
+def _a_dsn_asyncpg(url: str) -> str:
+    """`postgresql+asyncpg://` → `postgresql://` (lo que espera asyncpg)."""
+    for prefijo in ("postgresql+asyncpg://", "postgres://"):
+        if url.startswith(prefijo):
+            return "postgresql://" + url[len(prefijo):]
+    return url
+
+
+def os_database_url() -> str:
+    """La URL de PostgreSQL de PRODUCCIÓN para los scripts locales.
+
+    Se resuelve en este orden: `NEON_DATABASE_URL` del entorno, `DATABASE_URL`
+    del entorno (si es PostgreSQL), y las mismas dos claves en el `.env` de la
+    raíz. Una `DATABASE_URL` de SQLite se ignora: este resolvedor es para los
+    scripts que escriben en producción, no para el desarrollo local.
+
+    Falla CERRADO con un mensaje accionable. El literal de la contraseña NO
+    vive aquí ni en ningún script: la credencial de `neondb_owner` estuvo
+    escrita en `backend/scripts/deploy_db_to_neon.py` y quedó publicada en el
+    historial del repositorio (ver `CREDENCIALES_PRODUCCION.md` §6.2).
+    """
+    candidatos = (
+        os.environ.get("NEON_DATABASE_URL", ""),
+        os.environ.get("DATABASE_URL", ""),
+        _valor_del_env_local("NEON_DATABASE_URL"),
+        _valor_del_env_local("DATABASE_URL"),
+    )
+    for bruto in candidatos:
+        url = _a_dsn_asyncpg(bruto.strip())
+        if url.startswith("postgresql://"):
+            return url
+
+    raise RuntimeError(
+        "No hay URL de PostgreSQL de producción. Define NEON_DATABASE_URL "
+        "(o DATABASE_URL con un DSN de PostgreSQL) en el entorno o en el "
+        "`.env` de la raíz del repositorio. La contraseña se obtiene de la "
+        "consola de Neon; no se escribe en el código."
+    )
+
+
 __all__ = [
     "JUDGE_PIN_ENV",
     "PIN_ALPHABET",
@@ -100,4 +166,5 @@ __all__ = [
     "generate_pin",
     "judge_pin_for",
     "os_admin_key",
+    "os_database_url",
 ]

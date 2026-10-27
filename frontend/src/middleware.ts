@@ -30,10 +30,10 @@ import type { APIContext } from 'astro';
  *
  * OJO CON LO QUE NO PASA: la Cache API del edge NO sirve una entrada
  * caducada. `cache.match()` no la devuelve (la entrada caducada ya no
- * existe), así que a los 60 s el visitante vuelve a esperar el render, con
+ * existe), así que a los 300 s (5 min) el visitante vuelve a esperar el render, con
  * normalidad. El `stale-while-revalidate` de la cabecera `Cache-Control` lo
- * aprovecha el NAVEGADOR (que puede seguir pintando la copia vieja mientras
- * revalida en segundo plano), no el edge.
+ * aprovecha el NAVEGADOR y el Edge de Cloudflare (que puede seguir pintando la copia vieja mientras
+ * revalida en segundo plano).
  */
 
 /** Rutas EXACTAS que se pueden cachear en el borde. */
@@ -54,8 +54,8 @@ const RUTAS_PREFIJO = ['/fechas/', '/corredor/', '/equipos/'];
  */
 const RUTAS_NUNCA = ['/en-vivo', '/admin'];
 
-/** Cuánto tiempo guarda el edge la página (segundos). */
-const TTL_SECONDS = 60;
+/** Cuánto tiempo guarda el edge la página (300 segundos = 5 minutos). */
+const TTL_SECONDS = 300;
 
 /**
  * El runtime de Cloudflare que el adaptador deja en `locals.runtime`.
@@ -84,7 +84,7 @@ function esCacheable(pathname: string): boolean {
 /**
  * La caché de borde (`caches.default`).
  *
- * Sólo existe en el runtime de los Workers. En `astro dev` o con el
+ * Sólo existe en el runtime de los Workers/Pages. En `astro dev` o con el
  * adaptador Node NO existe: entonces se devuelve `null` y el middleware se
  * aparta (degrada con elegancia, no revienta).
  */
@@ -92,8 +92,18 @@ function cacheDeBorde(context: APIContext): Cache | null {
   const runtime = (context.locals as { runtime?: CloudflareRuntime }).runtime;
   if (runtime?.caches?.default) return runtime.caches.default;
 
-  const global = (globalThis as unknown as { caches?: { default?: Cache } }).caches;
-  return global?.default ?? null;
+  const globalCaches = (globalThis as unknown as { caches?: { default?: Cache } }).caches;
+  if (globalCaches?.default) return globalCaches.default;
+
+  try {
+    if (typeof caches !== 'undefined' && caches && (caches as any).default) {
+      return (caches as any).default;
+    }
+  } catch {
+    // Si caches no está disponible
+  }
+
+  return null;
 }
 
 /**
@@ -156,7 +166,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const headers = new Headers(response.headers);
   headers.set(
     'Cache-Control',
-    `public, max-age=15, s-maxage=${TTL_SECONDS}, stale-while-revalidate=300`
+    `public, max-age=30, s-maxage=${TTL_SECONDS}, stale-while-revalidate=600`
   );
   headers.set('X-Kuspide-Cache', 'MISS');
 

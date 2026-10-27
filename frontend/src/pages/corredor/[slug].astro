@@ -18,6 +18,10 @@ try {
     Astro.response.status = 404;
   } else if (res.ok) {
     profile = await res.json();
+    Astro.response.headers.set(
+      'Cache-Control',
+      'public, max-age=30, s-maxage=300, stale-while-revalidate=600'
+    );
   }
 } catch (e) {
   Astro.response.status = 503;

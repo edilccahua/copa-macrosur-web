@@ -155,7 +155,7 @@ const packedTeams = packTeamStandingsRows(fallbackTeams);
 
 Astro.response.headers.set(
   'Cache-Control',
-  'public, max-age=0, s-maxage=60, stale-while-revalidate=30'
+  'public, max-age=30, s-maxage=300, stale-while-revalidate=600'
 );
 ---
 

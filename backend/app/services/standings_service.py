@@ -255,8 +255,17 @@ def _rank_rows(rows: List[Dict[str, Any]], by_time: bool = False) -> List[Dict[s
         row["current_rank"] = idx
     if rows:
         leader_ms = rows[0]["total_elapsed_ms"]
+        leader_stages = rows[0].get("stages_completed", 1)
         for row in rows:
-            row["gap_to_leader_ms"] = row["total_elapsed_ms"] - leader_ms
+            if by_time:
+                # En modo fecha: líder scratch de la jornada
+                row["gap_to_leader_ms"] = (row["total_elapsed_ms"] - leader_ms) if row["total_elapsed_ms"] and leader_ms else None
+            else:
+                # En acumulado: solo se compara brecha de tiempo si completó el mismo número de fechas que el líder
+                if row.get("stages_completed", 1) == leader_stages and row["total_elapsed_ms"] and leader_ms:
+                    row["gap_to_leader_ms"] = row["total_elapsed_ms"] - leader_ms
+                else:
+                    row["gap_to_leader_ms"] = None
     return rows
 
 
@@ -457,11 +466,14 @@ async def compute_team_standings(
                 "third_places": 0,
                 "total_riders": 0,
                 "total_elapsed_ms": 0,
+                "stages_completed": 0,
                 "_riders": set(),
+                "_stages": set(),
             }
         row["total_points"] += e.points_earned or 0
         row["total_elapsed_ms"] += e.finish_elapsed_ms or 0
         row["_riders"].add(e.rider_id)
+        row["_stages"].add(e.stage_id)
         if e.category_rank == 1:
             row["first_places"] += 1
         elif e.category_rank == 2:
@@ -472,6 +484,7 @@ async def compute_team_standings(
     rows = list(acc.values())
     for row in rows:
         row["total_riders"] = len(row.pop("_riders"))
+        row["stages_completed"] = len(row.pop("_stages"))
 
     rows.sort(key=lambda r: (
         -r["total_points"],
@@ -487,7 +500,8 @@ async def compute_team_standings(
     if rows:
         leader_ms = rows[0]["total_elapsed_ms"]
         for row in rows:
-            row["gap_to_leader_ms"] = row["total_elapsed_ms"] - leader_ms
+            gap = (row["total_elapsed_ms"] - leader_ms) if row["total_elapsed_ms"] and leader_ms else None
+            row["gap_to_leader_ms"] = gap if (gap is not None and gap >= 0) else None
             row["formatted_total_time"] = _elapsed_label(row["total_elapsed_ms"])
             row["formatted_gap"] = _gap_label(row["gap_to_leader_ms"])
     return rows

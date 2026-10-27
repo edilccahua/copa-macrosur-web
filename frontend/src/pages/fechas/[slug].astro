@@ -38,7 +38,7 @@ let summary: StageSummary | null = null;
 let notFound = false;
 try {
   summary = await getStageSummary(String(slug));
-  Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=30');
+  Astro.response.headers.set('Cache-Control', 'public, max-age=30, s-maxage=300, stale-while-revalidate=600');
 } catch (e) {
   if (e instanceof Error && e.message === 'stage-not-found') {
     notFound = true;
@@ -675,7 +675,7 @@ function sectionNumber(key: string): string | null {
               <PrizeScale
                 label="POR FECHA"
                 title="CADA CATEGORÍA"
-                body="1er lugar: 70 USD en Elite, 50 USD en demás categorías. 2do y 3er puesto: regalo / presente."
+                body="1er lugar: 70 USD en Elite, 50 USD en demás categorías. 2do y 3er puesto: Presente."
                 tiers={PER_DATE_PRIZES}
                 podium={PER_DATE_PRIZES}
                 currency={PRIZE_CURRENCY}

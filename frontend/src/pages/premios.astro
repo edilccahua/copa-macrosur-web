@@ -82,6 +82,11 @@ const [remontada, proScope, normalScope, teamData] = await Promise.all([
   fetchTeams(),
 ]);
 
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=30, s-maxage=300, stale-while-revalidate=600'
+);
+
 /**
  * El podio del premio: cada peldaño con su cifra y con el ganador
  * PROVISIONAL de ese puesto (sólo en los premios acumulados: los por fecha

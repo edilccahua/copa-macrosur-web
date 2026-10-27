@@ -4,22 +4,34 @@ Sincroniza y despliega el estado de la base de datos local (SQLite) a Neon Postg
 - Actualiza `riders.strava_athlete_id`
 - Sincroniza `strava_segments` (exactamente 5 por etapa, 15 en total)
 - Sincroniza `strava_efforts` (342 para Fecha 1, 260 para Fecha 2, 0 para Fecha 3)
+
+La URL de producción NO vive en este archivo: se resuelve con
+`os_database_url()` (entorno o `.env` de la raíz). Antes había un literal con
+la contraseña de `neondb_owner`, y ese literal quedó publicado en el historial
+del repositorio; ver `CREDENCIALES_PRODUCCION.md` §6.2.
+
+Uso:
+    PYTHONPATH=. python -m backend.scripts.deploy_db_to_neon
 """
 import asyncio
 import sqlite3
+
 import asyncpg
 
-NEON_URL = "postgresql://neondb_owner:***REMOVED***@ep-cool-mode-artnzlbi-pooler.c-4.us-west-2.aws.neon.tech/neondb"
+from backend.app.core.secrets import os_database_url
+
 SQLITE_PATH = "kuspide_mtb.db"
 
 
 async def main():
+    neon_url = os_database_url()
+
     print("[*] Conectando a SQLite local...")
     s_con = sqlite3.connect(SQLITE_PATH)
     s_cur = s_con.cursor()
 
     print("[*] Conectando a Neon PostgreSQL en Oregon...")
-    p_conn = await asyncpg.connect(NEON_URL)
+    p_conn = await asyncpg.connect(neon_url)
 
     # 1. Sincronizar strava_athlete_id en riders
     print("\n--- 1. Sincronizando strava_athlete_id en tabla riders ---")

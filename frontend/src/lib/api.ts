@@ -50,10 +50,12 @@ export interface StandingsRow {
   rank_delta: number;
   is_debut: boolean;
   total_points: number;
+  first_places_count?: number;
   total_elapsed_ms?: number;
   formatted_total_time: string;
   gap_to_leader_ms: number;
   formatted_gap: string;
+  stages_completed?: number;
 }
 
 /**
@@ -74,6 +76,7 @@ export interface TeamStandingRow {
   formatted_total_time: string;
   gap_to_leader_ms: number;
   formatted_gap: string;
+  stages_completed?: number;
 }
 
 // --- Transporte compacto de las filas ----------------------------------------
@@ -103,10 +106,12 @@ export const STANDINGS_ROW_FIELDS = [
   'rank_delta',
   'is_debut',
   'total_points',
+  'first_places_count',
   'total_elapsed_ms',
   'formatted_total_time',
   'gap_to_leader_ms',
   'formatted_gap',
+  'stages_completed',
 ] as const;
 
 /** El orden de los campos de una fila columnada de la Copa de Equipos. */
@@ -124,6 +129,7 @@ export const TEAM_STANDINGS_ROW_FIELDS = [
   'formatted_total_time',
   'gap_to_leader_ms',
   'formatted_gap',
+  'stages_completed',
 ] as const;
 
 /**
@@ -610,10 +616,19 @@ export interface HomeMountainTitles {
   kamikaze_female: MountainTitle | null;
 }
 
+export interface HeroCardData {
+  mode: 'recent_results' | 'upcoming' | 'finished_all';
+  days_since_race?: number | null;
+  stage: StageOption | null;
+  next_stage?: StageOption | null;
+}
+
 /** Todo lo que la portada necesita, en una sola respuesta. */
 export interface HomeBundle {
   /** El calendario, sin credenciales y sin geometría. */
   stages: StageOption[];
+  /** Tarjeta destacada del hero (resultados recientes durante 10 días o próxima carrera). */
+  hero_card?: HeroCardData;
   /** El estado de la transmisión (misma forma que `/public/live-status`). */
   live_status: LiveStatus;
   /** Los tres primeros del acumulado PRO. */

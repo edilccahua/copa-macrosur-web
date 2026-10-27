@@ -86,9 +86,18 @@ SHA**. Las dos mitades son necesarias, y el orden importa: primero rotación
 - [ ] **0.3 — Rotar la contraseña de Neon**
 
   Desde la consola de Neon, rotar la contraseña de `neondb_owner` y actualizar
-  `DATABASE_URL` en Render y en el `.env` local. La contraseña actual
-  (`npg_…`) está en `CREDENCIALES_PRODUCCION.md` y en el historial de esta
-  conversación: **nunca estuvo en Git**, pero conviene rotarla igual.
+  `DATABASE_URL` en Render y en el `.env` local. La contraseña actual está en
+  `CREDENCIALES_PRODUCCION.md`.
+
+  > **CORRECCIÓN (27-Oct-2026).** Este punto decía *"nunca estuvo en Git"* y
+  > era **falso**: el valor real estaba escrito en
+  > `backend/scripts/deploy_db_to_neon.py:12` (`NEON_URL = "postgresql://
+  > neondb_owner:npg_…"`) y ese archivo es **trackeado**. Por eso la
+  > credencial quedó publicada en `origin/master` de un repositorio **público**
+  > y la purga del historial **no la tocó** (se purgaron la clave de admin y
+  > los PIN, no este script). El literal se eliminó del código y ahora se
+  > resuelve con `os_database_url()` (entorno o `.env`). La rotación sigue
+  > **pendiente**: rotar es el único paso que invalida la credencial filtrada.
 
 - [ ] **0.4 — Verificar la Fase 0 antes de seguir**
 
