@@ -180,7 +180,7 @@ function teamHolders(rows: { team_name: string; total_points: number }[]) {
 
         <PrizeCell
           title="DEMÁS CATEGORÍAS"
-          body={`1er lugar en efectivo en cada una de las demás categorías. 2do y 3er puesto reciben presente/regalo.`}
+          body="1er lugar en efectivo en cada una de las demás categorías. 2do y 3er puesto reciben presente para ciclista o bicicleta."
           podium={PER_DATE_PRIZES.map((tier) => ({ ...tier, holder: null }))}
           icon={PER_DATE_PRIZE_ICON}
           state="Cada fecha"

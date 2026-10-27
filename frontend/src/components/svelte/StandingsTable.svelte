@@ -364,6 +364,101 @@
     })
   );
 
+  // --- Ordenamiento interactivo de columnas ----------------------------------
+  type SortKey = 'rank' | 'delta' | 'name' | 'time' | 'pts';
+  type SortDir = 'asc' | 'desc';
+
+  let sortKey = $state<SortKey | null>(null);
+  let sortDir = $state<SortDir>('asc');
+
+  // Si cambia el modo, ámbito, categoría o fecha, restablecemos el sort interactivo
+  $effect(() => {
+    void mode;
+    void scope;
+    void categoryId;
+    void stageId;
+    void kind;
+    sortKey = null;
+    sortDir = 'asc';
+  });
+
+  // Regla estricta: SOLO en modo 'fecha' con 'TODOS' (categoryId === null) el default es por TIEMPO.
+  // En todas las demás tablas (acumulado, categorías específicas y equipos) el default es por PUNTOS.
+  let isDefaultTimeSort = $derived(
+    tableMode === 'fecha' && categoryId === null && kind === 'individual'
+  );
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      if (sortDir === 'asc') {
+        sortDir = 'desc';
+      } else {
+        // 3er clic: vuelve al orden natural oficial
+        sortKey = null;
+        sortDir = 'asc';
+      }
+    } else {
+      sortKey = key;
+      // Sentido natural según la métrica:
+      // Puesto, Nombre y Tiempo inician 'asc' (1º primero, A-Z, menor tiempo primero)
+      // Delta y Puntos inician 'desc' (mayor avance primero, más puntos primero)
+      sortDir = (key === 'time' || key === 'rank' || key === 'name') ? 'asc' : 'desc';
+    }
+  }
+
+  let sortedRows = $derived.by(() => {
+    const list = [...filteredRows];
+    if (sortKey === null) {
+      if (isDefaultTimeSort) {
+        return list.sort((a, b) => {
+          const tA = (a.total_elapsed_ms && a.total_elapsed_ms > 0) ? a.total_elapsed_ms : 999999999;
+          const tB = (b.total_elapsed_ms && b.total_elapsed_ms > 0) ? b.total_elapsed_ms : 999999999;
+          if (tA !== tB) return tA - tB;
+          return a.rider_name.localeCompare(b.rider_name);
+        });
+      }
+      return list;
+    }
+
+    return list.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'rank') {
+        cmp = a.current_rank - b.current_rank;
+      } else if (sortKey === 'delta') {
+        cmp = (a.rank_delta || 0) - (b.rank_delta || 0);
+      } else if (sortKey === 'name') {
+        cmp = a.rider_name.localeCompare(b.rider_name);
+      } else if (sortKey === 'time') {
+        const tA = (a.total_elapsed_ms && a.total_elapsed_ms > 0) ? a.total_elapsed_ms : 999999999;
+        const tB = (b.total_elapsed_ms && b.total_elapsed_ms > 0) ? b.total_elapsed_ms : 999999999;
+        cmp = tA - tB;
+      } else if (sortKey === 'pts') {
+        cmp = a.total_points - b.total_points;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  });
+
+  let sortedTeams = $derived.by(() => {
+    const list = [...filteredTeams];
+    if (sortKey === null) return list;
+    return list.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'rank') {
+        cmp = a.current_rank - b.current_rank;
+      } else if (sortKey === 'name') {
+        cmp = a.team_name.localeCompare(b.team_name);
+      } else if (sortKey === 'pts') {
+        cmp = a.total_points - b.total_points;
+      } else if (sortKey === 'time') {
+        const tA = (a.total_elapsed_ms && a.total_elapsed_ms > 0) ? a.total_elapsed_ms : 999999999;
+        const tB = (b.total_elapsed_ms && b.total_elapsed_ms > 0) ? b.total_elapsed_ms : 999999999;
+        cmp = tA - tB;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  });
+
   function stageDate(iso: string): string {
     return new Date(iso + 'T00:00:00')
       .toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -371,7 +466,38 @@
   }
 </script>
 
-<div class="standings {kind === 'teams' ? 'scope-team' : SCOPE_CLASS[scope]}">
+<div class="standings {kind === 'teams' ? 'scope-team' : SCOPE_CLASS[scope]}" data-table-mode={tableMode}>
+  {#snippet sortIcon(key: SortKey)}
+    {#if sortKey === key}
+      {#if sortDir === 'asc'}
+        <svg class="sort-ico is-active" width="9" height="11" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 7L5 3L8 7" />
+          <line x1="5" y1="3" x2="5" y2="10" />
+        </svg>
+      {:else}
+        <svg class="sort-ico is-active" width="9" height="11" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 5L5 9L8 5" />
+          <line x1="5" y1="2" x2="5" y2="9" />
+        </svg>
+      {/if}
+    {:else if sortKey === null && ((key === 'time' && isDefaultTimeSort) || (key === 'pts' && !isDefaultTimeSort))}
+      <svg class="sort-ico is-default-active" width="9" height="11" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {#if key === 'time'}
+          <path d="M2 7L5 3L8 7" />
+          <line x1="5" y1="3" x2="5" y2="10" />
+        {:else}
+          <path d="M2 5L5 9L8 5" />
+          <line x1="5" y1="2" x2="5" y2="9" />
+        {/if}
+      </svg>
+    {:else}
+      <svg class="sort-ico is-idle" width="9" height="11" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2.5 4.5L5 2L7.5 4.5" />
+        <path d="M2.5 7.5L5 10L7.5 7.5" />
+      </svg>
+    {/if}
+  {/snippet}
+
   <!--
     Cabecera de la vista: el rótulo del campeonato, el titulo (que cambia con
     el modo) y las cifras de lo que se esta viendo, TODO en la misma linea.
@@ -576,26 +702,53 @@
       <table class="dt">
         <thead>
           <tr>
-            <th class="col-rank">Puesto</th>
-            {#if tableMode === 'acumulado'}<th class="col-delta">Δ</th>{/if}
-            <th>Ciclista</th>
+            <th class="col-rank">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'rank'} onclick={() => toggleSort('rank')} aria-label="Ordenar por puesto">
+                <span>Puesto</span>
+                {@render sortIcon('rank')}
+              </button>
+            </th>
+            {#if tableMode === 'acumulado'}
+              <th class="col-delta">
+                <button type="button" class="th-btn" class:is-active={sortKey === 'delta'} onclick={() => toggleSort('delta')} aria-label="Ordenar por delta">
+                  <span>Δ</span>
+                  {@render sortIcon('delta')}
+                </button>
+              </th>
+            {/if}
+            <th class="col-name">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'name'} onclick={() => toggleSort('name')} aria-label="Ordenar por ciclista">
+                <span>Ciclista</span>
+                {@render sortIcon('name')}
+              </button>
+            </th>
             <th class="col-cat">Categoría</th>
             <th class="col-catrank">En cat.</th>
             <th class="col-team">Equipo / Club</th>
-            <th class="col-time">{tableMode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
+            <th class="col-time">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'time'} onclick={() => toggleSort('time')} aria-label="Ordenar por tiempo">
+                <span>{tableMode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</span>
+                {@render sortIcon('time')}
+              </button>
+            </th>
             <th class="col-gap" title={GAP_HINT}>Diferencia</th>
-            <th class="col-pts">Puntos</th>
+            <th class="col-pts">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'pts'} onclick={() => toggleSort('pts')} aria-label="Ordenar por puntos">
+                <span>Puntos</span>
+                {@render sortIcon('pts')}
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody bind:this={tbodyEl}>
-          {#if filteredRows.length === 0}
+          {#if sortedRows.length === 0}
             <tr>
               <td colspan={tableMode === 'acumulado' ? 9 : 8} class="empty font-mono">
                 No se encontraron corredores con los criterios seleccionados.
               </td>
             </tr>
           {:else}
-            {#each filteredRows as r (r.rider_id)}
+            {#each sortedRows as r (r.rider_id)}
               <tr
                 animate:flip={{ duration: 320, easing: cubicOut }}
                 transition:fade={{ duration: 150 }}
@@ -672,26 +825,46 @@
       <table class="dt">
         <thead>
           <tr>
-            <th class="col-rank">Puesto</th>
-            <th>Equipo / Club</th>
-            <th class="col-pts">Puntos</th>
+            <th class="col-rank">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'rank'} onclick={() => toggleSort('rank')} aria-label="Ordenar por puesto">
+                <span>Puesto</span>
+                {@render sortIcon('rank')}
+              </button>
+            </th>
+            <th class="col-name">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'name'} onclick={() => toggleSort('name')} aria-label="Ordenar por equipo">
+                <span>Equipo / Club</span>
+                {@render sortIcon('name')}
+              </button>
+            </th>
+            <th class="col-pts">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'pts'} onclick={() => toggleSort('pts')} aria-label="Ordenar por puntos">
+                <span>Puntos</span>
+                {@render sortIcon('pts')}
+              </button>
+            </th>
             <th class="col-num">Oros</th>
             <th class="col-num">Platas</th>
             <th class="col-num">Bronces</th>
             <th class="col-num">Corredores</th>
-            <th class="col-time">{tableMode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</th>
+            <th class="col-time">
+              <button type="button" class="th-btn" class:is-active={sortKey === 'time'} onclick={() => toggleSort('time')} aria-label="Ordenar por tiempo">
+                <span>{tableMode === 'acumulado' ? 'Tiempo Acum.' : 'Tiempo'}</span>
+                {@render sortIcon('time')}
+              </button>
+            </th>
             <th class="col-gap" title={GAP_HINT}>Diferencia</th>
           </tr>
         </thead>
         <tbody bind:this={tbodyEl}>
-          {#if filteredTeams.length === 0}
+          {#if sortedTeams.length === 0}
             <tr>
               <td colspan="9" class="empty font-mono">
                 No se encontraron equipos registrados.
               </td>
             </tr>
           {:else}
-            {#each filteredTeams as t (t.team_id)}
+            {#each sortedTeams as t (t.team_id)}
               <tr
                 animate:flip={{ duration: 320, easing: cubicOut }}
                 transition:fade={{ duration: 150 }}
@@ -1262,6 +1435,56 @@
     white-space: nowrap;
   }
 
+  .th-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    transition: color 150ms ease;
+  }
+
+  .th-btn:hover {
+    color: var(--ink-strong);
+  }
+
+  .th-btn.is-active {
+    color: var(--ink-strong);
+  }
+
+  .sort-ico {
+    display: inline-block;
+    flex-shrink: 0;
+    transition: transform 150ms ease, color 150ms ease;
+  }
+
+  .sort-ico.is-idle {
+    color: var(--faint);
+    opacity: 0.6;
+  }
+
+  .th-btn:hover .sort-ico.is-idle {
+    color: var(--muted);
+    opacity: 1;
+  }
+
+  .sort-ico.is-active {
+    color: var(--accent-color, var(--ink));
+  }
+
+  .sort-ico.is-default-active {
+    color: var(--muted);
+  }
+
   .dt tbody td {
     padding: 0.55rem 0.9rem;
     border-bottom: var(--hairline) solid var(--line);
@@ -1756,7 +1979,68 @@
     }
 
     .dt thead {
+      display: block;
+      width: 100%;
+      background: var(--bg-sunken);
+      border-bottom: var(--hairline) solid var(--line-strong);
+      position: sticky;
+      top: var(--header-offset, 3rem);
+      z-index: 10;
+    }
+
+    .dt thead tr {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+    }
+
+    .standings[data-table-mode='acumulado'] .dt thead tr {
+      grid-template-columns: 34px 28px minmax(0, 1fr) auto auto;
+    }
+
+    .dt thead th {
+      position: static;
+      top: auto;
+      display: flex;
+      align-items: center;
+      padding: 0;
+      background: transparent;
+      border: none;
+      font-size: 0.5625rem;
+      letter-spacing: 0.08em;
+    }
+
+    .dt thead th .th-btn {
+      padding: 4px 2px;
+      font-size: 0.5625rem;
+    }
+
+    .dt thead th.col-cat,
+    .dt thead th.col-team,
+    .dt thead th.col-catrank,
+    .dt thead th.col-gap,
+    .dt thead th.col-num {
       display: none;
+    }
+
+    .dt thead th.col-pts,
+    .dt thead th.col-time {
+      justify-content: flex-end;
+    }
+
+    .dt thead th.col-pts .th-btn,
+    .dt thead th.col-time .th-btn {
+      justify-content: flex-end;
+    }
+
+    .dt thead th.col-pts {
+      min-width: 44px;
+    }
+
+    .dt thead th.col-time {
+      min-width: 52px;
     }
 
     .dt tbody {

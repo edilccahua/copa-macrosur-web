@@ -50,6 +50,7 @@ export interface StandingsRow {
   rank_delta: number;
   is_debut: boolean;
   total_points: number;
+  total_elapsed_ms?: number;
   formatted_total_time: string;
   gap_to_leader_ms: number;
   formatted_gap: string;
@@ -69,6 +70,7 @@ export interface TeamStandingRow {
   second_places: number;
   third_places: number;
   total_riders: number;
+  total_elapsed_ms?: number;
   formatted_total_time: string;
   gap_to_leader_ms: number;
   formatted_gap: string;
@@ -101,6 +103,7 @@ export const STANDINGS_ROW_FIELDS = [
   'rank_delta',
   'is_debut',
   'total_points',
+  'total_elapsed_ms',
   'formatted_total_time',
   'gap_to_leader_ms',
   'formatted_gap',
@@ -117,6 +120,7 @@ export const TEAM_STANDINGS_ROW_FIELDS = [
   'second_places',
   'third_places',
   'total_riders',
+  'total_elapsed_ms',
   'formatted_total_time',
   'gap_to_leader_ms',
   'formatted_gap',

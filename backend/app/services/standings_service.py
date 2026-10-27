@@ -236,14 +236,21 @@ async def _finished_entries(
     return list((await session.exec(stmt)).all())
 
 
-def _rank_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Ordena y numera las filas según el desempate del ámbito."""
-    rows.sort(key=lambda r: (
-        -r["total_points"],
-        -r["first_places_count"],
-        r["total_elapsed_ms"],
-        r["rider_name"],
-    ))
+def _rank_rows(rows: List[Dict[str, Any]], by_time: bool = False) -> List[Dict[str, Any]]:
+    """Ordena y numera las filas según el desempate del ámbito o tiempo scratch."""
+    if by_time:
+        rows.sort(key=lambda r: (
+            0 if (r["total_elapsed_ms"] and r["total_elapsed_ms"] > 0) else 1,
+            r["total_elapsed_ms"] or 999999999,
+            r["rider_name"],
+        ))
+    else:
+        rows.sort(key=lambda r: (
+            -r["total_points"],
+            -r["first_places_count"],
+            r["total_elapsed_ms"],
+            r["rider_name"],
+        ))
     for idx, row in enumerate(rows, start=1):
         row["current_rank"] = idx
     if rows:
@@ -350,7 +357,10 @@ async def compute_standings(
         for idx, row in enumerate(cat_rows, start=1):
             row["category_rank"] = idx
 
-    _rank_rows(rows)
+    # SOLO en modo "fecha" con TODOS (category_id is None) el orden por defecto es por tiempo (scratch de la jornada).
+    # En todas las demás tablas (acumulado o filtrado por categoría específica) el orden es por puntos.
+    is_date_all_scratch = exact and (category_id is None)
+    _rank_rows(rows, by_time=is_date_all_scratch)
 
     # Delta contra la fecha anterior. En modo "fecha" no aplica: la carrera
     # aislada no tiene una clasificación previa con la que compararse.

@@ -953,14 +953,14 @@ async def seed_prize_tiers(session: AsyncSession) -> None:
     """
     escala = [
         # El premio por fecha:
-        # Categoría ELITE: 70 USD 1er puesto; 2do y 3er puesto Regalo / Presente.
+        # Categoría ELITE: 70 USD 1er puesto; 2do y 3er puesto Presente.
         ("FECHA", "ELITE", 1, 70, "1er puesto Elite"),
-        ("FECHA", "ELITE", 2, 0, "2do puesto Elite (Regalo / Presente)"),
-        ("FECHA", "ELITE", 3, 0, "3er puesto Elite (Regalo / Presente)"),
-        # Demás categorías: 50 USD 1er puesto; 2do y 3er puesto Regalo / Presente.
+        ("FECHA", "ELITE", 2, 0, "2do puesto Elite (Presente)"),
+        ("FECHA", "ELITE", 3, 0, "3er puesto Elite (Presente)"),
+        # Demás categorías: 50 USD 1er puesto; 2do y 3er puesto Presente.
         ("FECHA", None, 1, 50, "1er puesto de cada categoría"),
-        ("FECHA", None, 2, 0, "2do puesto de cada categoría (Regalo / Presente)"),
-        ("FECHA", None, 3, 0, "3er puesto de cada categoría (Regalo / Presente)"),
+        ("FECHA", None, 2, 0, "2do puesto de cada categoría (Presente)"),
+        ("FECHA", None, 3, 0, "3er puesto de cada categoría (Presente)"),
         # El acumulado: un podio por agrupación, no por categoría.
         ("ACUMULADO", "PRO", 1, 300, "Campeón del acumulado PRO"),
         ("ACUMULADO", "PRO", 2, 200, "Subcampeón del acumulado PRO"),

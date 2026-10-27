@@ -74,23 +74,23 @@ export const PER_DATE_PRIZE_ICON: IconName = 'trophy';
 /**
  * Escala por fecha en categorías generales:
  *  · 1er puesto: 50 USD.
- *  · 2do y 3er puesto: Regalo / Presente (para bici o ciclista).
+ *  · 2do y 3er puesto: Presente (para bici o ciclista).
  */
 export const PER_DATE_PRIZES: PrizeStep[] = [
   { position: 1, amountUsd: 50 },
-  { position: 2, label: 'Regalo / Presente' },
-  { position: 3, label: 'Regalo / Presente' },
+  { position: 2, label: 'Presente' },
+  { position: 3, label: 'Presente' },
 ];
 
 /**
  * Escala por fecha en categoría ELITE:
  *  · 1er puesto: 70 USD.
- *  · 2do y 3er puesto: Regalo / Presente (para bici o ciclista).
+ *  · 2do y 3er puesto: Presente (para bici o ciclista).
  */
 export const PER_DATE_PRIZES_ELITE: PrizeStep[] = [
   { position: 1, amountUsd: 70 },
-  { position: 2, label: 'Regalo / Presente' },
-  { position: 3, label: 'Regalo / Presente' },
+  { position: 2, label: 'Presente' },
+  { position: 3, label: 'Presente' },
 ];
 
 /**

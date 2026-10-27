@@ -22,6 +22,7 @@ import Icon from './Icon.astro';
 import type { IconName } from './Icon.astro';
 import Podium from './Podium.astro';
 import type { PodiumStep } from './Podium.astro';
+import GiftIcon from './GiftIcon.astro';
 import type { PrizeStep } from '../data/prizes';
 
 /**
@@ -133,7 +134,14 @@ const leaderDetail = leader
             <li class="prize__tier">
               <span class="prize__pos font-mono">{tier.position}º</span>
               <span class="prize__amount tabular">
-                {tier.amountUsd && tier.amountUsd > 0 ? `${currency} ${tier.amountUsd}` : tier.label ?? 'Regalo / Presente'}
+                {tier.amountUsd && tier.amountUsd > 0 ? (
+                  `${currency} ${tier.amountUsd}`
+                ) : (
+                  <span class="prize__gift font-mono">
+                    <GiftIcon size={13} class="prize__gift-icon" />
+                    <span>{tier.label ?? 'Presente'}</span>
+                  </span>
+                )}
               </span>
             </li>
           ))
@@ -308,6 +316,21 @@ const leaderDetail = leader
     font-weight: var(--font-weight-bold);
     font-variant-numeric: tabular-nums;
     color: var(--ink-strong);
+  }
+
+  .prize__gift {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+
+  .prize__gift-icon {
+    color: var(--ink);
   }
 
   .prize__tags {
