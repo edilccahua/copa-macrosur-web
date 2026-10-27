@@ -606,6 +606,12 @@ async def test_las_respuestas_pequenas_no_se_comprimen(client):
     assert res.headers.get("content-encoding") is None
 
 
+async def test_health_check_supports_head(client):
+    """Monitores externos (p.ej. UptimeRobot Free) envían HEAD a `/health`."""
+    res = await client.head("/health")
+    assert res.status_code == 200
+
+
 async def test_el_sse_no_se_comprime():
     """La transmisión en vivo NO va comprimida.
 

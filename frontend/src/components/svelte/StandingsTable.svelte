@@ -748,17 +748,17 @@
               </td>
             </tr>
           {:else}
-            {#each sortedRows as r (r.rider_id)}
+            {#each sortedRows as r, idx (r.rider_id)}
               <tr
                 animate:flip={{ duration: 320, easing: cubicOut }}
                 transition:fade={{ duration: 150 }}
-                class:row-p1={r.current_rank === 1}
-                class:row-p2={r.current_rank === 2}
-                class:row-p3={r.current_rank === 3}
+                class:row-p1={idx === 0}
+                class:row-p2={idx === 1}
+                class:row-p3={idx === 2}
               >
                 <td class="col-rank font-mono">
-                  <span class="rankbox rankbox--{r.current_rank <= 3 ? `p${r.current_rank}` : 'plain'}">
-                    {r.current_rank}º
+                  <span class="rankbox rankbox--{idx < 3 ? `p${idx + 1}` : 'plain'}">
+                    {idx + 1}º
                   </span>
                 </td>
                 {#if tableMode === 'acumulado'}
@@ -864,17 +864,17 @@
               </td>
             </tr>
           {:else}
-            {#each sortedTeams as t (t.team_id)}
+            {#each sortedTeams as t, idx (t.team_id)}
               <tr
                 animate:flip={{ duration: 320, easing: cubicOut }}
                 transition:fade={{ duration: 150 }}
-                class:row-p1={t.current_rank === 1}
-                class:row-p2={t.current_rank === 2}
-                class:row-p3={t.current_rank === 3}
+                class:row-p1={idx === 0}
+                class:row-p2={idx === 1}
+                class:row-p3={idx === 2}
               >
                 <td class="col-rank font-mono">
-                  <span class="rankbox rankbox--{t.current_rank <= 3 ? `p${t.current_rank}` : 'plain'}">
-                    {t.current_rank}º
+                  <span class="rankbox rankbox--{idx < 3 ? `p${idx + 1}` : 'plain'}">
+                    {idx + 1}º
                   </span>
                 </td>
                 <td class="col-name">

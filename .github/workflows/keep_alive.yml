@@ -1,0 +1,20 @@
+name: Kuspide Backend Keep-Alive (Fallback)
+
+on:
+  schedule:
+    # Respaldo diurno: cada 15 minutos entre las 08:00 AM y 23:00 PM Hora Perú (13:00 a 04:00 UTC)
+    - cron: '*/15 13-23,0-4 * * *'
+  workflow_dispatch:
+    # Permite despertar el backend manualmente con un clic en la web de GitHub
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Kuspide Health Endpoint (Backend Only)
+        run: |
+          echo "Despertando backend de Render: https://kuspide-api.onrender.com/health"
+          # -sSf: silencioso pero falla si hay error HTTP
+          # -m 60: espera hasta 60s en caso de arranque en frío
+          curl -sSf -m 60 "https://kuspide-api.onrender.com/health" || echo "Fallo en el intento de ping"
